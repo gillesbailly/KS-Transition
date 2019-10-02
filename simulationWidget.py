@@ -25,7 +25,7 @@ class SimulationWidget(QWidget):
     #############################
     #run the simulation for 51 occurances
     def runSimulation(self):
-        print('\n========================= run simulation =====================', self.model.s_zipfian)
+        print('\n========================= run simulation =====================')
         
 
 
@@ -84,13 +84,8 @@ class SimulationWidget(QWidget):
         self.menu_chart = QChart()
         self.menu_chart_view = QChartView(self.menu_chart)
         self.menu_chart_view.setRenderHint(QPainter.Antialiasing)
-        self.menuPlotLayout.addWidget(self.menu_chart_view)
-        
+        self.powerLawLayout.addWidget(self.menu_chart_view)
 
-        self.hotkey_chart = QChart()
-        self.hotkey_chart_view = QChartView(self.hotkey_chart)
-        self.hotkey_chart_view.setRenderHint(QPainter.Antialiasing)
-        self.hotkeyPlotLayout.addWidget(self.hotkey_chart_view)
 
         self.seq_chart = QChart()
         self.seq_chart_view = QChartView(self.seq_chart)
@@ -140,40 +135,29 @@ class SimulationWidget(QWidget):
         self.parameterLayout = QHBoxLayout()
         self.mainLayout.addLayout(self.parameterLayout)
 
-        powerLawLayout = QVBoxLayout()
-        self.parameterLayout.addLayout(powerLawLayout)
+        self.powerLawLayout = QVBoxLayout()
+        self.parameterLayout.addLayout(self.powerLawLayout)
 
         modelPlotLayout = QVBoxLayout()
         self.mainLayout.addLayout(modelPlotLayout)
 
 
-        # powerLaw Layouts
-        self.menuPlotLayout = QVBoxLayout()
-        powerLawLayout.addLayout(self.menuPlotLayout)
-        menuLab = QLabel("Menu parameters")
-        menuLab.setStyleSheet("QLabel { background-color : blue; color : white; }");
-        menuLab.setAlignment(Qt.AlignHCenter)
-        self.menuPlotLayout.addWidget(menuLab)
+        methodLab = QLabel("Methods")
+        methodLab.setStyleSheet("QLabel { background-color : black; color : white; }");
+        methodLab.setAlignment(Qt.AlignHCenter)
+        self.powerLawLayout.addWidget(methodLab)
 
 
         lMenuSpinBoxes = QHBoxLayout()
-        self.menuPlotLayout.addLayout(lMenuSpinBoxes)
-        menuPlpLab = QLabel('Power Law of Practice: ')
+        self.powerLawLayout.addLayout(lMenuSpinBoxes)
+        menuPlpLab = QLabel(' Menu PLP:    ')
+        menuPlpLab.setStyleSheet("QLabel { background-color : blue; color : white; }");
         lMenuSpinBoxes.addWidget(menuPlpLab)
 
-
-
-        self.hotkeyPlotLayout = QVBoxLayout()
-        powerLawLayout.addLayout(self.hotkeyPlotLayout)
-        hotkeyLab = QLabel("Hotkey parameters")
-        hotkeyLab.setStyleSheet("QLabel { background-color : green; color : white; }");
-        hotkeyLab.setAlignment(Qt.AlignHCenter)
-        self.hotkeyPlotLayout.addWidget(hotkeyLab)
-
-
         lHotkeySpinBoxes = QHBoxLayout()
-        self.hotkeyPlotLayout.addLayout(lHotkeySpinBoxes)
-        hotkeyPlpLab = QLabel('Power Law of Practice: ')
+        self.powerLawLayout.addLayout(lHotkeySpinBoxes)
+        hotkeyPlpLab = QLabel(' Hotkey PLP: ')
+        hotkeyPlpLab.setStyleSheet("QLabel { background-color : green; color : white; }");
         lHotkeySpinBoxes.addWidget(hotkeyPlpLab)
 
 
@@ -302,7 +286,7 @@ class SimulationWidget(QWidget):
 
 
     ####################################
-    # call when when the user change a parameter
+    # call when when the user changes a parameter
     # in the spinboxes
     ####################################
     def updateValues(self):
@@ -403,56 +387,48 @@ class SimulationWidget(QWidget):
     ############################
     def simulate(self):
         self.model.sequence = self.create_sequence()
-        self.update_menu_canvas()
-        self.update_hotkey_canvas()
+        self.update_method_canvas()
+        #self.update_hotkey_canvas()
         self.update_sequence_canvas()
         history = self.runSimulation()
         self.updateCanvas(history)
 
 
-    def update_menu_canvas(self):
-        self.menu_chart.removeAllSeries()
-        line = QLineSeries()
-        line.setPen(Qt.black)
 
-        scatter = QScatterSeries()
-        scatter.setBrush(Qt.blue)
-        scatter.setMarkerSize(8)
+    def update_method_canvas(self):
+        self.menu_chart.removeAllSeries()
+        lineMenu = QLineSeries()
+        lineMenu.setPen(Qt.black)
+        scatterMenu = QScatterSeries()
+        scatterMenu.setBrush(Qt.blue)
+        scatterMenu.setMarkerSize(8)
+
+        lineHotkey = QLineSeries()
+        lineHotkey.setPen(Qt.black)
+        scatterHotkey = QScatterSeries()
+        scatterHotkey.setBrush(Qt.darkGreen)
+        scatterHotkey.setMarkerSize(8)
+
 
         for i in range(self.model.n_selection):
-            line.append(i, self.model.plp_menu(i) )
-            scatter.append(i, self.model.plp_menu(i))
-        self.menu_chart.addSeries(line)
-        self.menu_chart.addSeries(scatter)
+            lineMenu.append(i, self.model.plp_menu(i) )
+            scatterMenu.append(i, self.model.plp_menu(i))
+            lineHotkey.append(i, self.model.plp_hotkey(i) )
+            scatterHotkey.append(i, self.model.plp_hotkey(i))
+
+
+        self.menu_chart.addSeries(scatterMenu)
+        self.menu_chart.addSeries(lineMenu)
+        self.menu_chart.addSeries(scatterHotkey)
+        self.menu_chart.addSeries(lineHotkey)
+
         self.menu_chart.createDefaultAxes()
         self.menu_chart.axisY().setRange(0, 3)
 
         self.menu_chart.legend().setVisible(False)
         
 
-#        // we select the marker associated with serie_without_marker
-#chart.legend().markers(serie_without_marker)[0].setVisible(false);
 
-
-
-    def update_hotkey_canvas(self):
-        self.hotkey_chart.removeAllSeries()
-
-        line = QLineSeries()
-        line.setPen(Qt.black)
-
-        scatter = QScatterSeries()
-        scatter.setBrush(Qt.darkGreen)
-        scatter.setMarkerSize(8)
-
-        for i in range(self.model.n_selection):
-            line.append(i, self.model.plp_hotkey(i) )
-            scatter.append(i, self.model.plp_hotkey(i))
-        self.hotkey_chart.addSeries(line)
-        self.hotkey_chart.addSeries(scatter)
-        self.hotkey_chart.createDefaultAxes()
-        self.hotkey_chart.axisY().setRange(0, 3)
-        self.hotkey_chart.legend().setVisible(False)
 
     #########################
     def updateCanvas(self,history):
@@ -583,8 +559,6 @@ class SimulationWidget(QWidget):
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    sys.path.append("/Users/gbailly/GARDEN/transition_model/one_command_model/lib/python3.5/site-packages/")
-    print( '\n'.join(sys.path) )
     window = SimulationWidget()# Window()
     window.setWindowTitle("Model of the transition from menus to shortcuts")
     window.resize(900, 900)
