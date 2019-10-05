@@ -3,16 +3,19 @@ import random
 import pandas as pd
 import numpy as np
 from builtins import object
-from anytree import Node, RenderTree
+from  anytree import Node, RenderTree
 
 from util import *
+from kernel import *
 
 
 class TransitionModel:
     def __init__(self):
+        self.commands = [0,1,2]
+        self.kernel = Kernel(self.commands)
         self.sequence = []
-        self.n_selection = 80
-        self.n_commands = 3
+        self.n_selection = 10
+#        self.n_commands = 3
         self.s_zipfian = 0
         self.learning_cost = 0.05
         self.menuParams = [0.2,0.6,1.12]   # power law of practice for menus
@@ -36,8 +39,6 @@ class TransitionModel:
         res += "\t Horizon: " + str(self.horizon)
         res += "\t Error_cost: " + str(self.error_cost)
         res += "\t overreaction: " + str(self.overreaction)
-
-
         return res
 
     ###############################
@@ -52,18 +53,24 @@ class TransitionModel:
         return self.plp(self.menuParams, p)
 
 
-    def encode_action(self,belief, a, t):
-        #k_h = belief.get_most_likely_kh() / self.n_hotkey_knowledge
-        #res = "k_h:" + str(k_h) + ",a:" + str(a) + ",t:" + str(round(t,2))
-        #return res
-        return str(a) 
+    # def encode_action(self,belief, a, t):
+    #     #k_h = belief.get_most_likely_kh() / self.n_hotkey_knowledge
+    #     #res = "k_h:" + str(k_h) + ",a:" + str(a) + ",t:" + str(round(t,2))
+    #     #return res
+    #     return str(a) 
 
     def get_all_actions(self):
-        return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C), Action(ActionType.MENU_E) , Action(ActionType.HOTKEY_E), Action(ActionType.MENU_LEARNING_E)]
+        res =[]
+        for cmd in self.commands:
+            res.append( Action(cmd, Strategy.MENU) )
+            res.append( Action(cmd, Strategy.HOTKEY) )
+            res.append( Action(cmd, Strategy.LEARNING) )
+        return res
+        #return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C), Action(ActionType.MENU_E) , Action(ActionType.HOTKEY_E), Action(ActionType.MENU_LEARNING_E)]
 
 
-    def get_correct_actions(self):
-        return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C) ]
+    # def get_correct_actions(self):
+    #     return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C) ]
 
 
     def value_iteration(self, parent, depth, horizon, discount, debug_str):
@@ -111,19 +118,26 @@ class TransitionModel:
 
     
 
-    # focu on the most likely state, rather than a probability distribution
-    def select_action(self, belief, horizon, eps):
-        actions = self.get_correct_actions()
+    # focus on the most likely state, rather than a probability distribution
+    def select_action(self, cmd_id, belief, horizon, eps):
+         return np.random.choice( self.get_all_actions() )
+
+        # #==========
+        # actions = self.get_correct_actions()
         
-        r = random.random()
-        if r < self.eps:  #explore
-            return random.choice( actions )
+        # r = random.random()
+        # if r < self.eps:  #explore
+        #     return random.choice( actions )
 
-        root_node = Node("R-", belief = belief, time =0, a_min = -1)
+        # root_node = Node("R-", belief = belief, time =0, a_min = -1)
 
-        #discount = 1
+        # #discount = 1
 
-        v = self.value_iteration(root_node, 0, horizon, self.discount, "r")
+        # v = self.value_iteration(root_node, 0, horizon, self.discount, "r")
+        # #========
+
+
+
         #if root_node.a_min == 1:
             #print("belief k_h: ",  belief.get_most_likely_kh() / self.n_hotkey_knowledge )
         #print(" end select action: ", root_node.a_min)
@@ -136,7 +150,7 @@ class TransitionModel:
         #     exit(0)
         # # exit(0)
 
-        return Action(root_node.a_min)
+        #return Action(root_node.a_min)
 
 
     def select_action_and_success(self, action, k_h, k_m):
@@ -207,7 +221,8 @@ class TransitionModel:
 
 
     def is_terminal(self, state):
-        return state.n_h_c + state.n_m_c + state.n_h_e + state.n_m_e  >= self.n_selection
+        return 0
+        #return state.n_h_c + state.n_m_c + state.n_h_e + state.n_m_e  >= self.n_selection
 
 
     def initial_state(self):
@@ -315,23 +330,30 @@ class TransitionModel:
     
 
 
-    def generate_step(self, state, action):
+    def generate_step(self, cmd_id, state, action):
         is_legal = True
-        if type(action) is int:
-            action = HotkeyAction(action)
+        #if type(action) is int:
+        #    action = HotkeyAction(action)
+
+        print("my action: ", action)
 
         result = StepResult()
         result.state = state
-        result.next_state, is_legal = self.make_next_state(state, action.bin_number)
+        #result.next_state, is_legal = self.make_next_state(state, action.bin_number)
         result.action = action.copy()
-        result.time = self.time(state, action)
+        #print("my action: ", action.strategy)
+
+        #result.time = self.time(state, action)
+        result.time = 5.3
         
         result.is_terminal = self.is_terminal(result.next_state)
+        is_legal = True
+        self.kernel.update_command_history(cmd_id, 0, result.action, result.time)
         return result, is_legal
 
 
     def reset_simulation(self):
-        pass
+        self.kernel = Kernel(self.commands)
 
 
     def reset_episode(self):

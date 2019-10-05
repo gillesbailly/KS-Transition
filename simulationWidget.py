@@ -40,18 +40,22 @@ class SimulationWidget(QWidget):
             belief = self.model.initial_belief()
             state = self.model.initial_state()
 
-            print("================================= ", self.model.n_selection)
-            for i in range( 1, self.model.n_selection):
+            #print("================================= ", self.model.n_selection)
+            #for i in range( 1, self.model.n_selection):
+            cmd_seq = self.model.sequence
+            for i in range( 0, len(cmd_seq) ):
+                print(i, " ", cmd_seq[i])
                 is_legal = False
-                action = self.model.select_action(belief, self.model.horizon, self.model.eps) #action correct
-                #print(debug_str)
-                #exit(0)
-                action = self.model.select_action_and_success(action, state.k_h, state.k_m)
-                res, is_legal = self.model.generate_step(state, action)
-                next_belief = self.model.update_belief(belief, res.action.bin_number, res.time, history )
-                history.update_history(res.state, res.next_state, res.action, res.time, belief.copy(), next_belief.copy() )
-                state = res.next_state.copy()
-                belief = next_belief
+                action = self.model.select_action(cmd_seq[i], belief, self.model.horizon, self.model.eps) #action correct
+                #action = self.model.select_action_and_success(action, state.k_h, state.k_m)
+                res, is_legal = self.model.generate_step(cmd_seq[i], state, action)
+                #next_belief = self.model.update_belief(belief, res.action.bin_number, res.time, history )
+                #history.update_history(res.state, res.next_state, res.action, res.time, belief.copy(), next_belief.copy() )
+                #state = res.next_state.copy()
+                #belief = next_belief
+
+                #self.model.kernel.print()
+                print("=============")
             return history
 
 
@@ -170,7 +174,7 @@ class SimulationWidget(QWidget):
 
         self.n_commandsSpinBox, self.n_selectionSpinBox, self.s_zipfianSpinBox, self.penaltySpinbox,  self.epsSpinbox = self.createSpinBoxLayout(
             [
-                {'range': [1, 14], 'initial_value': self.model.n_commands,
+                {'range': [1, 14], 'initial_value': len(self.model.commands),
                  'handleValueChanged': self.updateValues, 'step': 1, 'label': '#Commands: \t\t', 'is_spinbox':True},
                 {'range': [10, 144], 'initial_value': self.model.n_selection,
                  'handleValueChanged': self.updateValues, 'step': 10, 'label': '#Selections: \t\t', 'is_spinbox':True},
@@ -290,7 +294,10 @@ class SimulationWidget(QWidget):
     # in the spinboxes
     ####################################
     def updateValues(self):
-        self.model.n_commands = self.n_commandsSpinBox.value()
+        if len(self.model.commands) != self.n_commandsSpinBox.value():
+            self.model.commands = self.create_command_list( self.n_commandsSpinBox.value() ) 
+        #self.model.n_commands = self.n_commandsSpinBox.value()
+        
         self.model.s_zipfian = self.s_zipfianSpinBox.value()
 
         self.model.horizon = self.kSpinBox.value()
@@ -338,8 +345,19 @@ class SimulationWidget(QWidget):
         # print(self.model)
         #self.simulate()
 
+    def create_command_list(self, nb):
+        print("debug cmd ---- ", nb)
+        l = np.zeros( nb, dtype=int )
+        for i in range(nb):
+            l[i] = int(i)
+        print("debug cmd 2 ---- ", l)
+        return l
+
     def create_sequence(self):
-        return np.random.choice(self.model.n_commands, self.model.n_selection, p = zipfian(self.model.s_zipfian, self.model.n_commands))
+        if len(self.model.commands) == 0:
+            self.model.commands = self.create_command_list( self.n_commandsSpinBox.value() )
+        print("debug seq ---- ", self.model.commands)
+        return np.random.choice( self.model.commands, self.model.n_selection, p = zipfian(self.model.s_zipfian, len(self.model.commands) ))
         
     def update_sequence_canvas(self):
         if len(self.model.sequence) == 0:
@@ -428,29 +446,37 @@ class SimulationWidget(QWidget):
         self.menu_chart.legend().setVisible(False)
         
 
+    #########################
+    def my_scatter_symbol(self, c):
+        symbol = QImage(20,20, QImage.Format_ARGB32)
+        symbol.fill(Qt.transparent)
 
+        painter = QPainter()
+        painter.begin(symbol)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.black)
+        painter.drawText(2,10, c)
+        painter.end()
+        return symbol
+
+    #########################
+    def create_scatter_series(self, name, marker_size, marker_shape, brush):
+        series = QScatterSeries()
+        series.setName(name)
+        series.setBrush(brush)
+        series.setMarkerSize(marker_size)
+        series.setMarkerShape(marker_shape)
+        series.setPen(Qt.transparent)
+        return series
 
     #########################
     def updateCanvas(self,history):
         chart = self.create_result_chart()
-        
-        menu_series = QScatterSeries()
-        menu_series.setName("Menu")
-        menu_series.setMarkerSize(10)
-        menu_series.setBrush(Qt.blue)
-        #menu_series.setPointLabelsVisible(True)
-        #menu_series.setPointLabelsFormat("@yPoint")
 
-        hotkey_series = QScatterSeries()
-        hotkey_series.setName("Hotkey")
-        hotkey_series.setMarkerSize(10)
-        hotkey_series.setBrush(Qt.darkGreen)
-        
-        learning_series = QScatterSeries()
-        learning_series.setName("Menu learning")
-        learning_series.setMarkerShape(QScatterSeries.MarkerShapeRectangle)
-        learning_series.setMarkerSize(10)
-        learning_series.setBrush(Qt.darkMagenta)
+        menu_series = self.create_scatter_series("Menu", 10, QScatterSeries.MarkerShapeCircle, Qt.blue)
+        hotkey_series = self.create_scatter_series("Hotkey", 10, QScatterSeries.MarkerShapeCircle, Qt.darkGreen)
+        learning_series = self.create_scatter_series("Menu Learning", 10, QScatterSeries.MarkerShapeRectangle, Qt.darkMagenta)
+        error_series = self.create_scatter_series("Error", 10, QScatterSeries.MarkerShapeRectangle, QBrush( self.my_scatter_symbol('x') ) )
 
         kh_series = QLineSeries()
         kh_series.setName("Hotkey Know.")
@@ -460,47 +486,42 @@ class SimulationWidget(QWidget):
         b_kh_series.setName("Hotkey Know. Belief")
         b_kh_series.setPen(Qt.darkGray)
 
+        cmd_series_all = []
+        for i in range( len(self.model.commands) ):
+            cmd_series_all.append( self.create_scatter_series("Cmd", 10, QScatterSeries.MarkerShapeCircle, QBrush( self.my_scatter_symbol( str(i) ) )) )
 
-        error_series = QScatterSeries()
-        error_series.setName("Error")
 
-        cross = QImage(20,20, QImage.Format_ARGB32)
-        cross.fill(Qt.transparent)
-
-        painter = QPainter()
-        painter.begin(cross)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.black)
-        painter.drawText(4,10, "x")
-        painter.end()
         
-        error_series.setBrush(QBrush(cross) )
-        error_series.setPen(QColor(Qt.transparent))
-
         for i in range( len(history.action) ):
             #print(i, history.action[i].bin_number, history.time[i])
             a = history.action[i].bin_number
+            time = round(history.time[i],1)
             if a == ActionType.MENU_C or a == ActionType.MENU_E :
-                menu_series.append( i, round(history.time[i],1) )
+                menu_series.append( i, time )
 
             elif a == ActionType.HOTKEY_C or a == ActionType.HOTKEY_E:
-                hotkey_series.append(i, history.time[i])
+                hotkey_series.append(i, time)
 
             elif a == ActionType.MENU_LEARNING_C or a == ActionType.MENU_LEARNING_E:
-                learning_series.append(i, history.time[i])
+                learning_series.append(i, time )
 
             if a == ActionType.MENU_E or a == ActionType.HOTKEY_E or a == ActionType.MENU_LEARNING_E:
-                error_series.append(i, history.time[i])
+                error_series.append(i, time )
 
+            cmd = self.model.sequence[i]    #add the id of the comand on the graph
+            cmd_series_all[cmd].append(i, time + 0.2 )
 
             kh_series.append(i, 3*history.state[i].k_h)
             b_kh = history.belief[i].get_most_likely_kh() / self.model.n_hotkey_knowledge
-            b_kh_series.append(i,3*b_kh)
+            b_kh_series.append(i,3*b_kh)            
+
 
         chart.addSeries(menu_series)
         chart.addSeries(hotkey_series)
         chart.addSeries(learning_series)
         chart.addSeries(error_series)
+        for i in cmd_series_all:
+            chart.addSeries( i )
 
         if self.show_KH:
             chart.addSeries(kh_series)

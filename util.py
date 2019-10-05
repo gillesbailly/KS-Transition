@@ -16,6 +16,18 @@ def zipfian(s, N):
         res [k] = num / denum 
     return res
 
+
+###########################
+#   Command
+###########################
+class Command(object):
+    
+    def __init__(self, id=0, name="None", hotkey ="hk"):
+        self.id = id
+        self.name = name
+        self.hotkey = hotkey
+
+
 ###########################
 #   STEP RESULT
 ###########################
@@ -94,30 +106,55 @@ class ActionType(object):
     MENU_LEARNING_E = 5
 
 
+class Strategy(object):
+    MENU = 0
+    HOTKEY = 1
+    LEARNING = 2
+
 
 ###########################
 #   ACTION
 ###########################
 class Action(object):
-    def __init__(self, bin_number):
-        self.bin_number = bin_number
+#    def __init__(self, bin_number):
+#        self.bin_number = bin_number
+
+    def __init__(self, cmd, strategy):
+        self.cmd = cmd
+        self.strategy = strategy
+
+    def command(self):
+        return self.cmd
 
     def copy(self):
-        return Action(self.bin_number)
+        return Action(self.cmd, self.strategy)
 
     def print_action(self, short_print=False):
         if short_print:
             print("a: ", self.to_string(short_print))
         else:
-            print("action: ", self.to_string(short_print))
+            print("action: ", self.to_string())
+
+    def __repr__(self):
+        return self.to_string()
 
     def to_string(self, short_print=False):
-        long_name  = ["MENUc", "HOTKEYc", "MENU_LEARNINGc", "MENUe", "HOTKEYe", "MENU_LEARNINGe"]
-        short_name = ["Mc", "Hc", "MLc", "Me", "He", "MLe"]
+        s = "MENU"
+        if self.strategy == Strategy.HOTKEY:
+            s = "HOTKEY"
+        elif self.strategy == Strategy.LEARNING:
+            s = "LEARNING"
         if short_print:
-            return short_name[self.bin_number]
+            return str(self.cmd) + s[0]
         else:
-            return long_name[self.bin_number]
+            return str(self.cmd) + '_' + s
+
+#        long_name  = ["MENUc", "HOTKEYc", "MENU_LEARNINGc", "MENUe", "HOTKEYe", "MENU_LEARNINGe"]
+#        short_name = ["Mc", "Hc", "MLc", "Me", "He", "MLe"]
+#        if short_print:
+#            return str(cmd)+
+#        else:
+#            return long_name[self.bin_number]
 
 
 ###########################
