@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.Qt import PYQT_VERSION_STR
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QScrollArea, QPushButton, QSlider, QWidget, QGroupBox, QTextEdit, QHBoxLayout, QVBoxLayout, QSpinBox,QDoubleSpinBox, QComboBox,QLabel,QLineEdit)
+from PyQt5.QtWidgets import (QApplication, QTabWidget, QCheckBox, QScrollArea, QPushButton, QSlider, QWidget, QGroupBox, QTextEdit, QHBoxLayout, QVBoxLayout, QSpinBox,QDoubleSpinBox, QComboBox,QLabel,QLineEdit)
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from transitionModel import *
@@ -79,21 +79,30 @@ def createSpinBoxLayout(spinboxInfo,layout):
 #   Display the result of one simulation #
 #                                        #
 ##########################################
-class SimulatorUI(QScrollArea):
+class SimulatorUI(QTabWidget):
     def __init__(self):
-        super(QScrollArea,self).__init__()
-        self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.result_widget = QWidget()
-        self.result_layout = QVBoxLayout()
-        self.result_widget.setLayout(self.result_layout)
-        self.setWidget(self.result_widget)
-        self.result_widget.show()
+        super(QTabWidget,self).__init__()
+        
+    ###################
+    def add_page(self):
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        result_widget = QWidget()
+        result_layout = QVBoxLayout()
+        result_widget.setLayout(result_layout)
+        scrollArea.setWidget(result_widget)
+        result_widget.show()
+        self.addTab(scrollArea, "Result")
+        return result_layout
 
+
+    ###################
     def create_episode_chart(self):
+        layout = self.add_page()
         container = QWidget()
         container.setMinimumHeight(400)
-        self.result_layout.insertWidget(0,container)
+        layout.insertWidget(0,container)
         #todo this VBoxLayout is probably useless
         l = QVBoxLayout()
         container.setLayout(l)
@@ -336,9 +345,9 @@ class Window(QWidget):
 
         # print episode
 
-    def init_visu_params(self):
-        self.show_KH = True
-        self.show_B_KH = True
+    # def init_visu_params(self):
+    #     self.show_KH = True
+    #     self.show_B_KH = True
         
         
     # def series_to_polyline(self, xdata, ydata):
@@ -364,11 +373,6 @@ class Window(QWidget):
         self.menu_chart_view.setRenderHint(QPainter.Antialiasing)
         self.powerLawLayout.addWidget(self.menu_chart_view)
         
-
-
-
-
-        self.taskLayout.addStretch()
         
 
         # self.chart = QChart()
@@ -444,10 +448,10 @@ class Window(QWidget):
 
 
 
-        button = QPushButton('Relaunch')
-        self.transPlotLayout.addWidget(button)
-        self.transPlotLayout.addStretch()
-        button.clicked.connect(self.simulate)
+        # button = QPushButton('Relaunch')
+        # self.transPlotLayout.addWidget(button)
+        # self.transPlotLayout.addStretch()
+        # button.clicked.connect(self.simulate)
 
 
 
