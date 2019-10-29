@@ -33,30 +33,38 @@ class Command(object):
 ###########################
 class StepResult(object):
     def __init__(self):
+        self.cmd = -1
         self.state = None
         self.next_state = None
         self.action = None
         self.time = -1
+        self.success = -1
         self.is_terminal = False
 
 
 ###########################
 #   HISTORY
+#   commands: the list of ids of the different commands of the application
 ###########################
 class History(object):
-    def __init__(self):
+    def __init__(self, commands):
+        self.commands = commands
+        self.cmd = []
         self.state = []
         self.next_state = []
         self.action = []
         self.time = []
+        self.success = []
         self.belief = []
         self.next_belief = []
 
-    def update_history(self, s, n_s, a, t, b, n_b):
+    def update_history(self, cmd, s, n_s, a, t, success, b, n_b):
+        self.cmd.append(cmd)
         self.state.append( s )
         self.next_state.append (n_s)
         self.action.append( a )
         self.time.append(t)
+        self.success.append(success)
         self.belief.append(b)
         self.next_belief.append(n_b)
 
