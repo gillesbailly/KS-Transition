@@ -4,30 +4,32 @@ import pandas as pd
 import numpy as np
 from builtins import object
 from  anytree import Node, RenderTree
-
+import copy
 from util import *
 from kernel import *
 
 
 class TransitionModel:
-    def __init__(self):
-        self.commands = [0,1,2]
-        self.kernel = Kernel(self.commands)
+    def __init__(self, env):
+        self.env = env
+#        self.commands = [0,1,2]
+
         self.sequence = []
-        self.n_selection = 10
+        #self.n_selection = 30
 #        self.n_commands = 3
-        self.s_zipfian = 0
+        
         self.learning_cost = 0.05
         self.menuParams = [0.2,0.6,1.12]   # power law of practice for menus
         self.hotkeyParams = [0.1,2,0.5] # power lawa of practice for hotkeys
         self.risk_aversion = 0.6  # below this threshold, users do not try to use hotkey: 1 user does not take risk; 0 user takes a lot of risk
-        self.implicit_hotkey_knowledge_incr = 0.01
-        self.explicit_hotkey_knowledge_incr = 0.2
+        self.implicit_hotkey_knowledge_incr = 0.3
+        self.explicit_hotkey_knowledge_incr = 1
+        self.kernel = Kernel(self.env.commands, self.implicit_hotkey_knowledge_incr, self.explicit_hotkey_knowledge_incr)
         self.n_hotkey_knowledge = int(1. / self.implicit_hotkey_knowledge_incr )
         self.overreaction = 0.0
 
         self.eps = 0.0     #probability for exploit / explore
-        self.horizon = 1
+        self.horizon = 2
         self.discount = 1
         self.error_cost = 0.1  # the cost of an error (does not include the time for selectin the cmd again)
 
@@ -61,11 +63,16 @@ class TransitionModel:
 
     def get_all_actions(self):
         res =[]
-        for cmd in self.commands:
+        for cmd in self.env.commands:
             res.append( Action(cmd, Strategy.MENU) )
             res.append( Action(cmd, Strategy.HOTKEY) )
             res.append( Action(cmd, Strategy.LEARNING) )
         return res
+
+
+    def get_actions_from(self, cmd_id):
+        return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.LEARNING), Action(cmd_id, Strategy.HOTKEY)]
+
         #return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C), Action(ActionType.MENU_E) , Action(ActionType.HOTKEY_E), Action(ActionType.MENU_LEARNING_E)]
 
 
@@ -73,30 +80,146 @@ class TransitionModel:
     #     return [Action(ActionType.MENU_C) , Action(ActionType.HOTKEY_C), Action(ActionType.MENU_LEARNING_C) ]
 
 
-    def value_iteration(self, parent, depth, horizon, discount, debug_str):
+    # def value_iteration(self, parent, depth, horizon, discount, debug_str):
+    #     #print("VI depth: ", depth)
+    #     if depth == (horizon+1):
+    #         return 0
+
+    #     belief = parent.belief
+    #     k_h = belief.get_most_likely_kh() / self.n_hotkey_knowledge
+    #     actions = self.get_correct_actions()
+        
+    #     v = 100000000
+    #     a_min  = -1
+    #     #print("START: ======================================= ", debug_str )
+    #     for action in actions:
+    #         a = action.bin_number
+            
+    #         #time = self.time_estimation(belief.n_h_c, belief.n_m_c, a)
+    #         time = self.time_esperance(k_h, belief.k_m, belief.n_h_c, belief.n_m_c, a)
+
+    #         next_belief = self.update_belief(belief, a, time, None)
+    #         #print("time ", time)
+    #         n = Node(self.encode_action(belief, a, time), parent= parent, a= a, time = time, belief = next_belief, value =0, a_min = -1)
+    #         v_tmp = self.value_iteration(n, depth+1, horizon, discount, debug_str+ " " + str(a))
+    #         if v_tmp == 0:
+    #             n.parent=None
+    #         if v > v_tmp:                
+    #             v = v_tmp
+    #             if v == 0:
+    #                 a_min = -1
+    #             else:
+    #                 a_min = a
+                    
+    #                 #res += "\n " + debug_str +"->" +  str(a_min) + "(V:"+ str( round(v_tmp,3)) +")"
+    #                 #res += "\n" + str_tmp
+            
+    #     parent.value = parent.time + discount * v
+    #     parent.a_min = a_min
+    #     parent.name = parent.name + ", v:"+ str(round(parent.value,2)) + ", a_min:"+ str(a_min)
+        
+    #     #    res += "\n " + debug_str +"->" +  str(a_min) + "(V:"+ str( round(parent.value,3)) +")"
+    #     #    print(debug_str, " -> comparison:", round(parent.time,3), round(v,3) , round(parent.value,3), a_min )        
+    #     #print("END =======================================")
+    #     return parent.value
+
+
+
+
+
+
+
+    def time_estimation_bis(self, action, date, kernel):
+        knowledge = kernel.knowledge(action, date)
+        time_correct = self.time_bis(action, date, kernel, success = True)
+        time_error = self.time_bis(action, date, kernel, success = False)
+        return knowledge * time + (1-knowledge) * time_error
+
+
+    def time_bis(self, action, cur_date, kernel, success = True):
+        s = action.strategy
+        t = 0
+        if s == Strategy.MENU:
+            t = kernel.menu_time(action.cmd, cur_date)
+        elif s == Strategy.LEARNING:
+            t = kernel.menu_time(action.cmd, cur_date) + self.learning_cost
+        elif s == Strategy.HOTKEY:
+            t = kernel.hotkey_time(action.cmd, cur_date)
+
+        if success == False:
+            t += kernel.menu_time(action.cmd, cur_date) + self.error_cost
+        return t
+
+
+
+    
+
+    # focus on the most likely state, rather than a probability distribution
+    def select_action(self, cmd_id, date, belief, horizon, eps):
+        #action = self.get_actions_from( cmd_id )
+        # weight_action = [0,0,0]
+        # for i in range ( len(action) ):
+        #     weight_action[i] = self.time_estimation_bis( action[i], date, self.kernel )
+        # print(weight_action)
+
+        # r = random.random()
+        # if r < self.eps:  #explore
+        #      return random.choice( actions )
+
+        # return action[ np.argmin(weight_action) ] #return the action with the smallest time estimation
+
+        kernel = copy.deepcopy(self.kernel)
+        root_node = Node("R-", cmd= cmd_id, date = date, kernel = kernel, time =0, a_min = -1)
+        v = self.value_iteration(root_node, date, 0, horizon, self.discount, "r")
+        print(root_node.name)
+        # #========
+
+
+
+        #if root_node.a_min == 1:
+            #print("belief k_h: ",  belief.get_most_likely_kh() / self.n_hotkey_knowledge )
+        #print(" end select action: ", root_node.a_min)
+        #exit(0)
+
+        # for pre, fill, node in RenderTree(root_node):
+        #     print("%s%s" % (pre, node.name))
+        
+        # if root_node.a_min == 1:
+        #     exit(0)
+        # # exit(0)
+
+        return root_node.a_min
+
+
+    def value_iteration(self, parent, date, depth, horizon, discount, debug_str):
         #print("VI depth: ", depth)
         if depth == (horizon+1):
             return 0
 
-        belief = parent.belief
-        k_h = belief.get_most_likely_kh() / self.n_hotkey_knowledge
-        actions = self.get_correct_actions()
-        
+        actions = self.get_actions_from( parent.cmd )
         v = 100000000
         a_min  = -1
-        #print("START: ======================================= ", debug_str )
-        for action in actions:
-            a = action.bin_number
-            
-            #time = self.time_estimation(belief.n_h_c, belief.n_m_c, a)
-            time = self.time_esperance(k_h, belief.k_m, belief.n_h_c, belief.n_m_c, a)
 
-            next_belief = self.update_belief(belief, a, time, None)
-            #print("time ", time)
-            n = Node(self.encode_action(belief, a, time), parent= parent, a= a, time = time, belief = next_belief, value =0, a_min = -1)
-            v_tmp = self.value_iteration(n, depth+1, horizon, discount, debug_str+ " " + str(a))
+        for a in actions:
+            knowledge = parent.kernel.knowledge(a, date)
+            success = True
+            time_correct = self.time_bis(a, date, parent.kernel, success)
+            kernel_correct = copy.deepcopy(parent.kernel)
+            kernel_correct.update_command_history(parent.cmd, date, a, time_correct, success)
+            n_correct = Node(a.to_string(True)+'_C', parent = parent, cmd = parent.cmd, a = a, date = date, kernel = kernel_correct, time = time_correct, value = 0, a_min = -1 )
+            v_correct = self.value_iteration(n_correct, date+1, depth+1, horizon, discount, debug_str + " " + a.to_string(True)+ '_C')
+
+            success = False
+            time_error = self.time_bis(a, date, parent.kernel, success = False)
+            kernel_error = copy.deepcopy(parent.kernel)
+            kernel_error.update_command_history(parent.cmd, date, a, time_error, success)
+            n_error = Node(a.to_string(True)+'_E', parent = parent, cmd = parent.cmd, a = a, date = date, kernel = kernel_error, time = time_error, value = 0, a_min = -1 )
+            v_error = self.value_iteration(n_error, date+1, depth+1, horizon, discount, debug_str + " " + a.to_string(True) + '_E')
+
+            v_tmp = v_correct * knowledge + v_error * (1. - knowledge)
+
             if v_tmp == 0:
-                n.parent=None
+                n_correct.parent=None
             if v > v_tmp:                
                 v = v_tmp
                 if v == 0:
@@ -115,42 +238,6 @@ class TransitionModel:
         #    print(debug_str, " -> comparison:", round(parent.time,3), round(v,3) , round(parent.value,3), a_min )        
         #print("END =======================================")
         return parent.value
-
-    
-
-    # focus on the most likely state, rather than a probability distribution
-    def select_action(self, cmd_id, belief, horizon, eps):
-         return np.random.choice( self.get_all_actions() )
-
-        # #==========
-        # actions = self.get_correct_actions()
-        
-        # r = random.random()
-        # if r < self.eps:  #explore
-        #     return random.choice( actions )
-
-        # root_node = Node("R-", belief = belief, time =0, a_min = -1)
-
-        # #discount = 1
-
-        # v = self.value_iteration(root_node, 0, horizon, self.discount, "r")
-        # #========
-
-
-
-        #if root_node.a_min == 1:
-            #print("belief k_h: ",  belief.get_most_likely_kh() / self.n_hotkey_knowledge )
-        #print(" end select action: ", root_node.a_min)
-        #exit(0)
-
-        # for pre, fill, node in RenderTree(root_node):
-        #     print("%s%s" % (pre, node.name))
-        
-        # if root_node.a_min == 1:
-        #     exit(0)
-        # # exit(0)
-
-        #return Action(root_node.a_min)
 
 
     def select_action_and_success(self, action, k_h, k_m):
@@ -187,7 +274,6 @@ class TransitionModel:
             knowledge = k_h
         return time_c * knowledge + time_e * (1-knowledge)
 
-
     def time_estimation(self, n_hotkey_correct, n_menu_correct,  a):
         hotkey_time = self.plp_hotkey(n_hotkey_correct)                 #counter   n_hotkey
         menu_time = self.plp_menu(n_menu_correct)                       #counter   n_menu
@@ -214,6 +300,12 @@ class TransitionModel:
             print("time_error : error ->", a) 
             return -1
                  
+
+
+
+            
+
+
 
     ''' return time and error (Correct:0; Error:1)'''
     def time(self, state, action):
@@ -330,7 +422,7 @@ class TransitionModel:
     
 
 
-    def generate_step(self, cmd_id, state, action):
+    def generate_step(self, cmd_id, date, state, action):
         is_legal = True
         #if type(action) is int:
         #    action = HotkeyAction(action)
@@ -338,23 +430,30 @@ class TransitionModel:
         print("my action: ", action)
 
         result = StepResult()
+        result.cmd = cmd_id
         result.state = state
         #result.next_state, is_legal = self.make_next_state(state, action.bin_number)
         result.action = action.copy()
-        #print("my action: ", action.strategy)
 
-        #result.time = self.time(state, action)
-        result.time = 5.3
+        result.success = 1
+        knowledge = self.kernel.knowledge(result.action, date)
+        r = random.random()
+        if r > knowledge:
+            result.success = 0
+
+        result.time = self.time_bis(action, date, self.kernel, result.success)
+        print("time: ", result.time)
         
+
         result.is_terminal = self.is_terminal(result.next_state)
         is_legal = True
-        self.kernel.update_command_history(cmd_id, 0, result.action, result.time)
+        self.kernel.update_command_history(cmd_id, date, result.action, result.time, result.success)
         return result, is_legal
 
 
     def reset_simulation(self):
-        self.kernel = Kernel(self.commands)
-
+        self.kernel = Kernel(self.env.commands, self.implicit_hotkey_knowledge_incr, self.explicit_hotkey_knowledge_incr)
+        
 
     def reset_episode(self):
         pass
