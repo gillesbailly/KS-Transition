@@ -31,7 +31,7 @@ class TransitionModel:
         self.eps = 0.0     #probability for exploit / explore
         self.horizon = 2
         self.discount = 1
-        self.error_cost = 0.1  # the cost of an error (does not include the time for selectin the cmd again)
+        #self.error_cost = 0.1  # the cost of an error (does not include the time for selectin the cmd again)
 
 
     def to_string(self):
@@ -39,7 +39,7 @@ class TransitionModel:
         res += "\t Implicit: " + str(self.implicit_hotkey_knowledge_incr)
         res += "\t Explicit: " + str(self.explicit_hotkey_knowledge_incr)
         res += "\t Horizon: " + str(self.horizon)
-        res += "\t Error_cost: " + str(self.error_cost)
+        res += "\t Error_cost: " + str(self.env.error_cost)
         res += "\t overreaction: " + str(self.overreaction)
         return res
 
@@ -147,7 +147,7 @@ class TransitionModel:
             t = kernel.hotkey_time(action.cmd, cur_date)
 
         if success == False:
-            t += kernel.menu_time(action.cmd, cur_date) + self.error_cost
+            t += kernel.menu_time(action.cmd, cur_date) + self.env.error_cost
         return t
 
 
@@ -155,7 +155,8 @@ class TransitionModel:
     
 
     # focus on the most likely state, rather than a probability distribution
-    def select_action(self, cmd_id, date, belief, horizon, eps):
+    #def select_action(self, cmd_id, date, belief, horizon, eps):
+    def select_action(self, cmd_id, date):
         #action = self.get_actions_from( cmd_id )
         # weight_action = [0,0,0]
         # for i in range ( len(action) ):
@@ -170,7 +171,7 @@ class TransitionModel:
 
         kernel = copy.deepcopy(self.kernel)
         root_node = Node("R-", cmd= cmd_id, date = date, kernel = kernel, time =0, a_min = -1)
-        v = self.value_iteration(root_node, date, 0, horizon, self.discount, "r")
+        v = self.value_iteration(root_node, date, 0, self.horizon, self.discount, "r")
         print(root_node.name)
         # #========
 
@@ -282,19 +283,19 @@ class TransitionModel:
             return menu_time
         
         elif a == ActionType.MENU_E:    
-            return menu_time + menu_time + self.error_cost
+            return menu_time + menu_time + self.env.error_cost
             
         elif a == ActionType.MENU_LEARNING_C:
             return menu_time + self.learning_cost
         
         elif a == ActionType.MENU_LEARNING_E:
-            return menu_time + self.learning_cost + menu_time + self.error_cost
+            return menu_time + self.learning_cost + menu_time + self.env.error_cost
 
         elif a == ActionType.HOTKEY_C:
             return hotkey_time 
             
         elif a == ActionType.HOTKEY_E:
-            return hotkey_time + menu_time + self.error_cost
+            return hotkey_time + menu_time + self.env.error_cost
          
         else:
             print("time_error : error ->", a) 
@@ -451,14 +452,8 @@ class TransitionModel:
         return result, is_legal
 
 
-    def reset_simulation(self):
+    def reset(self):
         self.kernel = Kernel(self.env.commands, self.implicit_hotkey_knowledge_incr, self.explicit_hotkey_knowledge_incr)
         
-
-    def reset_episode(self):
-        pass
-
-
-    
 
 
