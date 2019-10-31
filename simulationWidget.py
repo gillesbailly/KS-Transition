@@ -196,28 +196,29 @@ class EnvironmentUI(QWidget):
     def __init__(self, environment):
         super(QWidget,self).__init__()
         self.env = environment
-
-        self.layout = QVBoxLayout(self)
+        self.param_spinbox = dict()
+        vl = QVBoxLayout(self)
 #        self.parameterLayout.addLayout(self.taskLayout)
         userLab = QLabel('Environment')
         userLab.setStyleSheet("QLabel { background-color : gray; color : white; }");
         userLab.setAlignment(Qt.AlignHCenter)
-        self.layout.addWidget(userLab)
+        vl.addWidget(userLab)
 
-        self.n_commandsSpinBox, self.n_selectionSpinBox, self.s_zipfianSpinBox, self.error_costSpinbox = createSpinBoxLayout(
-            [
-                {'range': [1, 14], 'initial_value': self.env.n_commands,
-                 'handleValueChanged': self.update_values, 'step': 1, 'label': '#Commands: \t\t', 'is_spinbox':True},
-                {'range': [10, 144], 'initial_value': self.env.n_selection,
-                 'handleValueChanged': self.update_values, 'step': 10, 'label': '#Selections: \t\t', 'is_spinbox':True},
-                {'range': [0, 5], 'initial_value': self.env.s_zipfian,
-                 'handleValueChanged': self.update_values, 'step': 1, 'label': 'Zipfian_s: \t\t', 'is_spinbox':True},
-                {'range': [0.0, 2.0], 'initial_value': self.env.error_cost,
-                 'handleValueChanged': self.update_values, 'step': 0.1, 'label': 'Error cost: \t\t'}],
-            self.layout)
+
+        for key in self.env.value:
+            spinBox = createSpinbox(self.env.range[key], self.env.value[key], self.update_values, self.env.step[key], self.env.step[key] >= 1)
+            self.param_spinbox[key] = spinBox
+            hl = QHBoxLayout()
+            lab = QLabel(key)
+            lab.setToolTip( self.env.comment[key])
+            hl.addWidget(lab)
+            hl.addWidget(spinBox)
+            hl.addStretch(10)
+            vl.addLayout(hl)
+        vl.addStretch()    
 
         self.seqLineEdit = QLineEdit()
-        self.layout.addWidget(self.seqLineEdit)
+        vl.addWidget(self.seqLineEdit)
 
         self.seq_chart = QChart()
         self.seq_chart_view = QChartView(self.seq_chart)
@@ -225,16 +226,23 @@ class EnvironmentUI(QWidget):
         self.seq_chart_view.setMinimumHeight(200)
         self.axisX = None
         self.axisY = None
-        self.layout.addWidget(self.seq_chart_view)
-        self.layout.addStretch()
+        vl.addWidget(self.seq_chart_view)
+        vl.addStretch()
 
         self.refresh()
 
     #########################
     def update_values(self):
         print("Environment UI: update_values UI->Env")
-        self.env.reset(self.n_commandsSpinBox.value(), int( self.n_selectionSpinBox.value() ), self.s_zipfianSpinBox.value(), self.error_costSpinbox.value())
+        # self.env.reset(self.n_commandsSpinBox.value(), int( self.n_selectionSpinBox.value() ), self.s_zipfianSpinBox.value(), self.error_costSpinbox.value())
+        # self.refresh()
+
+        for key in self.env.value:
+            self.env.value[key] = self.param_spinbox[key].value()
+        self.env.update()
         self.refresh()
+
+
         # if len(self.model.commands) != self.n_commandsSpinBox.value():
         #     self.model.commands = self.create_command_list( self.n_commandsSpinBox.value() ) 
         # #self.model.n_commands = self.n_commandsSpinBox.value()
@@ -248,14 +256,20 @@ class EnvironmentUI(QWidget):
 
     #########################
     def refresh(self):
-        print("refresh Env -> UI")
+        print("refresh 1")
         if len(self.env.cmd_seq) == 0:
             return
+        print("refresh 2")
 
-        self.n_commandsSpinBox.setValue(self.env.n_commands)
-        self.n_selectionSpinBox.setValue(self.env.n_selection)
-        self.s_zipfianSpinBox.setValue(self.env.s_zipfian)
-        self.error_costSpinbox.setValue(self.env.error_cost)
+        for key in self.env.value:
+            self.param_spinbox[key].setValue( self.env.value[key] )
+
+
+
+        # self.n_commandsSpinBox.setValue(self.env.n_commands)
+        # self.n_selectionSpinBox.setValue(self.env.n_selection)
+        # self.s_zipfianSpinBox.setValue(self.env.s_zipfian)
+        # self.error_costSpinbox.setValue(self.env.error_cost)
         
 
 
@@ -371,18 +385,20 @@ class Window(QWidget):
         
         self.model_dic[index] = model_view.model
         self.model_tab.setCurrentIndex( index )
-        print("coucou")
+        print("coucou", index, " -> ", self.model_dic[index])
+        self.model = model_view.model
 
     ############################
     def select_model(self, index):
-        print(self.model_dic, index)
+        print("select model: ", self.model_dic, index)
         if index in self.model_dic:
             self.model = self.model_dic[index]
 
     ############################
     def simulate(self):
+        print("simulate: ", self.model, self.model_dic)
         sims = self.simulator.run(self.model, self.n_episodeSpinBox.value() )
-        self.simulatorUI.add_sims(sims, self.sim_name1.text() + self.simulator.env.to_string() )
+        self.simulatorUI.add_sims(sims, self.sim_name1.text() )
 
     def update_values(self):
         pass
@@ -402,67 +418,80 @@ class Trans_model_view(QWidget):
     ###########################
     def __init__(self, model):
         super(QWidget, self).__init__()
+
         self.model = model
+        param_range = dict()
+        param_step = dict()
+        self.param_spinbox = dict()
 
-        v_layout = QVBoxLayout()
-        self.setLayout(v_layout)
-
-        self.tLearnSpinbox, self.implicitLearningSpinbox, self.explicitLearningSpinbox, self.kSpinBox, self.discountSpinBox, self.riskAversionSpinbox, self.overReactionSpinBox = createSpinBoxLayout([
-            {'range': [0.0, 10.0], 'initial_value': self.model.learning_cost, 'handleValueChanged': self.updateValues,'step':0.1,'label': 'Cue Fixation time: \t'},
-            {'range': [0.0, 1.0], 'initial_value': self.model.implicit_hotkey_knowledge_incr, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Implicit Learning Incr: \t'},
-            {'range': [0.0, 1.0], 'initial_value': self.model.explicit_hotkey_knowledge_incr, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Explicit Learning Incr: \t'},
-            {'range': [0, 10], 'initial_value': self.model.horizon, 'handleValueChanged': self.updateValues, 'step': 1, 'label': 'Horizon: \t\t', 'is_spinbox': True},
-            {'range': [0, 1], 'initial_value': self.model.discount, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Discount: \t\t' },
-            {'range': [0.0, 1.0], 'initial_value': self.model.risk_aversion, 'handleValueChanged': self.updateValues, 'step': 0.05, 'label': 'Risk aversion: \t\t'},
-            {'range': [0.0, 1.0], 'initial_value': self.model.overreaction, 'handleValueChanged': self.updateValues, 'step': 0.05, 'label': 'Over reaction: \t\t'},],
-            v_layout)
-
-        v_layout.addWidget(QLabel())
-
-        self.menuACSpinBox, self.menuBSpinbox, self.menuCSpinbox = createSpinBoxLayout([
-            {'range':[0.0,10.0],'initial_value':self.model.menuParams[0]+self.model.menuParams[2],'handleValueChanged':self.updateValues,'step':0.1,'label':'a+c'},
-            {'range':[0.0,10.0],'initial_value':self.model.menuParams[1],'handleValueChanged':self.updateValues,'step':0.1,'label':'b'},
-            {'range':[0.0,10.0],'initial_value':self.model.menuParams[2],'handleValueChanged':self.updateValues,'step':0.1,'label':'c'}],
-            v_layout)
+        param_range['n_strategy'] = [2,3]
+        param_range['menu_time'] = [0.5,3]                    
+        param_range['hotkey_time'] = [0,2.5]            
+        param_range['learning_cost'] = [0,2]
+        param_range['risk_aversion'] = [0,1]
+        param_range['implicit_knowledge'] = [0,1]                    
+        param_range['explicit_knowledge'] = [0,1]            
+        param_range['eps'] = [0,1]
+        param_range['horizon'] = [0,10]
+        param_range['discount'] = [0,1]                    
+        param_range['over_reaction'] = [0,1]            
+        param_range['decay'] = [0,1]
+        param_range['F'] = [0,1]
+        param_range['tau'] = [0,10]                    
+        param_range['s'] = [0,1]            
+        param_range['max_knowledge'] = [0,1]
         
-        self.hotkeyACSpinBox, self.hotkeyBSpinbox, self.hotkeyCSpinbox = createSpinBoxLayout([
-            {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[0] + self.model.hotkeyParams[2],'handleValueChanged': self.updateValues,'step':0.1, 'label': 'a+c'},
-            {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[1], 'handleValueChanged': self.updateValues,'step':0.1,'label': 'b'},
-            {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[2],'handleValueChanged': self.updateValues,'step':0.1, 'label': 'c'}],
-            v_layout)
-        
+        param_step['n_strategy'] = 1
+        param_step['menu_time'] = 0.1                    
+        param_step['hotkey_time'] = 0.1            
+        param_step['learning_cost'] = 0.1
+        param_step['risk_aversion'] = 0.1
+        param_step['implicit_knowledge'] = 0.05                    
+        param_step['explicit_knowledge'] = 0.05           
+        param_step['eps'] = 0.05
+        param_step['horizon'] = 1
+        param_step['discount'] = 0.1                    
+        param_step['over_reaction'] = 0.1            
+        param_step['decay'] = 0.1
+        param_step['F'] = 0.1
+        param_step['tau'] = 1                    
+        param_step['s'] = 0.1            
+        param_step['max_knowledge'] = 0.05
 
-        # visu_widget = QWidget()
-        # visu_widget.setLayout(visu_layout)
-        # self.mainLayout.addWidget(visu_widget)
-        # visu_lab = QLabel('Visualization parameters')
-        # visu_lab.setStyleSheet("QLabel { background-color : black; color : white; }");
-        # visu_lab.setAlignment(Qt.AlignHCenter)
-        # v_layout.addWidget(visu_lab)
-        
-        # visu_layout.addWidget(visuLab)
-        # visu_layout_h = QHBoxLayout()
-        # visu_layout_h.setAlignment(Qt.AlignLeft)
-        # visu_layout.addLayout(visu_layout_h)
 
-        # self.plp_chart = QChart()
-        # plp_chart_view = QChartView(self.plp_chart)
-        # plp_chart_view.setRenderHint(QPainter.Antialiasing)
-        # v_layout.addWidget(self.menu_chart_view)
+        vl = QVBoxLayout()
+        self.setLayout(vl)
+
+        for key in self.model.params:
+            spinBox = createSpinbox(param_range[key], self.model.params[key], self.update_values, param_step[key], param_step[key] == 1)
+            self.param_spinbox[key] = spinBox
+            hl = QHBoxLayout()
+            hl.addWidget(QLabel(key))
+            hl.addWidget(spinBox)
+            hl.addStretch(10)
+            vl.addLayout(hl)
+        vl.addStretch()    
+
+
 
 
     ##############################
-    def updateValues(self):
-        self.model.horizon = self.kSpinBox.value()
-        self.model.discount = self.discountSpinBox.value()
-        self.model.learning_cost = self.tLearnSpinbox.value()
-        self.model.implicit_hotkey_knowledge_incr = self.implicitLearningSpinbox.value()
-        if self.model.implicit_hotkey_knowledge_incr > 0:
-            self.model.n_hotkey_knowledge = int(1. / self.model.implicit_hotkey_knowledge_incr )
-        self.model.explicit_hotkey_knowledge_incr = self.explicitLearningSpinbox.value()
-        self.model.risk_aversion = self.riskAversionSpinbox.value()
-        #self.model.eps = self.epsSpinbox.value()
-        self.model.overreaction = self.overReactionSpinBox.value()
+    def update_values(self):
+        print("update values")
+        for key in self.model.params:
+            self.model.params[key] = self.param_spinbox[key].value()
+
+
+        # self.model.horizon = self.kSpinBox.value()
+        # self.model.discount = self.discountSpinBox.value()
+        # self.model.learning_cost = self.tLearnSpinbox.value()
+        # self.model.implicit_hotkey_knowledge_incr = self.implicitLearningSpinbox.value()
+        # if self.model.implicit_hotkey_knowledge_incr > 0:
+        #     self.model.n_hotkey_knowledge = int(1. / self.model.implicit_hotkey_knowledge_incr )
+        # self.model.explicit_hotkey_knowledge_incr = self.explicitLearningSpinbox.value()
+        # self.model.risk_aversion = self.riskAversionSpinbox.value()
+        # #self.model.eps = self.epsSpinbox.value()
+        # self.model.overreaction = self.overReactionSpinBox.value()
 
 
 class Random_Model_View(QWidget):
@@ -510,248 +539,5 @@ class Random_Model_View(QWidget):
     def refresh(self):
         for key in self.model.default_params:
             self.param_spinbox[key].setValue( self.model.params[key] )
-
-
-
-
-        # sum = self.menuACSpinBox.value()
-        # b = self.menuBSpinbox.value()
-        # c = self.menuCSpinbox.value()
-        # if c > sum:
-        #     c = sum
-        # a = sum - c
-
-        # self.menuCSpinbox.setRange(0, sum)
-        # self.menuCSpinbox.setValue(c)
-        # self.model.menuParams = [a,b,c]
-
-        # sum = self.hotkeyACSpinBox.value()
-        # b = self.hotkeyBSpinbox.value()
-        # c = self.hotkeyCSpinbox.value()
-        # if c > sum:
-        #     c = sum
-        # a = sum - c
-
-        # self.hotkeyCSpinbox.setRange(0, sum)
-        # self.hotkeyCSpinbox.setValue(c)
-        # self.model.hotkeyParams = [a, b, c]
-
-        
-
-        # self.kh_checkbox, self.b_kh_checkbox = self.createCheckBoxLayout([
-        #     {'initial_value': True, 'handleValueChanged': self.handle_state_changed, 'label': 'Hotkey Knowledge: \t'},
-        #     {'initial_value': True, 'handleValueChanged': self.handle_state_changed, 'label': 'Hotkey Knowledge Belief: \t'}],
-        #     visu_layout_h)
-
-
-
-    #def init_charts(self):
-
-
-
-        
-        
-
-        # self.chart = QChart()
-        # self.chart.setTitle("Menu to Hotkey transition")
-        # #self.chart.createDefaultAxes()
-        # self.chart.setDropShadowEnabled(False)
-
-        # self.view = QChartView(self.chart)
-        # self.view.setRenderHint(QPainter.Antialiasing)
-        # self.mainLayout.addWidget(self.view)
-
-  
-
-
-    # def initGui(self):
-
-    #     # LAYOUTS: main
-    #     self.parameterLayout = QHBoxLayout()
-    #     self.mainLayout.addLayout(self.parameterLayout)
-
-    #     self.powerLawLayout = QVBoxLayout()
-    #     self.parameterLayout.addLayout(self.powerLawLayout)
-
-    #     modelPlotLayout = QVBoxLayout()
-    #     self.mainLayout.addLayout(modelPlotLayout)
-
-
-    #     methodLab = QLabel("Methods")
-    #     methodLab.setStyleSheet("QLabel { background-color : black; color : white; }");
-    #     methodLab.setAlignment(Qt.AlignHCenter)
-    #     self.powerLawLayout.addWidget(methodLab)
-
-
-    #     lMenuSpinBoxes = QHBoxLayout()
-    #     self.powerLawLayout.addLayout(lMenuSpinBoxes)
-    #     menuPlpLab = QLabel(' Menu PLP:    ')
-    #     menuPlpLab.setStyleSheet("QLabel { background-color : blue; color : white; }");
-    #     lMenuSpinBoxes.addWidget(menuPlpLab)
-
-    #     lHotkeySpinBoxes = QHBoxLayout()
-    #     self.powerLawLayout.addLayout(lHotkeySpinBoxes)
-    #     hotkeyPlpLab = QLabel(' Hotkey PLP: ')
-    #     hotkeyPlpLab.setStyleSheet("QLabel { background-color : green; color : white; }");
-    #     lHotkeySpinBoxes.addWidget(hotkeyPlpLab)
-
-
-
-
-        
-
-
-
-
-
-    #     self.transPlotLayout = QVBoxLayout()
-    #     self.parameterLayout.addLayout(self.transPlotLayout)
-    #     transLab = QLabel("   Transition parameters   ")
-    #     transLab.setStyleSheet("QLabel { background-color : red; color : white; }");
-    #     transLab.setAlignment(Qt.AlignHCenter)
-    #     self.transPlotLayout.addWidget(transLab)
-
-    #     self.tLearnSpinbox, self.implicitLearningSpinbox, self.explicitLearningSpinbox, self.kSpinBox, self.discountSpinBox, self.riskAversionSpinbox, self.overReactionSpinBox = self.createSpinBoxLayout([
-    #         {'range': [0.0, 10.0], 'initial_value': self.model.learning_cost, 'handleValueChanged': self.updateValues,'step':0.1,'label': 'Cue Fixation time: \t'},
-    #         {'range': [0.0, 1.0], 'initial_value': self.model.implicit_hotkey_knowledge_incr, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Implicit Learning Incr: \t'},
-    #         {'range': [0.0, 1.0], 'initial_value': self.model.explicit_hotkey_knowledge_incr, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Explicit Learning Incr: \t'},
-    #         {'range': [0, 10], 'initial_value': self.model.horizon, 'handleValueChanged': self.updateValues, 'step': 1, 'label': 'Horizon: \t\t', 'is_spinbox': True},
-    #         {'range': [0, 1], 'initial_value': self.model.discount, 'handleValueChanged': self.updateValues, 'step': 0.01, 'label': 'Discount: \t\t' },
-    #         {'range': [0.0, 1.0], 'initial_value': self.model.risk_aversion, 'handleValueChanged': self.updateValues, 'step': 0.05, 'label': 'Risk aversion: \t\t'},
-    #         {'range': [0.0, 1.0], 'initial_value': self.model.overreaction, 'handleValueChanged': self.updateValues, 'step': 0.05, 'label': 'Over reaction: \t\t'},],
-    #         self.transPlotLayout)
-
-    #     self.transPlotLayout.addStretch()
-
-
-
-    #     # button = QPushButton('Relaunch')
-    #     # self.transPlotLayout.addWidget(button)
-    #     # self.transPlotLayout.addStretch()
-    #     # button.clicked.connect(self.simulate)
-
-
-
-    #     # model Layouts
-    #     lModelSpinBoxes = QHBoxLayout()
-    #     modelPlotLayout.addLayout(lModelSpinBoxes)
-
-
-    #     ############################################
-    #     # MENUS: (parameters + plot) of the Power law of practice
-    #     ############################################
-
-    #     self.menuACSpinBox, self.menuBSpinbox, self.menuCSpinbox = self.createSpinBoxLayout([
-    #                 {'range':[0.0,10.0],'initial_value':self.model.menuParams[0]+self.model.menuParams[2],'handleValueChanged':self.updateValues,'step':0.1,'label':'a+c'},
-    #                 {'range':[0.0,10.0],'initial_value':self.model.menuParams[1],'handleValueChanged':self.updateValues,'step':0.1,'label':'b'},
-    #                 {'range':[0.0,10.0],'initial_value':self.model.menuParams[2],'handleValueChanged':self.updateValues,'step':0.1,'label':'c'}],
-    #                 lMenuSpinBoxes)
-    #     lMenuSpinBoxes.addStretch()
-
-    #     # self.menuPlotCanvas = PlotMultilines()
-    #     # self.menuPlotCanvas.setLineInfo([
-    #     #     ('item_order_of_appearance', 'menu_curve_actual_time', 'b','-'),
-    #     #     ('item_order_of_appearance','menu_curve_expected_time','b','--')
-    #     # ])
-
-
-
-    #     ############################################
-    #     # HOTKEYS: parameters + plots of the power law of practice
-    #     ############################################
-    #     self.hotkeyACSpinBox, self.hotkeyBSpinbox, self.hotkeyCSpinbox = self.createSpinBoxLayout([
-    #         {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[0] + self.model.hotkeyParams[2],'handleValueChanged': self.updateValues,'step':0.1, 'label': 'a+c'},
-    #         {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[1], 'handleValueChanged': self.updateValues,'step':0.1,'label': 'b'},
-    #         {'range': [0.0, 10.0], 'initial_value': self.model.hotkeyParams[2],'handleValueChanged': self.updateValues,'step':0.1, 'label': 'c'}],
-    #         lHotkeySpinBoxes)
-    #     lHotkeySpinBoxes.addStretch()
-
-
-    #     visu_widget = QWidget()
-    #     visu_layout = QVBoxLayout()
-    #     visu_widget.setLayout(visu_layout)
-    #     self.mainLayout.addWidget(visu_widget)
-    #     visuLab = QLabel('Visualization parameters')
-    #     visuLab.setStyleSheet("QLabel { background-color : black; color : white; }");
-    #     visuLab.setAlignment(Qt.AlignHCenter)
-    #     visu_layout.addWidget(visuLab)
-    #     visu_layout_h = QHBoxLayout()
-    #     visu_layout_h.setAlignment(Qt.AlignLeft)
-    #     visu_layout.addLayout(visu_layout_h)
-    #     self.kh_checkbox, self.b_kh_checkbox = self.createCheckBoxLayout([
-    #         {'initial_value': True, 'handleValueChanged': self.handle_state_changed, 'label': 'Hotkey Knowledge: \t'},
-    #         {'initial_value': True, 'handleValueChanged': self.handle_state_changed, 'label': 'Hotkey Knowledge Belief: \t'}],
-    #         visu_layout_h)
-
-    #     self.simulatorUI = SimulatorUI()
-        # scrollArea = simulator()
-        # self.mainLayout.addWidget(scrollArea)
-        # self.result_widget = SimulatorUI()
-
-        
-
-        #self.updateValues() #launch simulate()
-
-
-    ####################################
-    # call when when the user changes a parameter
-    # in the spinboxes
-    ####################################
-    
-        # print(self.model)
-        #self.simulate()
-
-
-        
-
-
-
-
-
-
-    # def update_plp_view(self):
-    #     self.plp_chart.removeAllSeries()
-    #     lineMenu = QLineSeries()
-    #     lineMenu.setPen(Qt.black)
-    #     scatterMenu = QScatterSeries()
-    #     scatterMenu.setBrush(Qt.blue)
-    #     scatterMenu.setMarkerSize(8)
-
-    #     lineHotkey = QLineSeries()
-    #     lineHotkey.setPen(Qt.black)
-    #     scatterHotkey = QScatterSeries()
-    #     scatterHotkey.setBrush(Qt.darkGreen)
-    #     scatterHotkey.setMarkerSize(8)
-
-
-    #     for i in range(self.model.env.n_selection):
-    #         lineMenu.append(i, self.model.plp_menu(i) )
-    #         scatterMenu.append(i, self.model.plp_menu(i))
-    #         lineHotkey.append(i, self.model.plp_hotkey(i) )
-    #         scatterHotkey.append(i, self.model.plp_hotkey(i))
-
-
-    #     self.menu_chart.addSeries(scatterMenu)
-    #     self.menu_chart.addSeries(lineMenu)
-    #     self.menu_chart.addSeries(scatterHotkey)
-    #     self.menu_chart.addSeries(lineHotkey)
-
-    #     self.menu_chart.createDefaultAxes()
-    #     self.menu_chart.axisY().setRange(0, 3)
-
-    #     self.menu_chart.legend().setVisible(False)
-        
-
-
-
-
-
-
-    # def handle_state_changed(self, v):
-    #     self.show_KH = self.kh_checkbox.checkState()
-    #     self.show_B_KH = self.b_kh_checkbox.checkState()
-    #     print("handle state changed", v)
-
-
 
 

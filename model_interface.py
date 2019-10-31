@@ -1,16 +1,55 @@
 from util import *
 import copy
+import csv
+
+
+
+##########################################
+#                                        #
+#             Parameters                 #
+#                                        #
+##########################################
+class Parameters(object):
+    
+    #######################
+    def __init__(self, path):
+        self.value = dict()
+        self.range = dict()
+        self.step = dict()
+        self.comment = dict()
+        self.load(path)
+
+    #######################
+    def load(self, path):
+        with open(path, 'r') as csvFile:
+            reader = csv.reader(csvFile, delimiter= ';')
+            header = True
+            for row in reader:
+                if not header:
+                    print("row: ", row)
+                    self.value[ row[0] ] = float( row[2] ) if '.' in row[2] else int( row[2] )
+                    min_  = float( row[3] ) if '.' in row[3] else int( row[3] )
+                    max_  = float( row[4] ) if '.' in row[4] else int( row[4] )
+                    self.range[ row[0] ] = [ min_, max_ ]
+                    self.step[ row[0] ] = float( row[5] ) if '.' in row[5] else int( row[5] )
+                    self.comment[ row[0] ] = row[6]
+                else:
+                    header = False
+
+
+
 ##########################################
 #                                        #
 #             Environment (context)      #
 #                                        #
 ##########################################
-class Environment(object):
+class Environment(Parameters):
 
-    ###################
-    def __init__(self, n_commands, n_selection, s_zipfian, error_cost):
-        self.reset(n_commands, n_selection, s_zipfian, error_cost)
-        
+    def __init__(self, path):
+        super().__init__(path)
+        self.commands = self.create_command_list( self.value['n_commands'] )
+        self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
+
     ###################
     # create the list of commands in the application
     def create_command_list(self, nb):
@@ -19,18 +58,37 @@ class Environment(object):
             l[i] = int(i)
         return l
 
-    ##################
-    def reset(self, n_commands, n_selection, s_zipfian, error_cost):
-        self.n_commands = n_commands
-        self.commands = self.create_command_list( self.n_commands )
-        self.n_selection = n_selection
-        self.s_zipfian = s_zipfian
-        self.error_cost = error_cost
-        self.cmd_seq = np.random.choice( self.commands, self.n_selection, p = zipfian( self.s_zipfian, len(self.commands) ))
+    def update(self):
+        self.commands = self.create_command_list( self.value['n_commands'] )
+        self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
 
-    def to_string(self, short=True):
-        res = "cmds:" + str(self.n_commands) + "; Sel: " + str(self.n_selection) + "; Zipf: " + str(self.s_zipfian) + "; Err: " + str(self.error_cost)
-        return res
+
+# class Environment(object):
+
+#     ###################
+#     def __init__(self, n_commands, n_selection, s_zipfian, error_cost):
+#         self.reset(n_commands, n_selection, s_zipfian, error_cost)
+        
+#     ###################
+#     # create the list of commands in the application
+#     def create_command_list(self, nb):
+#         l = np.zeros( nb, dtype=int )
+#         for i in range(nb):
+#             l[i] = int(i)
+#         return l
+
+#     ##################
+#     def reset(self, n_commands, n_selection, s_zipfian, error_cost):
+#         self.n_commands = n_commands
+#         self.commands = self.create_command_list( self.n_commands )
+#         self.n_selection = n_selection
+#         self.s_zipfian = s_zipfian
+#         self.error_cost = error_cost
+#         self.cmd_seq = np.random.choice( self.commands, self.n_selection, p = zipfian( self.s_zipfian, len(self.commands) ))
+
+#     def to_string(self, short=True):
+#         res = "cmds:" + str(self.n_commands) + "; Sel: " + str(self.n_selection) + "; Zipf: " + str(self.s_zipfian) + "; Err: " + str(self.error_cost)
+#         return res
 
 
 
@@ -90,5 +148,6 @@ class Model(object):
 
     def generate_step(self, cmd_id, date, state, action):
         raise ValueError(" method to implement ")
-        
+    
+
 

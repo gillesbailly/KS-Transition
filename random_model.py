@@ -15,14 +15,14 @@ class Random_Model(Model):
     def __init__(self, env):
         super().__init__(env)
         self.params['n_strategy'] = 3                    # if == 2 actions {Menu; Hotkey}; == 3 actions: {Menu; Hotkey; Learning}
-        self.params['menu_time'] = 1                    # menu selection time (seconds)
+        self.params['menu_time'] = 1.12                    # menu selection time (seconds)
         self.params['hotkey_time'] = 0.5                    # hotkey selection time (seconds)
         self.params['learning_cost'] = 0.5                # additional temporal cost when learning keyboard shortcuts in the menu 
 
 
     ##########################
     def select_action(self, cmd, date):
-        actions = self.get_all_actions()
+        actions = self.get_actions_from( cmd )
         return random.choice( actions )
 
 

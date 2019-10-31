@@ -23,6 +23,7 @@ class Simulator(object):
     # run the model on n_episode
     def run(self, model, n_episode):
         print('\n========================= run simulation =====================')
+        print("model: ", model)
         if model.env != self.env:
             print("error sim environment != model environment")
             exit(0)
@@ -57,17 +58,19 @@ class Simulator(object):
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    env = Environment(n_commands = 3, n_selection= 5, s_zipfian = 1, error_cost = 0.25)
+    #env = Environment(n_commands = 3, n_selection= 5, s_zipfian = 1, error_cost = 0.25)
+    
+    env = Environment("./parameters/environment.csv")
+    print(env.value)
     simulator = Simulator(env)
     window = Window(simulator)
-    
     model = Random_Model(env)
     model_view = Random_Model_View(model)
     window.add_model( "Random", model_view )
 
-    model2 = TransitionModel(env)
-    model_view2 = Trans_model_view(model2)
-    window.add_model( "Trans model", model_view2 )
+    # model2 = TransitionModel(env)
+    # model_view2 = Trans_model_view(model2)
+    # window.add_model( "Trans model", model_view2 )
 
 
     window.show()
