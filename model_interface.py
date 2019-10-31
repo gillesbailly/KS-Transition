@@ -36,7 +36,9 @@ class Parameters(object):
                 else:
                     header = False
 
-
+    #####################
+    def update(self):
+        pass
 
 ##########################################
 #                                        #

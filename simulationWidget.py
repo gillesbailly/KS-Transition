@@ -185,37 +185,62 @@ class SimulatorUI(QTabWidget):
 
 
 
-##########################################
-#                                        #
-#   Display Environment                  #
-#                                        #
-##########################################
-class EnvironmentUI(QWidget):
 
+class ParamUI(QWidget):
     #########################
-    def __init__(self, environment):
+    def __init__(self, param):
         super(QWidget,self).__init__()
-        self.env = environment
+        self.param = param
         self.param_spinbox = dict()
-        vl = QVBoxLayout(self)
-#        self.parameterLayout.addLayout(self.taskLayout)
-        userLab = QLabel('Environment')
-        userLab.setStyleSheet("QLabel { background-color : gray; color : white; }");
-        userLab.setAlignment(Qt.AlignHCenter)
-        vl.addWidget(userLab)
+        self.setLayout( QVBoxLayout() )
 
-
-        for key in self.env.value:
-            spinBox = createSpinbox(self.env.range[key], self.env.value[key], self.update_values, self.env.step[key], self.env.step[key] >= 1)
+    def add_spinboxes(self):
+        vl = self.layout()
+        for key in self.param.value:
+            spinBox = createSpinbox(self.param.range[key], self.param.value[key], self.update_values, self.param.step[key], self.param.step[key] >= 1)
             self.param_spinbox[key] = spinBox
             hl = QHBoxLayout()
             lab = QLabel(key)
-            lab.setToolTip( self.env.comment[key])
+            lab.setToolTip( self.param.comment[key])
             hl.addWidget(lab)
             hl.addWidget(spinBox)
             hl.addStretch(10)
             vl.addLayout(hl)
         vl.addStretch()    
+
+    #########################
+    def update_values(self):
+        for key in self.param.value:
+            self.param.value[key] = self.param_spinbox[key].value()
+        self.param.update()
+        self.refresh()
+
+    #########################
+    def refresh(self):
+        for key in self.param.value:
+            self.param_spinbox[key].setValue( self.param.value[key] )        
+
+
+
+##########################################
+#                                        #
+#   Display Environment                  #
+#                                        #
+##########################################
+class EnvironmentUI(ParamUI):
+
+    #########################
+    def __init__(self, env):
+        super().__init__(env)
+ 
+        userLab = QLabel('Environment')
+        userLab.setStyleSheet("QLabel { background-color : gray; color : white; }");
+        userLab.setAlignment(Qt.AlignHCenter)
+        vl = self.layout()
+
+        vl.addWidget(userLab)
+
+        self.add_spinboxes()
 
         self.seqLineEdit = QLineEdit()
         vl.addWidget(self.seqLineEdit)
@@ -232,52 +257,19 @@ class EnvironmentUI(QWidget):
         self.refresh()
 
     #########################
-    def update_values(self):
-        print("Environment UI: update_values UI->Env")
-        # self.env.reset(self.n_commandsSpinBox.value(), int( self.n_selectionSpinBox.value() ), self.s_zipfianSpinBox.value(), self.error_costSpinbox.value())
-        # self.refresh()
-
-        for key in self.env.value:
-            self.env.value[key] = self.param_spinbox[key].value()
-        self.env.update()
-        self.refresh()
-
-
-        # if len(self.model.commands) != self.n_commandsSpinBox.value():
-        #     self.model.commands = self.create_command_list( self.n_commandsSpinBox.value() ) 
-        # #self.model.n_commands = self.n_commandsSpinBox.value()
-        
-        # self.model.s_zipfian = self.s_zipfianSpinBox.value()
-        # self.model.error_cost = self.penaltySpinbox.value()
-        # self.model.n_selection = int( self.n_selectionSpinBox.value() )
-        
-
-
-
-    #########################
     def refresh(self):
-        print("refresh 1")
-        if len(self.env.cmd_seq) == 0:
+        if len(self.param.cmd_seq) == 0:
             return
-        print("refresh 2")
 
-        for key in self.env.value:
-            self.param_spinbox[key].setValue( self.env.value[key] )
-
-
-
-        # self.n_commandsSpinBox.setValue(self.env.n_commands)
-        # self.n_selectionSpinBox.setValue(self.env.n_selection)
-        # self.s_zipfianSpinBox.setValue(self.env.s_zipfian)
-        # self.error_costSpinbox.setValue(self.env.error_cost)
-        
+        for key in self.param.value:
+            self.param_spinbox[key].setValue( self.param.value[key] )        
 
 
         self.seqLineEdit.hide()
-        self.seqLineEdit.setText( ''.join(str(e) for e in self.env.cmd_seq) )
+        self.seqLineEdit.setText( ''.join(str(e) for e in self.param.cmd_seq) )
         self.seqLineEdit.show()
 
-        uniq, count = np.unique(self.env.cmd_seq, return_counts=True)
+        uniq, count = np.unique(self.param.cmd_seq, return_counts=True)
         self.seq_chart.removeAllSeries()
         serie = QHorizontalBarSeries()
         set = QBarSet("frequency")
