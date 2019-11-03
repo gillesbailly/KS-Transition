@@ -185,7 +185,11 @@ class SimulatorUI(QTabWidget):
 
 
 
-
+##########################################
+#                                        #
+#   Param envUI                          #
+#                                        #
+##########################################
 class ParamUI(QWidget):
     #########################
     def __init__(self, param):
@@ -221,7 +225,6 @@ class ParamUI(QWidget):
             self.param_spinbox[key].setValue( self.param.value[key] )        
 
 
-
 ##########################################
 #                                        #
 #   Display Environment                  #
@@ -254,6 +257,22 @@ class EnvironmentUI(ParamUI):
         vl.addWidget(self.seq_chart_view)
         vl.addStretch()
 
+        self.refresh()
+
+
+    #########################
+    def update_values(self):
+        toUpdate = False
+        for key in self.param.value:
+            print(key)
+            if key == 'n_commands' or key == 'n_selection' or key == 's_zipfian':
+                print("target cmd", key)
+                if self.param.value[key] != self.param_spinbox[key].value():
+                    print("value diff: ", self.param.value[key], self.param_spinbox[key].value())
+                    toUpdate = True
+            self.param.value[key] = self.param_spinbox[key].value()
+        if toUpdate:
+            self.param.update()
         self.refresh()
 
     #########################
@@ -486,50 +505,30 @@ class Trans_model_view(QWidget):
         # self.model.overreaction = self.overReactionSpinBox.value()
 
 
-class Random_Model_View(QWidget):
 
-    ##############################
+
+
+
+##########################################
+#                                        #
+#   Model View                           #
+#                                        #
+##########################################
+class Model_View(ParamUI):
     def __init__(self, model):
-        super(QWidget, self).__init__()
+        super().__init__(model.params)
         self.model = model
-        param_range = dict()
-        param_step = dict()
-        self.param_spinbox = dict()
-
-        param_range['n_strategy'] = [2,3]
-        param_range['menu_time'] = [0.5,3]                    
-        param_range['hotkey_time'] = [0,2.5]            
-        param_range['learning_cost'] = [0,2]                 
-        
-        param_step['n_strategy'] = 1
-        param_step['menu_time'] = 0.1                    
-        param_step['hotkey_time'] = 0.1            
-        param_step['learning_cost'] = 0.1
-
-        vl = QVBoxLayout()
-        self.setLayout(vl)
-
-        for key in self.model.params:
-            spinBox = createSpinbox(param_range[key], self.model.params[key], self.update_values, param_step[key], param_step[key] == 1)
-            self.param_spinbox[key] = spinBox
-            hl = QHBoxLayout()
-            hl.addWidget(QLabel(key))
-            hl.addWidget(spinBox)
-            hl.addStretch(10)
-            vl.addLayout(hl)
-        vl.addStretch()    
-
+        self.add_spinboxes()
 
     ##############################
     def update_values(self):
-        print("update values")
-        for key in self.model.params:
-            self.model.params[key] = self.param_spinbox[key].value()
+        for key in self.model.params.value:
+            self.model.params.value[key] = self.param_spinbox[key].value()
 
 
     ##############################
     def refresh(self):
-        for key in self.model.default_params:
-            self.param_spinbox[key].setValue( self.model.params[key] )
+        for key in self.model.default_params.value:
+            self.param_spinbox[key].setValue( self.model.params.value[key] )
 
 

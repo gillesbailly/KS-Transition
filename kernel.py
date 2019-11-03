@@ -44,10 +44,11 @@ class Kernel(object):
     
 
     #########################
-    def __init__(self, commands, params): #commands is a list of command ids
+    def __init__(self, environment, params): #commands is a list of command ids
         self.cmd_history = dict()
         self.params = params
-        for i in commands:
+        self.env = environment
+        for i in self.env.commands:
             self.cmd_history[i] = Command_history(i)
 
 
@@ -60,24 +61,24 @@ class Kernel(object):
 
     ########################
     def menu_knowledge(self, cmd_id):
-    	return self.params['max_knowledge']
+    	return self.params.value['max_knowledge']
 
 
     ########################
     def prob(self, activation ):
-        return 1 / (1 + np.exp(- (activation - self.params['tau']) / self.params['s'] ))
+        return 1 / (1 + np.exp(- (activation - self.params.value['tau']) / self.params.value['s'] ))
 
 
     ########################
     def menu_time(self, cmd_id, cur_date):
         a = self.menu_activation(cmd_id, cur_date)
-        return self.params['F'] * np.exp(-a) + self.params['menu_time']
+        return self.params.value['F'] * np.exp(-a) + self.env.value['menu_time']
 
 
     ########################
     def hotkey_time(self, cmd_id, cur_date):
         a = self.hotkey_activation(cmd_id, cur_date)
-        return self.params['F'] * np.exp(-a) + self.params['hotkey_time']
+        return self.params.value['F'] * np.exp(-a) + self.env.value['hotkey_time']
 
 
     ###############################################
@@ -94,7 +95,7 @@ class Kernel(object):
             strategy = action[i].strategy
             success = accuracy[i]
             if strategy == Strategy.MENU or strategy == Strategy.LEARNING:
-                sum += success * (cur_date - date[i])**(-self.params['decay'])
+                sum += success * (cur_date - date[i])**(-self.params.value['decay'])
         #print("len date: ", len(date), " menu activation: ", sum)
         return sum
 
@@ -113,10 +114,10 @@ class Kernel(object):
             strategy = action[i].strategy
             success = accuracy[i]
             if strategy == Strategy.MENU:
-                weight =  self.params['implicit_knowledge']
+                weight =  self.params.value['implicit_knowledge']
             elif strategy == Strategy.LEARNING:
-                weight =  self.params['explicit_knowledge']
-            sum += success* weight * (cur_date - date[i])**(-self.params['decay'])
+                weight =  self.params.value['explicit_knowledge']
+            sum += success* weight * (cur_date - date[i])**(-self.params.value['decay'])
         return sum
 
 
@@ -124,8 +125,8 @@ class Kernel(object):
     def hotkey_knowledge(self, cmd_id, cur_date):
         a = self.hotkey_activation(cmd_id, cur_date)
         p = self.prob(a)
-        if p > self.params['max_knowledge']:
-            p = self.params['max_knowledge']
+        if p > self.params.value['max_knowledge']:
+            p = self.params.value['max_knowledge']
         return p
 
     

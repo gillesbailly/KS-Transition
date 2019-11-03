@@ -14,25 +14,8 @@ class TransitionModel(Model):
     def __init__(self, env):
         super().__init__(env)
         self.env = env
-        self.params['n_strategy'] = 3                    # if == 2 actions {Menu; Hotkey}; == 3 actions: {Menu; Hotkey; Learning}
-        self.params['menu_time'] = 1.12                    # menu selection time (seconds)
-        self.params['hotkey_time'] = 0.5                    # hotkey selection time (seconds)
-        self.params['learning_cost'] = 0.2                # additional temporal cost when learning keyboard shortcuts in the menu 
-        
-        self.params['risk_aversion'] = 0.6
-        self.params['implicit_knowledge'] = 0.3
-        self.params['explicit_knowledge'] = 1
-        self.params['eps'] = 0.0
-        self.params['horizon'] = 2
-        self.params['discount'] = 1
-        self.params['over_reaction'] = 0.0
-        self.params['decay'] = 0.5
-        self.params['F'] = 0.4
-        self.params['tau'] = 2
-        self.params['s'] = 0.4
-        self.params['max_knowledge'] = 0.95 
-        
-        self.kernel = Kernel(self.env.commands, self.params )
+        self.params = Parameters('./parameters/trans_model.csv')
+        self.kernel = Kernel(self.env, self.params )
         #self.n_hotkey_knowledge = int(1. / self.implicit_hotkey_knowledge_incr )
         
 
@@ -49,12 +32,12 @@ class TransitionModel(Model):
         if s == Strategy.MENU:
             t = kernel.menu_time(action.cmd, cur_date)
         elif s == Strategy.LEARNING:
-            t = kernel.menu_time(action.cmd, cur_date) + self.params['learning_cost']
+            t = kernel.menu_time(action.cmd, cur_date) + self.env.value['learning_cost']
         elif s == Strategy.HOTKEY:
             t = kernel.hotkey_time(action.cmd, cur_date)
 
         if success == False:
-            t += kernel.menu_time(action.cmd, cur_date) + self.env.error_cost
+            t += kernel.menu_time(action.cmd, cur_date) + self.env.value['error_cost']
         return t
 
 
@@ -70,7 +53,7 @@ class TransitionModel(Model):
     ########################################
     def value_iteration(self, parent, date, depth, debug_str):
         #print("VI depth: ", depth)
-        if depth == ( self.params['horizon'] + 1 ):
+        if depth == ( self.params.value['horizon'] + 1 ):
             return 0
 
         actions = self.get_actions_from( parent.cmd )
@@ -107,7 +90,7 @@ class TransitionModel(Model):
                     #res += "\n " + debug_str +"->" +  str(a_min) + "(V:"+ str( round(v_tmp,3)) +")"
                     #res += "\n" + str_tmp
             
-        parent.value = parent.time + self.params['discount'] * v
+        parent.value = parent.time + self.params.value['discount'] * v
         parent.a_min = a_min
         parent.name = parent.name + ", v:"+ str(round(parent.value,2)) + ", a_min:"+ str(a_min)
         
@@ -137,7 +120,7 @@ class TransitionModel(Model):
 
     ################################
     def reset(self):
-        self.kernel = Kernel(self.env.commands, self.params)
+        self.kernel = Kernel(self.env, self.params)
         
 
 

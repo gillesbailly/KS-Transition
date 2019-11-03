@@ -24,16 +24,8 @@ class Simulator(object):
     def run(self, model, n_episode):
         print('\n========================= run simulation =====================')
         print("model: ", model)
-        if model.env != self.env:
-            print("error sim environment != model environment")
-            exit(0)
-        #model.commands = self.env.commands        
-
         sims = []
 
-        #n_episode = 1
-
-        #belief = None
         for i in range(n_episode):
             history = History( self.env.commands )
             model.reset()
@@ -65,12 +57,12 @@ if __name__=="__main__":
     simulator = Simulator(env)
     window = Window(simulator)
     model = Random_Model(env)
-    model_view = Random_Model_View(model)
+    model_view = Model_View(model)
     window.add_model( "Random", model_view )
 
-    # model2 = TransitionModel(env)
-    # model_view2 = Trans_model_view(model2)
-    # window.add_model( "Trans model", model_view2 )
+    model2 = TransitionModel(env)
+    model_view2 = Model_View(model2)
+    window.add_model( "Trans model", model_view2 )
 
 
     window.show()

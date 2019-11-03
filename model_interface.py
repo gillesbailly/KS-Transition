@@ -11,6 +11,8 @@ import csv
 ##########################################
 class Parameters(object):
     
+
+
     #######################
     def __init__(self, path):
         self.value = dict()
@@ -21,6 +23,8 @@ class Parameters(object):
 
     #######################
     def load(self, path):
+        if not path:
+            return
         with open(path, 'r') as csvFile:
             reader = csv.reader(csvFile, delimiter= ';')
             header = True
@@ -35,6 +39,14 @@ class Parameters(object):
                     self.comment[ row[0] ] = row[6]
                 else:
                     header = False
+
+    #######################
+    def merge_with(self, params):
+        self.value.update( params.value )
+        self.range.update( params.range )
+        self.step.update( params.step )
+        self.comment.update( params.comment )
+        
 
     #####################
     def update(self):
@@ -65,33 +77,6 @@ class Environment(Parameters):
         self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
 
 
-# class Environment(object):
-
-#     ###################
-#     def __init__(self, n_commands, n_selection, s_zipfian, error_cost):
-#         self.reset(n_commands, n_selection, s_zipfian, error_cost)
-        
-#     ###################
-#     # create the list of commands in the application
-#     def create_command_list(self, nb):
-#         l = np.zeros( nb, dtype=int )
-#         for i in range(nb):
-#             l[i] = int(i)
-#         return l
-
-#     ##################
-#     def reset(self, n_commands, n_selection, s_zipfian, error_cost):
-#         self.n_commands = n_commands
-#         self.commands = self.create_command_list( self.n_commands )
-#         self.n_selection = n_selection
-#         self.s_zipfian = s_zipfian
-#         self.error_cost = error_cost
-#         self.cmd_seq = np.random.choice( self.commands, self.n_selection, p = zipfian( self.s_zipfian, len(self.commands) ))
-
-#     def to_string(self, short=True):
-#         res = "cmds:" + str(self.n_commands) + "; Sel: " + str(self.n_selection) + "; Zipf: " + str(self.s_zipfian) + "; Err: " + str(self.error_cost)
-#         return res
-
 
 
 
@@ -103,11 +88,8 @@ class Environment(Parameters):
 class Model(object):
 
     def __init__(self, env):
-        self.params = dict()
-        self.params['n_strategy'] = 3
-        #self.params = self.default_params
-
         self.env = env
+        self.params = Parameters('')
 
     def reset(self):
     	pass
@@ -119,7 +101,7 @@ class Model(object):
         self.params = params
 
     def n_strategy(self):
-        return self.params['n_strategy']
+        return self.env.value['n_strategy']
 
     def get_all_actions(self):
         res =[]
@@ -147,6 +129,22 @@ class Model(object):
     
     def initial_belief(self):
         return 0
+
+
+    ###########################
+    def time(self, action, success):
+        s = action.strategy
+        t = 0
+        if s == Strategy.MENU:
+            t = self.env.value['menu_time']
+        elif s == Strategy.LEARNING:
+            t = self.env.value['menu_time'] + self.env.value['learning_cost']
+        elif s == Strategy.HOTKEY:
+            t = self.env.value['hotkey_time']
+
+        if success == False:
+            t += self.env.value['menu_time'] + self.env.value['error_cost']
+        return t
 
     def generate_step(self, cmd_id, date, state, action):
         raise ValueError(" method to implement ")
