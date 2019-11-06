@@ -6,15 +6,15 @@ import copy
 
 #####################################
 #                                   #
-#    Random MODEL                   #
+#   Random MODEL                    #
 #   Users select randomly an action #
 #   If error, users perform the correct menu action and got temporal penality for that ("error cost")
 ###############################
 class Random_Model(Model):
 
     def __init__(self, env):
-        super().__init__(env)
-        self.params = Parameters('./parameters/random_model.csv')
+        super().__init__("random", env)
+        #self.params = Parameters('./parameters/random_model.csv')
 
     ##########################
     def select_action(self, cmd, date):

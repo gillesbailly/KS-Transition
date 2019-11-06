@@ -47,8 +47,10 @@ class StepResult(object):
 #   commands: the list of ids of the different commands of the application
 ###########################
 class History(object):
-    def __init__(self, commands):
+    def __init__(self, commands, command_sequence, model_name):
         self.commands = commands
+        self.command_sequence = command_sequence
+        self.model_name = model_name
         self.cmd = []
         self.state = []
         self.next_state = []
@@ -68,6 +70,17 @@ class History(object):
         self.belief.append(b)
         self.next_belief.append(n_b)
 
+    def add_selection(self, cmd, method, time, success):
+        self.cmd.append(cmd)
+        self.state.append( State() )
+        self.next_state.append ( State() )
+        self.action.append( Action(cmd, method) )
+        self.time.append(time)
+        self.success.append(success)
+        self.belief.append( Belief() )
+        self.next_belief.append( Belief() )
+
+
 
 
 ###########################
@@ -76,6 +89,9 @@ class History(object):
 ###########################
 
 class Belief(object):
+    def __init__(self):
+        pass
+
     def __init__(self, k_h, k_m, n_h_c, n_m_c, n_h_e, n_m_e, k_f):
         self.k_h = k_h
         self.k_m = k_m
@@ -97,23 +113,9 @@ class Belief(object):
 
 
 
-########################################################
-# MENU_C: Correct Menu selection
-# HOTKEY_C: Correct Hotkey selection
-# MENU_LEARNING_C: Correct Menu selection where users learn keyboard shortcut cue
-# MENU_E: Uncorrect Menu selection
-# HOTKEY_C: Uncorrect Hotkey selection
-# MENU_LEARNING_C: Uncorrect Menu selection where users learn keyboard shortcut cue
-##########################################################
-class ActionType(object):
-    MENU_C = 0
-    HOTKEY_C = 1
-    MENU_LEARNING_C = 2
-    MENU_E = 3
-    HOTKEY_E = 4
-    MENU_LEARNING_E = 5
-
-
+###########################
+#   Strategy
+###########################
 class Strategy(object):
     MENU = 0
     HOTKEY = 1
@@ -146,6 +148,20 @@ class Action(object):
     def __repr__(self):
         return self.to_string()
 
+    def method_str(self):
+        m = "menu"
+        if self.strategy == Strategy.HOTKEY:
+            m = "hotkey"
+        return m
+
+    def strategy_str(self):
+        s = "menu"
+        if self.strategy == Strategy.HOTKEY:
+            s = "hotkey"
+        elif self.strategy == Strategy.LEARNING:
+            s = "learning"
+        return s
+
     def to_string(self, short_print=False):
         s = "MENU"
         if self.strategy == Strategy.HOTKEY:
@@ -156,13 +172,6 @@ class Action(object):
             return str(self.cmd) + s[0]
         else:
             return str(self.cmd) + '_' + s
-
-#        long_name  = ["MENUc", "HOTKEYc", "MENU_LEARNINGc", "MENUe", "HOTKEYe", "MENU_LEARNINGe"]
-#        short_name = ["Mc", "Hc", "MLc", "Me", "He", "MLe"]
-#        if short_print:
-#            return str(cmd)+
-#        else:
-#            return long_name[self.bin_number]
 
 
 ###########################

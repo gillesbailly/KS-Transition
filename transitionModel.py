@@ -10,11 +10,17 @@ from kernel import *
 from model_interface import *
 
 
+
+###############################################
+#                                             #
+#   Transitio MODEL                           #
+#   use future prediction and memory          #
+###############################################
 class TransitionModel(Model):
     def __init__(self, env):
-        super().__init__(env)
+        super().__init__("trans", env)
         self.env = env
-        self.params = Parameters('./parameters/trans_model.csv')
+#        self.params = Parameters('./parameters/trans_model.csv')
         self.kernel = Kernel(self.env, self.params )
         #self.n_hotkey_knowledge = int(1. / self.implicit_hotkey_knowledge_incr )
         

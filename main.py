@@ -2,6 +2,7 @@ import sys
 from transitionModel import *
 from random_model import *
 from simulationWidget import *
+import csv
 from util import *
 
 
@@ -20,6 +21,28 @@ class Simulator(object):
 
 
     ###################################
+    def save(self, filename, sims):
+        with open(filename, mode='w') as log_file:
+            writer = csv.writer(log_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            header = ['model', 'sim', 'trial', 'n_selection', 'stimulus', 'occ', 'cmd', 'strategy', 'method', 'time', 'success']
+            writer.writerow( header)
+    
+            for i in range( len(sims) ):
+                h = sims[i]
+                n_selection = len(h.command_sequence)
+                occ = dict()
+                for cmd in h.commands:
+                    occ[cmd] = 0
+                for j in range( n_selection ):
+                    stimulus = h.command_sequence[j]
+                    strategy = h.action[j].strategy_str()
+                    method = h.action[j].method_str()
+                    occ[ stimulus ] = occ[ stimulus ] + 1
+                    row = [h.model_name, i, j + 1, n_selection, stimulus, occ[ stimulus ],  h.cmd[j], strategy, method, h.time[j], h.success[j] ]
+                    writer.writerow(row)
+
+
+    ###################################
     # run the model on n_episode
     def run(self, model, n_episode):
         print('\n========================= run simulation =====================')
@@ -27,7 +50,8 @@ class Simulator(object):
         sims = []
 
         for i in range(n_episode):
-            history = History( self.env.commands )
+            self.env.update()
+            history = History( self.env.commands, self.env.cmd_seq, model.name )
             model.reset()
 
             belief = model.initial_belief()
@@ -66,6 +90,7 @@ if __name__=="__main__":
 
 
     window.show()
-    sims = simulator.run(model, 2)
+    sims = simulator.run(model2, 5)
     window.simulatorUI.add_sims( sims, "oki" )
+    simulator.save('./results/log1.csv', sims)
     sys.exit(app.exec_())

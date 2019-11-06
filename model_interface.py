@@ -30,7 +30,6 @@ class Parameters(object):
             header = True
             for row in reader:
                 if not header:
-                    print("row: ", row)
                     self.value[ row[0] ] = float( row[2] ) if '.' in row[2] else int( row[2] )
                     min_  = float( row[3] ) if '.' in row[3] else int( row[3] )
                     max_  = float( row[4] ) if '.' in row[4] else int( row[4] )
@@ -79,7 +78,6 @@ class Environment(Parameters):
 
 
 
-
 ##########################################
 #                                        #
 #             Model Interface            #
@@ -87,9 +85,13 @@ class Environment(Parameters):
 ##########################################
 class Model(object):
 
-    def __init__(self, env):
+    def __init__(self, name, env):
         self.env = env
-        self.params = Parameters('')
+        self.name = name
+        path = './parameters/'
+        ext = '_model.csv'
+        self.params = Parameters(path + self.name + ext)
+        
 
     def reset(self):
     	pass
