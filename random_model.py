@@ -19,8 +19,17 @@ class Random_Model(Model):
     ##########################
     def select_action(self, cmd, date):
         actions = self.get_actions_from( cmd )
-        return random.choice( actions )
 
+        #self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
+        #return random.choice( actions )
+        b = self.params.value['b']
+        prob = [ b ]
+        if len(actions) == 2:   # Menu and Hotkey actions
+            prob.append( 1.-b )
+        else:                   # Menu, Hotkey and Learning actions
+            prob.append( (1.-b) /2.)
+            prob.append( (1.-b) /2.)
+        return np.random.choice( actions, 1, p=prob)[0]            
 
     ###########################
     def generate_step(self, cmd_id, date, state, action):

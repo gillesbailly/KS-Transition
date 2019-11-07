@@ -1,9 +1,41 @@
 import sys
 from transitionModel import *
 from random_model import *
+from win_stay_loose_shift_model import *
 from simulationWidget import *
 import csv
 from util import *
+
+
+
+##########################################
+#                                        #
+#             Simulator                  #
+#                                        #
+##########################################
+class Experiment(object):
+
+    ####################
+    def __init__(self, path):
+        self.data = self.load(path)
+
+    #######################
+    def load(self, path):
+        if not path:
+            return
+        with open(path, 'r') as csvFile:
+            reader = csv.reader(csvFile, delimiter= ';')
+            header = True
+            for row in reader:
+                if not header:
+                    self.value[ row[0] ] = float( row[2] ) if '.' in row[2] else int( row[2] )
+                    min_  = float( row[3] ) if '.' in row[3] else int( row[3] )
+                    max_  = float( row[4] ) if '.' in row[4] else int( row[4] )
+                    self.range[ row[0] ] = [ min_, max_ ]
+                    self.step[ row[0] ] = float( row[5] ) if '.' in row[5] else int( row[5] )
+                    self.comment[ row[0] ] = row[6]
+                else:
+                    header = False
 
 
 ##########################################
@@ -80,17 +112,17 @@ if __name__=="__main__":
     print(env.value)
     simulator = Simulator(env)
     window = Window(simulator)
-    model = Random_Model(env)
-    model_view = Model_View(model)
-    window.add_model( "Random", model_view )
+    random_model = Random_Model(env)
+    window.add_model( random_model )
 
-    model2 = TransitionModel(env)
-    model_view2 = Model_View(model2)
-    window.add_model( "Trans model", model_view2 )
+    trans_model = TransitionModel(env)
+    window.add_model( trans_model )
 
+    win_stay_model = Win_Stay_Loose_Shift_Model(env)
+    window.add_model( win_stay_model )
 
     window.show()
-    sims = simulator.run(model2, 5)
+    sims = simulator.run(win_stay_model, 5)
     window.simulatorUI.add_sims( sims, "oki" )
     simulator.save('./results/log1.csv', sims)
     sys.exit(app.exec_())

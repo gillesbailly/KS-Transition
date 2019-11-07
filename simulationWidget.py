@@ -382,22 +382,39 @@ class Window(QWidget):
 
         self.simulatorUI = SimulatorUI()
         mainLayout.addWidget( self.simulatorUI )
-        
+    
 
     ############################
-    def add_model(self, title, model_view):
-        print("add model", title)
+    def add_model(self, model):
+        print("add model: ", model.name)
+        model_view = Model_View(model)
+
         scrollArea = QScrollArea()
         scrollArea.setWidgetResizable(True)
         scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         scrollArea.setWidget(model_view)
         model_view.show()
-        index = self.model_tab.addTab(scrollArea, title)
+        index = self.model_tab.addTab(scrollArea, model.name)
         
         self.model_dic[index] = model_view.model
         self.model_tab.setCurrentIndex( index )
-        print("coucou", index, " -> ", self.model_dic[index])
-        self.model = model_view.model
+        self.model = model
+
+
+    # ############################
+    # def add_model(self, title, model_view):
+    #     print("add model", title)
+    #     scrollArea = QScrollArea()
+    #     scrollArea.setWidgetResizable(True)
+    #     scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    #     scrollArea.setWidget(model_view)
+    #     model_view.show()
+    #     index = self.model_tab.addTab(scrollArea, title)
+        
+    #     self.model_dic[index] = model_view.model
+    #     self.model_tab.setCurrentIndex( index )
+    #     print("coucou", index, " -> ", self.model_dic[index])
+    #     self.model = model_view.model
 
     ############################
     def select_model(self, index):
