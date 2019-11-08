@@ -418,8 +418,8 @@ class Window(QWidget):
 
     ############################
     def select_model(self, index):
-        print("select model: ", self.model_dic, index)
-        if index in self.model_dic:
+       if index in self.model_dic:
+            print("select model: ", self.model_dic[index].name )
             self.model = self.model_dic[index]
 
     ############################

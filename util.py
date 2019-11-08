@@ -17,6 +17,18 @@ def zipfian(s, N):
     return res
 
 
+def soft_max(beta, vec):
+    res = []
+    denum = 0
+    for v in vec:
+        denum += np.exp(beta * v)
+    print("denum: ", denum)
+    for v in vec:
+        res.append( float( np.exp(beta*v) ) / float(denum) )
+
+    return res
+
+
 ###########################
 #   Command
 ###########################

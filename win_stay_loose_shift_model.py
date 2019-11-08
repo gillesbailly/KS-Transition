@@ -28,11 +28,11 @@ class Memory(Model):
 ###############################
 class Win_Stay_Loose_Shift_Model(Model):
 
+
     def __init__(self, env):
         super().__init__("win_stay_loose_shift", env)
         self.memory = Memory(env)
-        #self.params = Parameters('./parameters/random_model.csv')
-
+        
     ##########################
     def select_action(self, cmd, date):
         actions = self.get_actions_from( cmd )
@@ -83,5 +83,5 @@ class Win_Stay_Loose_Shift_Model(Model):
         return result, is_legal
 
     def reset(self):
-        previous_strategy = Strategy.MENU
+        self.memory = Memory(env)
 
