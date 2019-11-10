@@ -4,19 +4,7 @@ from model_interface import *
 import copy
 
 
-class Memory(Model):
 
-    def __init__(self, env):
-        self.strategy = dict()
-        self.success = dict()
-        for cmd in env.commands:
-            self.strategy[ cmd ] = Strategy.MENU
-            self.success[ cmd ] = True
-
-
-    def update(self, action, success):
-        self.strategy[ action.cmd ] = action.strategy
-        self.success[ action.cmd ] = success
 
 
 
@@ -29,9 +17,26 @@ class Memory(Model):
 class Win_Stay_Loose_Shift_Model(Model):
 
 
+
+    class Memory(Model):
+
+        def __init__(self, env):
+            self.strategy = dict()
+            self.success = dict()
+            for cmd in env.commands:
+                self.strategy[ cmd ] = Strategy.MENU
+                self.success[ cmd ] = True
+
+
+        def update(self, action, success):
+            self.strategy[ action.cmd ] = action.strategy
+            self.success[ action.cmd ] = success
+
+
+
     def __init__(self, env):
         super().__init__("win_stay_loose_shift", env)
-        self.memory = Memory(env)
+        self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
         
     ##########################
     def select_action(self, cmd, date):
@@ -83,5 +88,5 @@ class Win_Stay_Loose_Shift_Model(Model):
         return result, is_legal
 
     def reset(self):
-        self.memory = Memory(env)
+        self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
 

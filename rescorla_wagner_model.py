@@ -4,14 +4,7 @@ from model_interface import *
 import copy
 
 
-class Memory(Model):
 
-    def __init__(self, env):
-        self.q = dict()
-        for cmd in env.commands:
-            self.q[ Action(cmd, Strategy.MENU).to_string() ] = 0.5
-            self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
-            self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
             
 
 
@@ -23,9 +16,21 @@ class Memory(Model):
 ###############################
 class Rescorla_Wagner_Model(Model):
 
+
+    class Memory(Model):
+
+        def __init__(self, env):
+            self.q = dict()
+            for cmd in env.commands:
+                self.q[ Action(cmd, Strategy.MENU).to_string() ] = 0.5
+                self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
+                self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
+
+
+
     def __init__(self, env):
         super().__init__("rescorla_wagner", env)
-        self.memory = Memory(env)
+        self.memory = Rescorla_Wagner_Model.Memory(env)
         self.max_time = 2
 
         
@@ -68,4 +73,4 @@ class Rescorla_Wagner_Model(Model):
 
 
     def reset(self):
-        self.memory = Memory(self.env)
+        self.memory = Rescorla_Wagner_Model.Memory(self.env)
