@@ -3,6 +3,7 @@ from transitionModel import *
 from random_model import *
 from win_stay_loose_shift_model import *
 from rescorla_wagner_model import *
+from choice_kernel_model import *
 from simulationWidget import *
 import csv
 from util import *
@@ -114,21 +115,12 @@ if __name__=="__main__":
     simulator = Simulator(env)
     window = Window(simulator)
     
-    random_model = Random_Model(env)
-    window.add_model( random_model )
-
-    trans_model = TransitionModel(env)
-    window.add_model( trans_model )
-
-    win_stay_model = Win_Stay_Loose_Shift_Model(env)
-    window.add_model( win_stay_model )
-
-    rescorla_wagner_model = Rescorla_Wagner_Model(env)
-    window.add_model( rescorla_wagner_model )
-
+    model_vec = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), TransitionModel(env)]
+    for model in model_vec:
+        window.add_model(model)    
 
     window.show()
-    sims = simulator.run(rescorla_wagner_model, 1)
+    sims = simulator.run(model_vec[3], 5)
     window.simulatorUI.add_sims( sims, "oki" )
     simulator.save('./results/log1.csv', sims)
     sys.exit(app.exec_())
