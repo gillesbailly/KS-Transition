@@ -103,7 +103,7 @@ class SimulatorUI(QTabWidget):
     ###################
     def create_episode(self, layout):
         container = QWidget()
-        container.setMinimumHeight(400)
+        container.setMinimumHeight(300)
         layout.insertWidget(0,container)
         #todo this VBoxLayout is probably useless
         l = QVBoxLayout()
@@ -184,7 +184,7 @@ class SimulatorUI(QTabWidget):
             chart.axisY().setRange(0, 3)
 
 
-
+max_w = 200
 ##########################################
 #                                        #
 #   Param envUI                          #
@@ -194,6 +194,7 @@ class ParamUI(QWidget):
     #########################
     def __init__(self, param):
         super(QWidget,self).__init__()
+        self.setMaximumWidth( max_w)
         self.param = param
         self.param_spinbox = dict()
         self.setLayout( QVBoxLayout() )
@@ -338,7 +339,7 @@ class Window(QWidget):
         self.resize(900, 900)
         self.move(20,20)
         
-        mainLayout = QVBoxLayout()
+        mainLayout = QHBoxLayout()
         self.setLayout(mainLayout)
 
 
@@ -351,13 +352,14 @@ class Window(QWidget):
         model_lab.setAlignment(Qt.AlignHCenter)
         self.model_tab = QTabWidget()
         self.model_tab.currentChanged.connect(self.select_model)
+        self.model_tab.setMaximumWidth( max_w)
         
         model_layout = QVBoxLayout()
         model_layout.addWidget(model_lab)
         model_layout.addWidget(self.model_tab)
         model_layout.addStretch()
 
-        param_layout = QHBoxLayout()
+        param_layout = QVBoxLayout()
         mainLayout.addLayout(param_layout)
         param_layout.addWidget(self.envUI)
         param_layout.addLayout(model_layout)
@@ -378,10 +380,12 @@ class Window(QWidget):
         runLayout.addWidget(self.sim_name1)
         #runLayout.addWidget(sim_name2)
         runLayout.addStretch()
-        mainLayout.addLayout(runLayout)
-
         self.simulatorUI = SimulatorUI()
-        mainLayout.addWidget( self.simulatorUI )
+
+        result_layout = QVBoxLayout()
+        mainLayout.addLayout( result_layout)
+        result_layout.addWidget( self.simulatorUI )
+        result_layout.addLayout(runLayout)
     
 
     ############################
@@ -401,20 +405,6 @@ class Window(QWidget):
         self.model = model
 
 
-    # ############################
-    # def add_model(self, title, model_view):
-    #     print("add model", title)
-    #     scrollArea = QScrollArea()
-    #     scrollArea.setWidgetResizable(True)
-    #     scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-    #     scrollArea.setWidget(model_view)
-    #     model_view.show()
-    #     index = self.model_tab.addTab(scrollArea, title)
-        
-    #     self.model_dic[index] = model_view.model
-    #     self.model_tab.setCurrentIndex( index )
-    #     print("coucou", index, " -> ", self.model_dic[index])
-    #     self.model = model_view.model
 
     ############################
     def select_model(self, index):
@@ -438,91 +428,6 @@ class Window(QWidget):
 #########################################################################################################
 #########################################################################################################
 #########################################################################################################
-
-
-
-class Trans_model_view(QWidget):
-
-    ###########################
-    def __init__(self, model):
-        super(QWidget, self).__init__()
-
-        self.model = model
-        param_range = dict()
-        param_step = dict()
-        self.param_spinbox = dict()
-
-        param_range['n_strategy'] = [2,3]
-        param_range['menu_time'] = [0.5,3]                    
-        param_range['hotkey_time'] = [0,2.5]            
-        param_range['learning_cost'] = [0,2]
-        param_range['risk_aversion'] = [0,1]
-        param_range['implicit_knowledge'] = [0,1]                    
-        param_range['explicit_knowledge'] = [0,1]            
-        param_range['eps'] = [0,1]
-        param_range['horizon'] = [0,10]
-        param_range['discount'] = [0,1]                    
-        param_range['over_reaction'] = [0,1]            
-        param_range['decay'] = [0,1]
-        param_range['F'] = [0,1]
-        param_range['tau'] = [0,10]                    
-        param_range['s'] = [0,1]            
-        param_range['max_knowledge'] = [0,1]
-        
-        param_step['n_strategy'] = 1
-        param_step['menu_time'] = 0.1                    
-        param_step['hotkey_time'] = 0.1            
-        param_step['learning_cost'] = 0.1
-        param_step['risk_aversion'] = 0.1
-        param_step['implicit_knowledge'] = 0.05                    
-        param_step['explicit_knowledge'] = 0.05           
-        param_step['eps'] = 0.05
-        param_step['horizon'] = 1
-        param_step['discount'] = 0.1                    
-        param_step['over_reaction'] = 0.1            
-        param_step['decay'] = 0.1
-        param_step['F'] = 0.1
-        param_step['tau'] = 1                    
-        param_step['s'] = 0.1            
-        param_step['max_knowledge'] = 0.05
-
-
-        vl = QVBoxLayout()
-        self.setLayout(vl)
-
-        for key in self.model.params:
-            spinBox = createSpinbox(param_range[key], self.model.params[key], self.update_values, param_step[key], param_step[key] == 1)
-            self.param_spinbox[key] = spinBox
-            hl = QHBoxLayout()
-            hl.addWidget(QLabel(key))
-            hl.addWidget(spinBox)
-            hl.addStretch(10)
-            vl.addLayout(hl)
-        vl.addStretch()    
-
-
-
-
-    ##############################
-    def update_values(self):
-        print("update values")
-        for key in self.model.params:
-            self.model.params[key] = self.param_spinbox[key].value()
-
-
-        # self.model.horizon = self.kSpinBox.value()
-        # self.model.discount = self.discountSpinBox.value()
-        # self.model.learning_cost = self.tLearnSpinbox.value()
-        # self.model.implicit_hotkey_knowledge_incr = self.implicitLearningSpinbox.value()
-        # if self.model.implicit_hotkey_knowledge_incr > 0:
-        #     self.model.n_hotkey_knowledge = int(1. / self.model.implicit_hotkey_knowledge_incr )
-        # self.model.explicit_hotkey_knowledge_incr = self.explicitLearningSpinbox.value()
-        # self.model.risk_aversion = self.riskAversionSpinbox.value()
-        # #self.model.eps = self.epsSpinbox.value()
-        # self.model.overreaction = self.overReactionSpinBox.value()
-
-
-
 
 
 
