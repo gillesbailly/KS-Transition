@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.Qt import PYQT_VERSION_STR
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap
+from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
 from PyQt5.QtPrintSupport import *
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from transitionModel import *
@@ -69,7 +69,11 @@ def createSpinBoxLayout(spinboxInfo,layout):
     for sinfo in spinboxInfo:
         isSpinbox = sinfo['is_spinbox'] if 'is_spinbox' in sinfo.keys() else False
         spinBox = createSpinbox(sinfo['range'],sinfo['initial_value'],sinfo['handleValueChanged'],sinfo['step'],isSpinbox=isSpinbox)
-        l = QHBoxLayout(); l.addWidget(QLabel(sinfo['label'])); l.addWidget(spinBox); l.addStretch(10)
+        l = QHBoxLayout()
+        l.addWidget(QLabel(sinfo['label']))
+        l.addWidget(spinBox)
+        l.addStretch(10)
+        l.addWidget( QCheckbox() )
         layout.addLayout(l)
         spinBoxes.append(spinBox)
     return tuple(spinBoxes)
@@ -83,7 +87,9 @@ def createSpinBoxLayout(spinboxInfo,layout):
 class SimulatorUI(QTabWidget):
     def __init__(self):
         super(QTabWidget,self).__init__()
-        
+        self.chart_view_dict = dict()
+
+
     ###################
     def add_page(self, title):
         scrollArea = QScrollArea()
@@ -192,6 +198,7 @@ class SimulatorUI(QTabWidget):
 
 
         print("add _sims: ", len(chart_view_vec) )
+        self.chart_view_dict[ self.currentIndex() ] = chart_view_vec
         return chart_view_vec
 
 
@@ -395,19 +402,22 @@ class Window(QWidget):
 
         n_episodeLab = QLabel("# episodes: ")
         self.n_episodeSpinBox = createSpinbox([1,100],1,self.update_values,10,isSpinbox=True)
-        button = QPushButton('Relaunch')
-        button.clicked.connect(self.simulate)
+        launch_button = QPushButton('Launch')
+        launch_button.clicked.connect(self.simulate)
         self.sim_name1 = QLineEdit( "[Sim]")
         #sim_name2 = QLabel( simulator.env.to_string() )
-
+        save_button = QPushButton('Save')
+        save_button.clicked.connect( self.save )
         
+
         runLayout = QHBoxLayout(self)
         runLayout.addWidget(n_episodeLab)
         runLayout.addWidget(self.n_episodeSpinBox)        
-        runLayout.addWidget(button)
+        runLayout.addWidget(launch_button)
         runLayout.addWidget(self.sim_name1)
         #runLayout.addWidget(sim_name2)
         runLayout.addStretch()
+        runLayout.addWidget(save_button)
         self.simulatorUI = SimulatorUI()
 
         result_layout = QVBoxLayout()
@@ -445,6 +455,7 @@ class Window(QWidget):
             self.model = self.model_dic[index]
             self.model_menu.setCurrentIndex( index )
             self.model_container.setCurrentIndex( index )
+
 
     ############################
     def simulate(self):
@@ -490,8 +501,33 @@ class Window(QWidget):
 
 
     ###########################
-    def print_results(self):
-        pass
+    def save(self):
+        index = self.simulatorUI.currentIndex()
+        self.save_chart_views( self.simulatorUI.chart_view_dict[index] )
+
+
+    ###########################    
+    def save_chart_views(self, view_vec):
+        if len(view_vec) == 0:
+            return
+
+        filename = QFileDialog.getSaveFileName(self, "Save views", "./graphs/trans.pdf", ".pdf" )
+        print(filename)
+
+        printer = QPrinter()
+        printer.setOutputFormat( QPrinter.PdfFormat )
+        printer.setOutputFileName( filename[0] )
+        printer.setPageSize( QPageSize( view_vec[0].size() ))
+        painter = QPainter()
+        if not painter.begin(printer):
+            print("failed to open file, is it writable?");
+            print( "len view_vec: ", len(view_vec))
+        for view in view_vec:
+            pix = QPixmap( view.grab() )
+            painter.drawPixmap(0,0, 500,pix.height() * 500. / pix.width(), pix)        
+            printer.newPage()
+        painter.end()
+
 
     ###########################
     def update_values(self):

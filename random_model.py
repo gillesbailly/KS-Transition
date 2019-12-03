@@ -14,7 +14,7 @@ class Random_Model(Model):
 
     def __init__(self, env):
         super().__init__("random", env)
-        self.description = "In the first model, we assume that participants do not engage with the task at all and simply press buttons at random, perhaps with a bias for one option over the other. Such random behavior is not uncommon in behavioral experiments, especially when participants have no external incentives for performing well"
+        self.description = "In this model, we assume that participants do not engage with the task at all and simply choose methods at random, perhaps with a bias for one option over the other. Such random behavior is not uncommon in behavioral experiments, especially when participants have no external incentives for performing well"
         #self.params = Parameters('./parameters/random_model.csv')
 
     ##########################
