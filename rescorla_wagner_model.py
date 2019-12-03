@@ -40,14 +40,9 @@ class Rescorla_Wagner_Model(Model):
         q_vec = []
         for a in actions: 
             q_vec.append( self.memory.q[ a.to_string() ] )
-        print("---------: softmax", q_vec)
         prob = soft_max( self.params.value['beta'], q_vec)
-        print("---------: prob 1", prob)
-        
         prob = np.array(prob)
-        print("---------: prob 2", prob)
         prob = prob / sum(prob)
-        print("select_action, prob: ", cmd, q_vec, prob )
         return np.random.choice( actions, 1, p=prob)[0]
 
 

@@ -22,11 +22,22 @@ def soft_max(beta, vec):
     denum = 0
     for v in vec:
         denum += np.exp(beta * v)
-    print("denum: ", denum)
     for v in vec:
         res.append( float( np.exp(beta*v) ) / float(denum) )
 
     return res
+
+def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
+    res = []
+    denum = 0
+    for (v1, v2) in zip( vec_1, vec_2 ):
+        denum += np.exp( beta_1 * v1 + beta_2 * v2 )
+
+    for (v1, v2) in zip( vec_1, vec_2 ) :
+        res.append( float( np.exp(beta_1 * v1 + beta_2 * v2 ) ) / float(denum) )
+
+    return res
+
 
 
 ###########################
@@ -59,10 +70,11 @@ class StepResult(object):
 #   commands: the list of ids of the different commands of the application
 ###########################
 class History(object):
-    def __init__(self, commands, command_sequence, model_name):
+    def __init__(self, commands, command_sequence, model_name, params):
         self.commands = commands
         self.command_sequence = command_sequence
         self.model_name = model_name
+        self.params = params
         self.cmd = []
         self.state = []
         self.next_state = []

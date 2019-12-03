@@ -2,7 +2,8 @@ import sys
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.Qt import PYQT_VERSION_STR
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence
+from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap
+from PyQt5.QtPrintSupport import *
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from transitionModel import *
 from util import *
@@ -113,10 +114,12 @@ class SimulatorUI(QTabWidget):
         view = QChartView(chart)
         view.setRenderHint(QPainter.Antialiasing)
         l.addWidget(view)
-        return chart       
+        return view       
 
     #########################
     def add_sims(self, sims, name_sims): #updatecanvas
+        chart_view_vec = []
+
         l = self.add_page(name_sims)
         
 
@@ -125,7 +128,13 @@ class SimulatorUI(QTabWidget):
 
 
         for history in sims:
-            chart = self.create_episode(l)
+            chart_view = self.create_episode(l)
+            chart_view_vec.append( chart_view )
+            chart = chart_view.chart()
+            title = history.model_name + ' ' + history.params
+            chart.setTitle( title )
+            chart.legend().setVisible(False)
+
             menu_series = create_scatter_series("Menu", 10, QScatterSeries.MarkerShapeCircle, Qt.blue)
             hotkey_series = create_scatter_series("Hotkey", 10, QScatterSeries.MarkerShapeCircle, Qt.darkGreen)
             learning_series = create_scatter_series("Menu Learning", 10, QScatterSeries.MarkerShapeRectangle, Qt.darkMagenta)
@@ -138,8 +147,6 @@ class SimulatorUI(QTabWidget):
             cmd_series_all = []
             for i in range( len( history.commands) ):
                 cmd_series_all.append( create_scatter_series("Cmd", 10, QScatterSeries.MarkerShapeCircle, QBrush( my_scatter_symbol( str(i) ) )) )
-
-
         
             for i in range( len(history.action) ):
                 #print(i, history.action[i].bin_number, history.time[i])
@@ -182,6 +189,10 @@ class SimulatorUI(QTabWidget):
 
             chart.createDefaultAxes()
             chart.axisY().setRange(0, 3)
+
+
+        print("add _sims: ", len(chart_view_vec) )
+        return chart_view_vec
 
 
 max_w = 200
@@ -238,7 +249,7 @@ class EnvironmentUI(ParamUI):
         super().__init__(env)
  
         userLab = QLabel('Environment')
-        userLab.setStyleSheet("QLabel { background-color : gray; color : white; }");
+        userLab.setStyleSheet("QLabel { background-color : green; color : white; }");
         userLab.setAlignment(Qt.AlignHCenter)
         vl = self.layout()
 
@@ -343,27 +354,43 @@ class Window(QWidget):
         self.setLayout(mainLayout)
 
 
-
         self.envUI = EnvironmentUI(simulator.env)
         self.model_container = QWidget()
 
         model_lab = QLabel("   Models   ")
         model_lab.setStyleSheet("QLabel { background-color : red; color : white; }");
         model_lab.setAlignment(Qt.AlignHCenter)
-        self.model_tab = QTabWidget()
-        self.model_tab.currentChanged.connect(self.select_model)
-        self.model_tab.setMaximumWidth( max_w)
         
+        
+        self.model_menu = QComboBox()
+        self.model_menu.activated.connect(self.select_model)
+        self.model_menu.setMaximumWidth( max_w )
+        self.model_container = QStackedWidget()
+        self.model_container.setMaximumWidth( max_w )
+
         model_layout = QVBoxLayout()
         model_layout.addWidget(model_lab)
-        model_layout.addWidget(self.model_tab)
+        model_layout.addWidget(self.model_menu)
+        model_layout.addWidget(self.model_container)
         model_layout.addStretch()
+
+        exploration_lab = QLabel("Param Exploration")
+        exploration_lab.setStyleSheet("QLabel { background-color : blue; color : white; }");
+        exploration_lab.setAlignment(Qt.AlignHCenter)
+
+        self.exploration_edit = QLineEdit( "b")
+        self.exploration_edit.setMaximumWidth( max_w )
+        exploration_button = QPushButton("Exhaustive Test")
+        exploration_button.clicked.connect( self.explore )
+
 
         param_layout = QVBoxLayout()
         mainLayout.addLayout(param_layout)
         param_layout.addWidget(self.envUI)
         param_layout.addLayout(model_layout)
-
+        param_layout.addWidget(exploration_lab)
+        param_layout.addWidget(self.exploration_edit)
+        param_layout.addWidget(exploration_button)
 
 
         n_episodeLab = QLabel("# episodes: ")
@@ -373,6 +400,7 @@ class Window(QWidget):
         self.sim_name1 = QLineEdit( "[Sim]")
         #sim_name2 = QLabel( simulator.env.to_string() )
 
+        
         runLayout = QHBoxLayout(self)
         runLayout.addWidget(n_episodeLab)
         runLayout.addWidget(self.n_episodeSpinBox)        
@@ -386,6 +414,7 @@ class Window(QWidget):
         mainLayout.addLayout( result_layout)
         result_layout.addWidget( self.simulatorUI )
         result_layout.addLayout(runLayout)
+
     
 
     ############################
@@ -398,10 +427,13 @@ class Window(QWidget):
         scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         scrollArea.setWidget(model_view)
         model_view.show()
-        index = self.model_tab.addTab(scrollArea, model.name)
+        #index = self.model_tab.addTab(scrollArea, model.name)
+        self.model_menu.addItem( model.name )
+        index = self.model_container.addWidget(scrollArea)
         
         self.model_dic[index] = model_view.model
-        self.model_tab.setCurrentIndex( index )
+        self.model_menu.setCurrentIndex( index )
+        self.model_container.setCurrentIndex( index )
         self.model = model
 
 
@@ -411,13 +443,52 @@ class Window(QWidget):
        if index in self.model_dic:
             print("select model: ", self.model_dic[index].name )
             self.model = self.model_dic[index]
+            self.model_menu.setCurrentIndex( index )
+            self.model_container.setCurrentIndex( index )
 
     ############################
     def simulate(self):
-        print("simulate: ", self.model, self.model_dic)
+        #print("simulate: ", self.model, self.model_dic)
         sims = self.simulator.run(self.model, self.n_episodeSpinBox.value() )
-        self.simulatorUI.add_sims(sims, self.sim_name1.text() )
+        view_vec = self.simulatorUI.add_sims(sims, self.sim_name1.text() )
 
+        to_print = True
+        if to_print:
+            printer = QPrinter()
+            printer.setOutputFormat( QPrinter.PdfFormat )
+            printer.setOutputFileName('./graphs/results.pdf')
+            #logicalDPIX = printer.logicalDpiX()
+            #PointsPerInch = 200.0
+            painter = QPainter()
+            if not painter.begin(printer):
+                print("failed to open file, is it writable?");
+            print( "len view_vec: ", len(view_vec))
+            for view in view_vec:
+                print("view........")
+                
+                #t = QTransform()
+                #scaling = float(logicalDPIX ) / PointsPerInch  #16.6
+                #print("scale: ", logicalDPIX, PointsPerInch, scaling)
+                #t.scale( scaling, scaling )
+                #painter.setTransform( t )
+                #view.render( painter )
+                pix = QPixmap( view.grab() )
+                painter.drawPixmap(0,0, 500,pix.height() * 500. / pix.width(), pix)        
+                printer.newPage()
+            painter.end()
+
+    def explore(self):
+        print("explore model")
+        params = self.exploration_edit.text()
+        params = [ params ]
+        sims = self.simulator.explore(self.model, params, 1 )
+        view_vec = self.simulatorUI.add_sims(sims, "exploration" )
+
+
+    def print_results(self):
+        pass
+
+    ###########################
     def update_values(self):
         pass
 

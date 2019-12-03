@@ -46,6 +46,21 @@ class Parameters(object):
         self.step.update( params.step )
         self.comment.update( params.comment )
         
+    def get_info( self, name ):
+        return [self.value[name], self.range[name][0], self.range[name][1], self.step[name], self.comment[name] ]
+
+    def values_str( self ):
+        res = ''
+        first = True
+        for key, value in self.value.items():
+            if first:
+                first = False
+            else:
+                res += ','
+            res += key + ':' + str(value)
+
+        return res
+
 
     #####################
     def update(self):
@@ -98,6 +113,9 @@ class Model(object):
         
     def get_params(self):
         return self.params
+
+    def get_param_value_str(self):
+        return self.params.values_str()
 
     def set_params(self, params):
         self.params = params
