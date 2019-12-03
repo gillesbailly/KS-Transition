@@ -36,6 +36,7 @@ class Win_Stay_Loose_Shift_Model(Model):
 
     def __init__(self, env):
         super().__init__("win_stay_loose_shift", env)
+        self.description = "The win-stay-lose-shift model is one of the simplest models that adapts its behavior according to feedback. Consistent with the name, the model repeats rewarded actions and switches away from unrewarded actions. In the noisy version of the model, the win-stay-lose-shift rule is applied probabilistically, such that the model applies the win-stay-lose-shift rule with probability 1 − eps, and chooses randomly with probability eps. "
         self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
         
     ##########################

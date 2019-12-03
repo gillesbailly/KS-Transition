@@ -103,6 +103,7 @@ class Model(object):
     def __init__(self, name, env):
         self.env = env
         self.name = name
+        self.description = 'Model description is empty'
         path = './parameters/'
         ext = '_model.csv'
         self.params = Parameters(path + self.name + ext)

@@ -36,6 +36,7 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
 
     def __init__(self, env):
         super().__init__("rescorla_wagner_choice_kernel", env)
+        self.description = "This model mixes the reinforcement learning model with the choice kernel model: The values update according to the reward (alpha, beta), while capturing the tendency for people to repeat their previous actions."
         self.memory = Rescorla_Wagner_Choice_Kernel_Model.Memory(env)
         self.max_time = 2
 

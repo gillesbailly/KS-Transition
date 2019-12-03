@@ -30,6 +30,7 @@ class Choice_Kernel_Model(Model):
 
     def __init__(self, env):
         super().__init__("choice_kernel", env)
+        self.description = "This model tries to capture the tendency for people to repeat their previous actions. In particular, we assume that participants compute a ‘choice kernel,’ CK_t^k, for each action, which keeps track of how frequently they have chosen that option in the recent past."
         self.memory = Choice_Kernel_Model.Memory(env)
 
 

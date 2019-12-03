@@ -113,14 +113,22 @@ class Simulator(object):
     # explore model
     ###################################
     def explore(self, model, params, n_episode):
+        if len(params) == 0:
+            return []
+
         params_saved = copy.deepcopy( model.params )
         res = []
         p = params[0]
         a_info = model.params.get_info(p)
+
         for v in np.arange(a_info[1], a_info[2], a_info[3]):
             model.params.value[p] = v
-            sims = self.run( model, n_episode)
-            #print("explore: ", len(res), len(sims))
+            sims = []
+            if len(params) == 1:
+                sims = self.run( model, n_episode)
+            else:
+                sublist = params[1: len(params) ]
+                sims = self.explore(model, sublist, n_episode)
             res = res + sims
             #print("explore: ",  len(res) )
 

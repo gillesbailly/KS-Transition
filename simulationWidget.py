@@ -477,14 +477,19 @@ class Window(QWidget):
                 printer.newPage()
             painter.end()
 
+
+    ###########################
     def explore(self):
         print("explore model")
         params = self.exploration_edit.text()
-        params = [ params ]
+
+        params = params.split(',')
+        print(params)
         sims = self.simulator.explore(self.model, params, 1 )
         view_vec = self.simulatorUI.add_sims(sims, "exploration" )
 
 
+    ###########################
     def print_results(self):
         pass
 
@@ -512,6 +517,9 @@ class Model_View(ParamUI):
         super().__init__(model.params)
         self.model = model
         self.add_spinboxes()
+        lab = QLabel(self.model.description)
+        lab.setWordWrap(True)
+        self.layout().addWidget(lab)
 
     ##############################
     def update_values(self):
