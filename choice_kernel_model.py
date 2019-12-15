@@ -65,9 +65,14 @@ class Choice_Kernel_Model(Model):
         result.action = action.copy()
         result.success = (action.cmd == cmd_id)  #always correct
         result.time = self.time(action, result.success)
-        self.update_CK_values( result.action)
+        
         is_legal = True
         return result, is_legal
+
+
+    ##########################
+    def update_model(self, step):
+        self.update_CK_values( step.action)
 
 
     def reset(self):

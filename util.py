@@ -65,6 +65,52 @@ class StepResult(object):
         self.is_terminal = False
 
 
+
+###########################
+#   HISTORY
+#   
+###########################
+class User_History(object):
+    def __init__(self):
+        self.commands = []
+        self.technique_name = ""
+        self.technique_id = -1
+
+        self.method_name = dict()
+        self.cmd_name = []
+        self.cmd_frequency = []
+        self.ub_name = dict()
+        self.user_id = 0
+
+        self.block = []
+        self.block_trial = []
+        self.trial = []
+        self.cmd = []
+        self.encounter = []
+        self.method_id =[]
+        self.ub_id = []
+        self.action = []
+        self.time = []
+        self.errors = []
+
+    def print_general(self):
+        print('--------------------------------')
+        print('User: ', self.user_id)
+        print( "Commands: ", self.commands, self.cmd_name, self.cmd_frequency)
+        print( "Technique: ", self.technique_id, self.technique_name )
+        print( "Methods: ", self.method_name)
+        print( "Ub : ", self.ub_name)
+        print('--------------------------------')
+
+
+    def print(self):
+        for i in range( 0, len(self.cmd)):
+            print(i)
+            print(self.trial[i], self.cmd[i], self.action[i], self.method_id[i], self.ub_id[i], self.time[i], self.errors[i])
+
+
+
+
 ###########################
 #   HISTORY
 #   commands: the list of ids of the different commands of the application
@@ -75,6 +121,7 @@ class History(object):
         self.command_sequence = command_sequence
         self.model_name = model_name
         self.params = params
+        self.episode_id = 0
         self.cmd = []
         self.state = []
         self.next_state = []

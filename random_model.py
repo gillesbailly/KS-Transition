@@ -43,4 +43,5 @@ class Random_Model(Model):
         is_legal = True
         return result, is_legal
 
-
+    def update_model(self, step):
+        pass

@@ -82,11 +82,15 @@ class Win_Stay_Loose_Shift_Model(Model):
         result.state = state
         result.action = action.copy()
         result.success = (action.cmd == cmd_id)  #always correct
-        self.memory.update(action, result.success)
-        print('generate_step.........', action.strategy_str(), result.success)
         result.time = self.time(action, result.success)
         is_legal = True
         return result, is_legal
+
+
+   ##########################
+    def update_model(self, step):
+        self.memory.update(step.action, step.success)
+
 
     def reset(self):
         self.memory = Win_Stay_Loose_Shift_Model.Memory(env)

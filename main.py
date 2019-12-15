@@ -6,40 +6,11 @@ from rescorla_wagner_model import *
 from choice_kernel_model import *
 from rescorla_wagner_choice_kernel_model import *
 from simulationWidget import *
+from experiment import *
 import csv
 import numpy as np
 from util import *
 
-
-
-##########################################
-#                                        #
-#             Simulator                  #
-#                                        #
-##########################################
-class Experiment(object):
-
-    ####################
-    def __init__(self, path):
-        self.data = self.load(path)
-
-    #######################
-    def load(self, path):
-        if not path:
-            return
-        with open(path, 'r') as csvFile:
-            reader = csv.reader(csvFile, delimiter= ';')
-            header = True
-            for row in reader:
-                if not header:
-                    self.value[ row[0] ] = float( row[2] ) if '.' in row[2] else int( row[2] )
-                    min_  = float( row[3] ) if '.' in row[3] else int( row[3] )
-                    max_  = float( row[4] ) if '.' in row[4] else int( row[4] )
-                    self.range[ row[0] ] = [ min_, max_ ]
-                    self.step[ row[0] ] = float( row[5] ) if '.' in row[5] else int( row[5] )
-                    self.comment[ row[0] ] = row[6]
-                else:
-                    header = False
 
 
 ##########################################
@@ -60,12 +31,13 @@ class Simulator(object):
     def save(self, filename, sims):
         with open(filename, mode='w') as log_file:
             writer = csv.writer(log_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ['model', 'param', 'sim', 'trial', 'n_selection', 'stimulus', 'occ', 'cmd', 'strategy', 'method', 'time', 'success']
+            header = ['model', 'param', 'sim', 'episode', 'trial', 'n_selection', 'stimulus', 'occ', 'cmd', 'strategy', 'method', 'time', 'success']
             writer.writerow( header)
     
             for i in range( len(sims) ):
                 h = sims[i]
                 n_selection = len(h.command_sequence)
+                episode = h.episode_id
                 occ = dict()
                 for cmd in h.commands:
                     occ[cmd] = 0
@@ -73,8 +45,9 @@ class Simulator(object):
                     stimulus = h.command_sequence[j]
                     strategy = h.action[j].strategy_str()
                     method = h.action[j].method_str()
+
                     occ[ stimulus ] = occ[ stimulus ] + 1
-                    row = [h.model_name, h.params, i, j + 1, n_selection, stimulus, occ[ stimulus ],  h.cmd[j], strategy, method, h.time[j], h.success[j] ]
+                    row = [h.model_name, h.params, i, episode, j + 1, n_selection, stimulus, occ[ stimulus ],  h.cmd[j], strategy, method, h.time[j], h.success[j] ]
                     writer.writerow(row)
 
 
@@ -90,6 +63,7 @@ class Simulator(object):
         for i in range(n_episode):
             self.env.update()
             history = History( self.env.commands, self.env.cmd_seq, model.name, model.get_param_value_str() )
+            history.episode_id = i
             model.reset()
 
             belief = model.initial_belief()
@@ -100,6 +74,7 @@ class Simulator(object):
                 cmd = self.env.cmd_seq[date]
                 action = model.select_action( cmd, date) #action correct
                 res, is_legal = model.generate_step(cmd, date, state, action)
+                model.update_model(res)
                 next_belief = belief
                 history.update_history(res.cmd, res.state, res.next_state, res.action, res.time, res.success, belief, belief )
                 state = res.next_state
@@ -111,6 +86,8 @@ class Simulator(object):
 
     ###################################
     # explore model
+    # this method is recursive.
+    # 
     ###################################
     def explore(self, model, params, n_episode):
         if len(params) == 0:
@@ -119,9 +96,10 @@ class Simulator(object):
         params_saved = copy.deepcopy( model.params )
         res = []
         p = params[0]
+        print("p: ", params[0])
         a_info = model.params.get_info(p)
 
-        for v in np.arange(a_info[1], a_info[2], a_info[3]):
+        for v in np.arange(a_info[1], a_info[2], a_info[3]):    #1 min, 2. max, 3. step
             model.params.value[p] = v
             sims = []
             if len(params) == 1:
@@ -159,15 +137,24 @@ class Simulator(object):
 
         painter.end()
 
+
+
+
 if __name__=="__main__":
+    experiment = Experiment('./experiment/grossman_cleaned_data.csv')
+    for h in experiment.data:
+        h.print_general()
+        h.print()
+
+    exit(0)
+
+
+
     app = QApplication(sys.argv)
-    #env = Environment(n_commands = 3, n_selection= 5, s_zipfian = 1, error_cost = 0.25)
     
     env = Environment("./parameters/environment.csv")
-    env.value['n_selection'] = 100
-    env.update()
-
     print(env.value)
+
     simulator = Simulator(env)
     window = Window(simulator)
     
@@ -181,8 +168,6 @@ if __name__=="__main__":
     #window.simulatorUI.add_sims( sims, "oki" )
     #simulator.save('./results/log1.csv', sims)
     
-
-
 
 
     sys.exit(app.exec_())

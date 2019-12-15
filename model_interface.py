@@ -168,7 +168,9 @@ class Model(object):
         return t
 
     def generate_step(self, cmd_id, date, state, action):
-        raise ValueError(" method to implement ")
+        raise ValueError(" generate_step: method to implement ")
     
+    def update_model(self, step_result):
+            raise ValueError(" update_model: method to implement ")
 
 
