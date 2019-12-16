@@ -34,21 +34,16 @@ class Experiment(object):
                         if user_id > -1:
                             res.append(history)
                         history = User_History()
-
-                    user_id = int( row[1])
-                    history.user_id = int( row[1])
+                    user_id = int(row[1])
+                    history.set_info( int(row[1]), int(row[6]), row[5] ) #userid, techniqueid, techniquename
                     history.block.append( int(row[2]) )
                     history.block_trial.append( int(row[3]) )
-                    history.trial.append( int(row[4]) )
                     
-                    history.technique_name  = row[5]
-                    history.technique_id = int( row[6] )
-                    
-                    if row[7] not in history.cmd_name:
-                        history.cmd_name.append( row[7] )
-                        history.cmd_frequency.append( int( row[9] ) ) 
-                        history.commands.append( len(history.cmd_name) - 1 )
-                    history.cmd.append( history.cmd_name.index(row[7]) )
+                    if row[7] not in history.command_name:
+                        history.command_name.append( row[7] )
+                        history.command_frequency.append( int( row[9] ) ) 
+                        history.commands.append( len(history.command_name) - 1 )
+                    history.cmd.append( history.command_name.index(row[7]) )
                     
                     history.encounter = int( float(row[8]) )
 
@@ -62,9 +57,9 @@ class Experiment(object):
                     action = ub_id
                     if action > 2:
                         action = 2
-                    history.action.append( action )
-                    history.time.append( float( row[14] ) )
-                    history.errors.append( int( row[15] ) )
+                    history.user_action.append( action )
+                    history.user_time.append( round( float( row[14] ), 3) )
+                    history.user_errors.append( int( row[15] ) )
                     
                 else:
                     header = False

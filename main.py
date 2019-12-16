@@ -52,6 +52,45 @@ class Simulator(object):
 
 
     ###################################
+    #
+    # Test model against empirical data
+    # 
+    ###################################
+    def test_model(self, model, user_data):
+        sims = []
+
+        for d in user_data:
+            data = copy.deepcopy(d)
+            model.reset()
+            self.env.cmd_seq = copy.copy(data.cmd)
+            self.env.value['n_commands'] = len( data.commands )
+            self.env.value['n_strategy'] = 2
+
+            for date in range( 0, len(self.env.cmd_seq) ):
+                cmd = self.env.cmd_seq[date]
+                action, action_prob = model.select_action( cmd, date ) #action correct
+                res = model.generate_step(cmd, date, action)
+                
+                data.action.append( action )
+                data.action_prob.append( action_prob )
+                data.time.append( res.time )
+                data.success.append( res.success ) 
+
+                user_step = StepResult()
+                user_step.cmd = cmd
+                user_step.action = data.user_action[date]
+                user_step.time = data.user_time[date]
+                user_step.success = 1 - int( data.user_errors[date] > 0 )
+
+                model.update_model( user_step )
+                
+            sims.append(data)
+        return sims
+
+
+
+
+    ###################################
     # run the model on n_episode
     # do not change the values of the parameters
     ###################################
@@ -62,24 +101,19 @@ class Simulator(object):
 
         for i in range(n_episode):
             self.env.update()
-            history = History( self.env.commands, self.env.cmd_seq, model.name, model.get_param_value_str() )
+            history = History()
+            history.set_commands( self.env.commands, self.env.cmd_seq, None, None)
+            history.set_model( model.name, model.get_param_value_str() )
             history.episode_id = i
             model.reset()
-
-            belief = model.initial_belief()
-            state = model.initial_state()
             
             for date in range( 0, len(self.env.cmd_seq) ):
-                is_legal = False
                 cmd = self.env.cmd_seq[date]
-                action = model.select_action( cmd, date) #action correct
-                res, is_legal = model.generate_step(cmd, date, state, action)
+                action, action_prob = model.select_action( cmd, date) #action correct
+                res = model.generate_step(cmd, date, action)
                 model.update_model(res)
-                next_belief = belief
-                history.update_history(res.cmd, res.state, res.next_state, res.action, res.time, res.success, belief, belief )
-                state = res.next_state
-                belief = next_belief
-                #print("=============")
+                history.update_history(res.cmd, res.action, action_prob, res.time, res.success)
+
             sims.append( history )
         return sims
 
@@ -141,13 +175,13 @@ class Simulator(object):
 
 
 if __name__=="__main__":
-    experiment = Experiment('./experiment/grossman_cleaned_data.csv')
-    for h in experiment.data:
-        h.print_general()
-        h.print()
+    # experiment = Experiment('./experiment/grossman_cleaned_data.csv')
+    # print("experiment length: ", len(experiment.data) )
+    # for h in experiment.data:
+    #     h.print_general()
+    #     h.print()
 
-    exit(0)
-
+    # exit(0)
 
 
     app = QApplication(sys.argv)

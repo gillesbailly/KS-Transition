@@ -66,48 +66,6 @@ class StepResult(object):
 
 
 
-###########################
-#   HISTORY
-#   
-###########################
-class User_History(object):
-    def __init__(self):
-        self.commands = []
-        self.technique_name = ""
-        self.technique_id = -1
-
-        self.method_name = dict()
-        self.cmd_name = []
-        self.cmd_frequency = []
-        self.ub_name = dict()
-        self.user_id = 0
-
-        self.block = []
-        self.block_trial = []
-        self.trial = []
-        self.cmd = []
-        self.encounter = []
-        self.method_id =[]
-        self.ub_id = []
-        self.action = []
-        self.time = []
-        self.errors = []
-
-    def print_general(self):
-        print('--------------------------------')
-        print('User: ', self.user_id)
-        print( "Commands: ", self.commands, self.cmd_name, self.cmd_frequency)
-        print( "Technique: ", self.technique_id, self.technique_name )
-        print( "Methods: ", self.method_name)
-        print( "Ub : ", self.ub_name)
-        print('--------------------------------')
-
-
-    def print(self):
-        for i in range( 0, len(self.cmd)):
-            print(i)
-            print(self.trial[i], self.cmd[i], self.action[i], self.method_id[i], self.ub_id[i], self.time[i], self.errors[i])
-
 
 
 
@@ -116,40 +74,112 @@ class User_History(object):
 #   commands: the list of ids of the different commands of the application
 ###########################
 class History(object):
-    def __init__(self, commands, command_sequence, model_name, params):
-        self.commands = commands
-        self.command_sequence = command_sequence
-        self.model_name = model_name
-        self.params = params
-        self.episode_id = 0
-        self.cmd = []
-        self.state = []
-        self.next_state = []
-        self.action = []
-        self.time = []
-        self.success = []
-        self.belief = []
-        self.next_belief = []
+    def __init__(self):
+        self.commands = []                          # list of command ids
+        self.command_sequence = []                  # sequence of commands
+        self.command_name = []                      # names of the commands
+        self.command_frequency = []                 # frequency of the commands
+        self.model_name = "None"                    # name of the used model
+        self.params = "Empty"                       # parameters of the used model
+        self.episode_id = 0                         # episode id (useless)
+        
+        self.cmd = []                               # selected commands (== command_sequence)
+        self.action = []                            # predicted action (e.g. Menu, KS, optionally, ML)
+        self.action_prob = []                       # probability that the menu chooses each action. this is a vec of three values
+        self.time = []                              # predicted time
+        self.success = []                           # predicted success
 
-    def update_history(self, cmd, s, n_s, a, t, success, b, n_b):
+    ##################################
+    def has_simulation_data(self):
+        return len(self.action) > 0
+
+
+    ##################################
+    def has_user_data(self):
+        return False
+
+    ##################################
+    def set_commands(self, cmd_ids, cmd_seq, cmd_name, cmd_frequency):
+        self.commands = cmd_ids
+        self.command_sequence = cmd_seq
+        self.command_name = cmd_name
+        self.command_frequency = cmd_frequency
+
+
+    ##################################
+    def set_model(self, name, params):
+        self.model_name = name
+        self.model_params = params
+
+
+    ##################################
+    def update_history(self, cmd, action, action_prob, t, success):
         self.cmd.append(cmd)
-        self.state.append( s )
-        self.next_state.append (n_s)
-        self.action.append( a )
+        self.action.append( action )
+        self.action_prob.append( action_prob )
         self.time.append(t)
         self.success.append(success)
-        self.belief.append(b)
-        self.next_belief.append(n_b)
 
+
+    ##################################
     def add_selection(self, cmd, method, time, success):
         self.cmd.append(cmd)
-        self.state.append( State() )
-        self.next_state.append ( State() )
         self.action.append( Action(cmd, method) )
         self.time.append(time)
         self.success.append(success)
-        self.belief.append( Belief() )
-        self.next_belief.append( Belief() )
+
+
+
+###########################
+#
+#   USER_HISTORY
+#   
+###########################
+class User_History(History):
+    def __init__(self):
+        super().__init__()
+        self.technique_name = ""
+        self.technique_id = -1
+
+        self.method_name = dict()
+        self.ub_name = dict()
+        self.user_id = 0
+
+        self.block = []
+        self.block_trial = []
+        self.encounter = []
+        self.method_id =[]
+        self.ub_id = []
+        self.user_action = []
+        self.user_time = []
+        self.user_errors = []
+        
+    ##################################
+    def has_user_data(self):
+        return len(self.user_action) > 0
+
+
+    ##################################
+    def set_info(self, user_id, technique_id, technique_name):
+        self.user_id = user_id
+        self.technique_id = technique_id
+        self.technique_name = technique_name
+
+    ##################################
+    def print_general(self):
+        print('--------------------------------')
+        print('User: ', self.user_id)
+        print( "Commands: ", self.commands, self.command_name, self.command_frequency)
+        print( "Technique: ", self.technique_id, self.technique_name )
+        print( "Methods: ", self.method_name)
+        print( "Ub : ", self.ub_name)
+        print('--------------------------------')
+
+
+    def print(self):
+        for i in range( 0, len(self.cmd)):
+            print(i, self.cmd[i], self.user_action[i], self.method_id[i], self.ub_id[i], self.user_time[i], self.user_errors[i])
+
 
 
 

@@ -53,7 +53,7 @@ class TransitionModel(Model):
         root_node = Node("R-", cmd= cmd_id, date = date, kernel = kernel, time =0, a_min = -1)
         v = self.value_iteration(root_node, date, 0, "r")
         print(root_node.name)
-        return root_node.a_min
+        return root_node.a_min, None
 
 
     ########################################
@@ -105,10 +105,9 @@ class TransitionModel(Model):
         
 
     ##################################
-    def generate_step(self, cmd_id, date, state, action):        
+    def generate_step(self, cmd_id, date, action):        
         result = StepResult()
         result.cmd = cmd_id
-        result.state = state
         result.action = action.copy()
 
         result.success = 1
@@ -119,9 +118,8 @@ class TransitionModel(Model):
 
         result.time = self.time(action, date, self.kernel, result.success)
         
-        is_legal = True
         self.kernel.update_command_history(cmd_id, date, result.action, result.time, result.success)
-        return result, is_legal
+        return result
 
 
     ################################

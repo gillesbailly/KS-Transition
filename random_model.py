@@ -30,18 +30,16 @@ class Random_Model(Model):
         else:                   # Menu, Hotkey and Learning actions
             prob.append( (1.-b) /2.)
             prob.append( (1.-b) /2.)
-        return np.random.choice( actions, 1, p=prob)[0]            
+        return np.random.choice( actions, 1, p=prob)[0], prob          
 
     ###########################
-    def generate_step(self, cmd_id, date, state, action):
+    def generate_step(self, cmd_id, date, action):
         result = StepResult()
         result.cmd = cmd_id
-        result.state = state
         result.action = action.copy()
         result.success = (action.cmd == cmd_id)
         result.time = self.time(action, result.success)
-        is_legal = True
-        return result, is_legal
+        return result
 
     def update_model(self, step):
         pass

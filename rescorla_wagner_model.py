@@ -44,7 +44,7 @@ class Rescorla_Wagner_Model(Model):
         prob = soft_max( self.params.value['beta'], q_vec)
         prob = np.array(prob)
         prob = prob / sum(prob)
-        return np.random.choice( actions, 1, p=prob)[0]
+        return np.random.choice( actions, 1, p=prob)[0], prob
 
 
     ###########################
@@ -56,15 +56,13 @@ class Rescorla_Wagner_Model(Model):
 
 
     ###########################
-    def generate_step(self, cmd_id, date, state, action):
+    def generate_step(self, cmd_id, date, action):
         result = StepResult()
         result.cmd = cmd_id
-        result.state = state
         result.action = action.copy()
         result.success = (action.cmd == cmd_id)  #always correct
         result.time = self.time(action, result.success)   
-        is_legal = True
-        return result, is_legal
+        return result
 
     def update_model(self, step):
         self.update_q_values( step.action, step.time )

@@ -139,6 +139,7 @@ class Model(object):
         else:
             return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY)]
 
+    # should return an action and the prob for each action
     def select_action(self, cmd_id, date):
         raise ValueError(" method to implement")
         
@@ -167,7 +168,22 @@ class Model(object):
             t += self.env.value['menu_time'] + self.env.value['error_cost']
         return t
 
-    def generate_step(self, cmd_id, date, state, action):
+
+    ###########################
+    def generate_prob_step(self, cmd_id, date, action_prob):
+        action_vec = self.get_actions_from(cmd_id)
+        res = StepResult()
+        res.time = 0
+        res.success = 0
+        for i in range( len(action_prob) ):
+            action = action_vec[i]
+            prob = action_prob[i]
+            step = generate_step(cmd_id, date, action)
+            res.time += step.time * prob
+            res.success += step.success * prob
+
+
+    def generate_step(self, cmd_id, date, action):
         raise ValueError(" generate_step: method to implement ")
     
     def update_model(self, step_result):

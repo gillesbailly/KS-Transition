@@ -36,8 +36,9 @@ class Win_Stay_Loose_Shift_Model(Model):
 
     def __init__(self, env):
         super().__init__("win_stay_loose_shift", env)
-        self.description = "The win-stay-lose-shift model is one of the simplest models that adapts its behavior according to feedback. Consistent with the name, the model repeats rewarded actions and switches away from unrewarded actions. In the noisy version of the model, the win-stay-lose-shift rule is applied probabilistically, such that the model applies the win-stay-lose-shift rule with probability 1 − eps, and chooses randomly with probability eps. "
         self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
+        self.description = "The win-stay-lose-shift model is one of the simplest models that adapts its behavior according to feedback. Consistent with the name, the model repeats rewarded actions and switches away from unrewarded actions. In the noisy version of the model, the win-stay-lose-shift rule is applied probabilistically, such that the model applies the win-stay-lose-shift rule with probability 1 − eps, and chooses randomly with probability eps. "
+        
         
     ##########################
     def select_action(self, cmd, date):
@@ -72,19 +73,17 @@ class Win_Stay_Loose_Shift_Model(Model):
         prob = np.array(prob)
         prob = prob / sum(prob)
         print(prob)
-        return np.random.choice( actions, 1, p=prob)[0]    
+        return np.random.choice( actions, 1, p=prob)[0], prob  
 
 
     ###########################
-    def generate_step(self, cmd_id, date, state, action):
+    def generate_step(self, cmd_id, date, action):
         result = StepResult()
         result.cmd = cmd_id
-        result.state = state
         result.action = action.copy()
         result.success = (action.cmd == cmd_id)  #always correct
         result.time = self.time(action, result.success)
-        is_legal = True
-        return result, is_legal
+        return result
 
 
    ##########################
@@ -93,5 +92,5 @@ class Win_Stay_Loose_Shift_Model(Model):
 
 
     def reset(self):
-        self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
+        self.memory = Win_Stay_Loose_Shift_Model.Memory(self.env)
 
