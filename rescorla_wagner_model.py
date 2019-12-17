@@ -22,7 +22,7 @@ class Rescorla_Wagner_Model(Model):
         def __init__(self, env):
             self.q = dict()
             for cmd in env.commands:
-                self.q[ Action(cmd, Strategy.MENU).to_string() ] = 0.5
+                self.q[ Action(cmd, Strategy.MENU).to_string() ] = 2
                 self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
                 self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
 
@@ -32,7 +32,7 @@ class Rescorla_Wagner_Model(Model):
         super().__init__("rescorla_wagner", env)
         self.description = "In this model, participants first learn the expected value of each method based on the history of previous outcomes and then use these values to make a decision about what to do next. A simple model of learning is the Rescorla-Wagner learning rule (Rescorla et al., 1972) whereby the value of option k, Q_t^k is updated in response to reward rt according to: \n \n Q_{t+1}^k = Q_t^k + alpha(r_t - Q_t^k) \n \n where alpha is the learning rate, which takes a value between 0 and 1 and captures the extent to which the prediction error, (r_t − Q_t^k ), updates the value. A simple model of decision making is to assume that participants use the options values to guide their decisions, choosing the most valuable option most frequently, but occasionally making mistakes (or exploring) by choosing a low value option. One choice rule with these properties is known as the softmax choice rule."
         self.memory = Rescorla_Wagner_Model.Memory(env)
-        self.max_time = 2
+        self.max_time = 7
 
         
     ##########################
@@ -51,7 +51,7 @@ class Rescorla_Wagner_Model(Model):
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
-
+        cleaned_time = time if time <7 else 7
         self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - time -  self.memory.q[ a ] )
 
 

@@ -91,6 +91,7 @@ class Win_Stay_Loose_Shift_Model(Model):
         self.memory.update(step.action, step.success)
 
 
+    #########################
     def reset(self):
         self.memory = Win_Stay_Loose_Shift_Model.Memory(self.env)
 

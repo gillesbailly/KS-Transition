@@ -72,7 +72,6 @@ class Parameters(object):
 #                                        #
 ##########################################
 class Environment(Parameters):
-
     def __init__(self, path):
         super().__init__(path)
         self.commands = self.create_command_list( self.value['n_commands'] )
@@ -89,6 +88,7 @@ class Environment(Parameters):
     def update(self):
         self.commands = self.create_command_list( self.value['n_commands'] )
         self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
+
 
 
 
@@ -183,9 +183,11 @@ class Model(object):
             res.success += step.success * prob
 
 
+    ###########################
     def generate_step(self, cmd_id, date, action):
         raise ValueError(" generate_step: method to implement ")
     
+    ############################
     def update_model(self, step_result):
             raise ValueError(" update_model: method to implement ")
 

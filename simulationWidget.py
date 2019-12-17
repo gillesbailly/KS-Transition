@@ -6,35 +6,12 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeyS
 from PyQt5.QtPrintSupport import *
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from transitionModel import *
+from episode_view import *
 from util import *
 #from matplotlib_canvas import *
 
 
-##########################################
-#                                        #
-#             Util functions             #
-#                                        #
-##########################################
-def create_scatter_series(name, marker_size, marker_shape, brush):
-    series = QScatterSeries()
-    series.setName(name)
-    series.setBrush(brush)
-    series.setMarkerSize(marker_size)
-    series.setMarkerShape(marker_shape)
-    series.setPen(Qt.transparent)
-    return series
 
-def my_scatter_symbol(c):
-    symbol = QImage(20,20, QImage.Format_ARGB32)
-    symbol.fill(Qt.transparent)
-
-    painter = QPainter()
-    painter.begin(symbol)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(Qt.black)
-    painter.drawText(2,9, c)
-    painter.end()
-    return symbol
 
 def createCheckBox(initial_value, handle):
     checkBox = QCheckBox()
@@ -102,28 +79,12 @@ class SimulatorUI(QTabWidget):
         result_widget.show()
         index = self.addTab(scrollArea, title)
         self.setCurrentIndex( index )
-
-
         return result_layout
 
 
-    ###################
-    def create_episode(self, layout):
-        container = QWidget()
-        container.setMinimumHeight(300)
-        layout.insertWidget(0,container)
-        #todo this VBoxLayout is probably useless
-        l = QVBoxLayout()
-        container.setLayout(l)
-        chart = QChart()
-        chart.setDropShadowEnabled(False)
-        view = QChartView(chart)
-        view.setRenderHint(QPainter.Antialiasing)
-        l.addWidget(view)
-        return view       
 
     #########################
-    def add_sims(self, sims, name_sims): #updatecanvas
+    def add_sims(self, sims, name_sims, show_pred=True): #updatecanvas
         chart_view_vec = []
 
         l = self.add_page(name_sims)
@@ -132,70 +93,14 @@ class SimulatorUI(QTabWidget):
         name_sims_lab = QLabel(name_sims)
         l.addWidget( name_sims_lab )
 
-
         for history in sims:
-            chart_view = self.create_episode(l)
-            chart_view_vec.append( chart_view )
-            chart = chart_view.chart()
-            title = history.model_name + ' ' + history.params
-            chart.setTitle( title )
-            chart.legend().setVisible(False)
-
-            menu_series = create_scatter_series("Menu", 10, QScatterSeries.MarkerShapeCircle, Qt.blue)
-            hotkey_series = create_scatter_series("Hotkey", 10, QScatterSeries.MarkerShapeCircle, Qt.darkGreen)
-            learning_series = create_scatter_series("Menu Learning", 10, QScatterSeries.MarkerShapeRectangle, Qt.darkMagenta)
-            error_series = create_scatter_series("Error", 10, QScatterSeries.MarkerShapeRectangle, QBrush( my_scatter_symbol('x') ) )
-
-            kh_series = QLineSeries()
-            kh_series.setName("Hotkey Know.")
-            kh_series.setPen(Qt.lightGray)
-
-            cmd_series_all = []
-            for i in range( len( history.commands) ):
-                cmd_series_all.append( create_scatter_series("Cmd", 10, QScatterSeries.MarkerShapeCircle, QBrush( my_scatter_symbol( str(i) ) )) )
-        
-            for i in range( len(history.action) ):
-                #print(i, history.action[i].bin_number, history.time[i])
-                s = history.action[i].strategy
-                time = round(history.time[i],1)
-                if s == Strategy.MENU :
-                    menu_series.append( i, time )
-
-                elif s == Strategy.HOTKEY:
-                    hotkey_series.append(i, time)
-
-                elif s == Strategy.LEARNING:
-                    learning_series.append(i, time )
-
-                if history.success[i] == 0:
-                    error_series.append(i, time )
-
-                #if a == ActionType.MENU_E or a == ActionType.HOTKEY_E or a == ActionType.MENU_LEARNING_E:
-                #    error_series.append(i, time )
-
-                cmd = history.cmd[i]    #add the id of the comand on the graph
-                cmd_series_all[cmd].append(i, time + 0.2 )
-
-                #kh_series.append(i, 3*history.state[i].k_h)
-                #b_kh = history.belief[i].get_most_likely_kh() / self.model.n_hotkey_knowledge
-                #b_kh_series.append(i,3*b_kh)            
-
-
-            chart.addSeries(menu_series)
-            chart.addSeries(hotkey_series)
-            chart.addSeries(learning_series)
-            chart.addSeries(error_series)
-            for i in cmd_series_all:
-                chart.addSeries( i )
-
-        #if self.show_KH:
-        #    chart.addSeries(kh_series)
-        #if self.show_B_KH:    
-        #    chart.addSeries(b_kh_series)
-
-            chart.createDefaultAxes()
-            chart.axisY().setRange(0, 3)
-
+            chart_view = EpisodeView()
+            l.addWidget(chart_view)
+            chart_view.set_full_history(history, True)
+            if history.has_user_data():
+                chart_view_user = EpisodeView()
+                l.addWidget(chart_view_user)
+                chart_view_user.set_full_history(history, False)
 
         print("add _sims: ", len(chart_view_vec) )
         self.chart_view_dict[ self.currentIndex() ] = chart_view_vec
@@ -217,8 +122,8 @@ class ParamUI(QWidget):
         self.param_spinbox = dict()
         self.setLayout( QVBoxLayout() )
 
-    def add_spinboxes(self):
-        vl = self.layout()
+    def add_spinboxes(self, vl):
+        #vl = self.layout()
         for key in self.param.value:
             spinBox = createSpinbox(self.param.range[key], self.param.value[key], self.update_values, self.param.step[key], self.param.step[key] >= 1)
             self.param_spinbox[key] = spinBox
@@ -258,11 +163,21 @@ class EnvironmentUI(ParamUI):
         userLab = QLabel('Environment')
         userLab.setStyleSheet("QLabel { background-color : green; color : white; }");
         userLab.setAlignment(Qt.AlignHCenter)
-        vl = self.layout()
+        vl2 = self.layout()
 
-        vl.addWidget(userLab)
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        container = QWidget()
+        scrollArea.setWidget(container)
+        vl2.addWidget(userLab)
+        vl2.addWidget(scrollArea)
+        
+        vl = QVBoxLayout()
+        container.setLayout(vl)
 
-        self.add_spinboxes()
+
+        self.add_spinboxes(vl)
 
         self.seqLineEdit = QLineEdit()
         vl.addWidget(self.seqLineEdit)
@@ -390,6 +305,30 @@ class Window(QWidget):
         exploration_button = QPushButton("Exhaustive Test")
         exploration_button.clicked.connect( self.explore )
 
+        test_model_lab = QLabel("Test")
+        test_model_lab.setStyleSheet("QLabel { background-color : purple; color : white; }")
+        test_model_lab.setAlignment(Qt.AlignHCenter)
+
+        path_lab = QLabel("Path: ")
+        path_lab.setMaximumWidth(40)
+        self.user_data_edit = QLineEdit()
+        test_path_layout = QHBoxLayout()
+        self.user_data_edit.setText('./experiment/grossman_cleaned_data.csv')
+        self.user_data_edit.setMaximumWidth( max_w - 50 )
+        test_path_layout.addWidget(path_lab)
+        test_path_layout.addWidget(self.user_data_edit)
+
+        filter_lab = QLabel("Filter: ")
+        filter_lab.setMaximumWidth( 40 )
+        self.filter_edit = QLineEdit()
+        test_filter_layout = QHBoxLayout()
+        self.filter_edit.setText('user_id=1')
+        self.filter_edit.setMaximumWidth( max_w - 50 )
+        test_filter_layout.addWidget(filter_lab)
+        test_filter_layout.addWidget(self.filter_edit)
+
+        test_button = QPushButton("test")
+        test_button.clicked.connect( self.test_model )
 
         param_layout = QVBoxLayout()
         mainLayout.addLayout(param_layout)
@@ -398,8 +337,14 @@ class Window(QWidget):
         param_layout.addWidget(exploration_lab)
         param_layout.addWidget(self.exploration_edit)
         param_layout.addWidget(exploration_button)
+        param_layout.addWidget(test_model_lab)
+        param_layout.addLayout(test_path_layout)
+        param_layout.addLayout(test_filter_layout)
+        param_layout.addWidget(test_button)
 
 
+
+        #######################
         n_episodeLab = QLabel("# episodes: ")
         self.n_episodeSpinBox = createSpinbox([1,100],1,self.update_values,10,isSpinbox=True)
         launch_button = QPushButton('Launch')
@@ -501,6 +446,16 @@ class Window(QWidget):
 
 
     ###########################
+    def test_model(self):
+        print("test model")
+        filename = self.user_data_edit.text()
+        _filter = self.filter_edit.text()
+        sims = self.simulator.test_model(self.model, filename, _filter)
+        view_vec = self.simulatorUI.add_sims(sims, "Test", True)
+        self.envUI.refresh()
+
+
+    ###########################
     def save(self):
         index = self.simulatorUI.currentIndex()
         self.save_chart_views( self.simulatorUI.chart_view_dict[index] )
@@ -552,10 +507,11 @@ class Model_View(ParamUI):
     def __init__(self, model):
         super().__init__(model.params)
         self.model = model
-        self.add_spinboxes()
+        self.add_spinboxes( self.layout() )
         lab = QLabel(self.model.description)
         lab.setWordWrap(True)
         self.layout().addWidget(lab)
+
 
     ##############################
     def update_values(self):

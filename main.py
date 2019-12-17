@@ -56,15 +56,18 @@ class Simulator(object):
     # Test model against empirical data
     # 
     ###################################
-    def test_model(self, model, user_data):
+    def test_model(self, model, filename, _filter):
+        experiment = Experiment( filename, _filter )
         sims = []
 
-        for d in user_data:
+        for d in experiment.data:
             data = copy.deepcopy(d)
-            model.reset()
+
             self.env.cmd_seq = copy.copy(data.cmd)
             self.env.value['n_commands'] = len( data.commands )
             self.env.value['n_strategy'] = 2
+            self.env.commands = data.commands
+            model.reset()
 
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
@@ -78,10 +81,11 @@ class Simulator(object):
 
                 user_step = StepResult()
                 user_step.cmd = cmd
-                user_step.action = data.user_action[date]
-                user_step.time = data.user_time[date]
-                user_step.success = 1 - int( data.user_errors[date] > 0 )
 
+                user_step.action = Action(cmd, data.user_action[date])
+                user_step.time = data.user_time[date]
+                user_step.success = data.user_success[date] 
+                print("a_pred:", action.to_string(True), " m_user:", user_step.action.to_string(True), "time:", user_step.time)
                 model.update_model( user_step )
                 
             sims.append(data)

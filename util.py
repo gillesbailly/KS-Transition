@@ -152,7 +152,7 @@ class User_History(History):
         self.ub_id = []
         self.user_action = []
         self.user_time = []
-        self.user_errors = []
+        self.user_success = []
         
     ##################################
     def has_user_data(self):
