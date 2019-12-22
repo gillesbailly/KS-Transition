@@ -82,10 +82,11 @@ class Simulator(object):
                 user_step = StepResult()
                 user_step.cmd = cmd
 
-                user_step.action = Action(cmd, data.user_action[date])
+                user_step.action = Action(cmd,data.user_action[date].strategy)
                 user_step.time = data.user_time[date]
                 user_step.success = data.user_success[date] 
-                print("a_pred:", action.to_string(True), " m_user:", user_step.action.to_string(True), "time:", user_step.time)
+                #if cmd == 3:
+                #    print("a_pred:", action.to_string(True), " m_user:", user_step.action.to_string(True), "time:", user_step.time)
                 model.update_model( user_step )
                 
             sims.append(data)

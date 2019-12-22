@@ -51,8 +51,17 @@ class Rescorla_Wagner_Model(Model):
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
-        cleaned_time = time if time <7 else 7
+        cleaned_time = time if time <6.5 else 6.5
+
         self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - time -  self.memory.q[ a ] )
+
+        if action.cmd == 3:
+            q_menu = self.memory.q[ Action(3, Strategy.MENU).to_string() ]
+            q_hotkey = self.memory.q[ Action(3, Strategy.HOTKEY).to_string() ]
+            q_learning = self.memory.q[ Action(3, Strategy.LEARNING).to_string() ]
+
+            print("[", q_menu, q_hotkey, q_learning, "]")
+
 
 
     ###########################

@@ -55,7 +55,7 @@ class Win_Stay_Loose_Shift_Model(Model):
             if (self.memory.strategy[ cmd ] == Strategy.HOTKEY) and (self.memory.success[ cmd ] == True):
                 prob = [eps / 2., 1. - eps / 2. ] #hotkey win
             print(prob)
-            return np.random.choice( actions, 1, p=prob)[0]
+            return np.random.choice( actions, 1, p=prob)[0], prob
 
         else:
             prob = [0,0,0]

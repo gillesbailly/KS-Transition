@@ -33,6 +33,7 @@ def createCheckBoxLayout(checkBoxInfo, layout):
 ############################
 def createSpinbox(range,initialValue,handleValueChanged,step,isSpinbox=False):
     spinbox = QSpinBox() if isSpinbox else QDoubleSpinBox()
+    #spinbox = QSlider()
     spinbox.setRange(range[0],range[1])
     spinbox.setValue(initialValue)
     spinbox.setSingleStep(step)
@@ -208,6 +209,7 @@ class EnvironmentUI(ParamUI):
         if toUpdate:
             self.param.update()
         self.refresh()
+
 
     #########################
     def refresh(self):
