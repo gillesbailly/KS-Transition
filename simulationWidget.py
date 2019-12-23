@@ -90,18 +90,20 @@ class SimulatorUI(QTabWidget):
 
         l = self.add_page(name_sims)
         
-
         name_sims_lab = QLabel(name_sims)
         l.addWidget( name_sims_lab )
 
         for history in sims:
             chart_view = EpisodeView()
+            
+            show_pred = True
+            show_user = True if history.has_user_data() else False
+            chart_view.set_full_history(history, show_pred, show_user)
             l.addWidget(chart_view)
-            chart_view.set_full_history(history, True)
             if history.has_user_data():
-                chart_view_user = EpisodeView()
-                l.addWidget(chart_view_user)
-                chart_view_user.set_full_history(history, False)
+                 chart_view_user = EpisodeView()
+                 l.addWidget(chart_view_user)
+                 chart_view_user.set_full_history(history, False, True)
 
         print("add _sims: ", len(chart_view_vec) )
         self.chart_view_dict[ self.currentIndex() ] = chart_view_vec

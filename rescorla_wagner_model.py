@@ -60,7 +60,7 @@ class Rescorla_Wagner_Model(Model):
             q_hotkey = self.memory.q[ Action(3, Strategy.HOTKEY).to_string() ]
             q_learning = self.memory.q[ Action(3, Strategy.LEARNING).to_string() ]
 
-            print("[", q_menu, q_hotkey, q_learning, "]")
+            #print("[", q_menu, q_hotkey, q_learning, "]")
 
 
 
