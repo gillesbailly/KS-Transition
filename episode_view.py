@@ -96,7 +96,7 @@ class EpisodeData():
             self.cmd_id_series[cmd].append(i, time + 0.2 )   
             
             #if self.view.param["show_block"] and history.block_trial[i] == 0:
-            if self.history.block_trial[i] == 0:
+            if not self.model and self.history.block_trial[i] == 0:
                 self.block_id.append(i,0) 
 
 
@@ -147,7 +147,7 @@ class EpisodeView(QChartView):
             self.param["show_pred"] = False
         if type_value == "Model only":
             self.param["show_user"] = False
-        
+
         # for d in self.d:
         #     for id in d.history.commands:
         #         if d.model:
@@ -168,7 +168,8 @@ class EpisodeView(QChartView):
         for d in self.d:
             commands = d.history.commands
             params = d.history.params
-            user_id = d.history.user_id
+            if not d.model:
+                user_id = d.history.user_id
             for id in commands:
                 cmd = -1
                 if value < len( commands ):
