@@ -226,6 +226,9 @@ class Strategy(object):
     HOTKEY = 1
     LEARNING = 2
 
+class Strategy_Filter(Strategy):
+    NONE = -1
+    ALL = 10
 
 ###########################
 #   ACTION

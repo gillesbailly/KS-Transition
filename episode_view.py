@@ -1,7 +1,7 @@
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QSlider, QComboBox
+from PyQt5.QtWidgets import QSlider, QComboBox, QWidget, QHBoxLayout
 from util import *
 import sys
 
@@ -22,14 +22,14 @@ def create_scatter_series(name, marker_size, marker_shape, brush):
     series.setPen(Qt.transparent)
     return series
 
-def create_line_series(name, color):
+def create_line_series(name, color, size=1):
     series = QLineSeries()
     series.setUseOpenGL(True)
     series.setName(name)
-    #series.setBrush(brush)
-    #series.setMarkerSize(marker_size)
-    #series.setMarkerShape(marker_shape)
-    series.setPen(color)
+    pen = series.pen()
+    pen.setWidth(size);
+    pen.setColor(color);
+    series.setPen(pen);
     return series
 
 def my_scatter_symbol(c):
@@ -45,112 +45,242 @@ def my_scatter_symbol(c):
     return symbol
 
 
+
+
+##########################################
+#                                        #
+#             GROUP                      #
+#                                        #
+##########################################
+class Group():
+    def __init__(self, name, _type, size, default_color=Qt.white):
+        self.default_color = Qt.white
+        self.view = None
+        self.name = name
+        self.menu = dict()
+        self.hotkey = dict()
+        self.learning = dict()
+        self.type = _type
+        self.size = size
+        self.combo = QComboBox()
+        self.combo.activated.connect(self.select)
+        self.combo.setVisible( False )
+        self.combo.addItem("none")
+        self.combo.addItem("menu " + name)
+        self.combo.addItem("hotkey " + name)
+        self.combo.addItem("learning " + name)
+        self.combo.addItem("all")
+        self.combo.setCurrentText("all")
+        
+        self.filter = Strategy_Filter.ALL
+
+
+    ###########################
+    def load(self, commands):
+        for id in commands:
+            if self.type == "scatter" :
+                self.menu[id] = create_scatter_series("Menu", self.size, QScatterSeries.MarkerShapeCircle, Qt.blue if self.default_color == Qt.white else self.default_color)
+                self.hotkey[id] = create_scatter_series("Hotkey", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkGreen if self.default_color == Qt.white else self.default_color)
+                self.learning[id] = create_scatter_series("Menu Learning", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkMagenta if self.default_color == Qt.white else self.default_color)
+            elif self.type == "line" :
+                self.menu[id] = create_line_series("Prob", Qt.blue if self.default_color == Qt.white else self.default_color, self.size)
+                self.hotkey[id] = create_line_series("Prob", Qt.darkGreen if self.default_color == Qt.white else self.default_color, self.size)
+                self.learning[id] = create_line_series("Prob", Qt.darkMagenta if self.default_color == Qt.white else self.default_color, self.size)
+
+
+    ###########################
+    def select(self, v):
+        value = self.combo.currentText()
+        self.filter = Strategy_Filter.NONE
+        if "menu" in value :
+            self.filter = Strategy_Filter.MENU
+        if "hotkey" in value :
+            self.filter = Strategy_Filter.HOTKEY
+        if "learning" in value :
+            self.filter = Strategy_Filter.LEARNING
+        if "all" in value :
+            self.filter = Strategy_Filter.ALL
+        self.view.filter(-1)
+
+
+    ############################
+    def add_item(self, id, strategy, x, y):
+        if strategy == Strategy.MENU :
+            self.menu[id].append( x, y )
+        elif strategy == Strategy.HOTKEY:
+            self.hotkey[id].append(x,y)
+        elif strategy == Strategy.LEARNING:
+            self.learning[id].append(x,y )
+
+
+    ############################
+    def add_items(self, id, x, y_vec):   #len vec == 2 or 3 
+        self.menu[id].append( x, y_vec[0] )
+        self.hotkey[id].append( x, y_vec[1] )
+        if len(y_vec) ==3:
+            self.learning[id].append( x, y_vec[2] )
+
+
+    ##############################
+    def set_visible(self,id, visible):
+        self.menu[id].setVisible( visible and ( self.filter == Strategy_Filter.MENU or self.filter == Strategy_Filter.ALL) )
+        self.hotkey[id].setVisible( visible and ( self.filter == Strategy_Filter.HOTKEY or self.filter == Strategy_Filter.ALL))
+        self.learning[id].setVisible( visible and ( self.filter == Strategy_Filter.LEARNING or self.filter == Strategy_Filter.ALL))
+
+
+    ##############################
+    def set_all_visible(self, id, all, visible):
+        for cmd in self.menu.keys():
+            self.set_visible(cmd, visible and ( cmd == id or all ) )
+
+    ##############################
+    def add_to_chart(self, chart):
+        
+        for series in self.menu.values():
+            chart.addSeries(series)
+        for series in self.hotkey.values():
+            chart.addSeries(series)
+        for series in self.learning.values():
+            chart.addSeries(series)
+
 ##########################################
 #                                        #
 #    Proxy between history and View      #
 #                                        #
 ##########################################
 class EpisodeData():
-    def __init__(self, history, model):
+
+
+    def __init__(self, history, prediction, empirical_data ):
         self.history = history
 
-        self.menu_series = dict()
-        self.hotkey_series = dict()
-        self.learning_series = dict()
-
+        self.empirical_group = Group("user", "scatter", 10)
+        self.prediction_group = Group("prediction", "scatter", 10)
+        self.q_value_group = Group("q value", "line", 1)
+        self.prob_group = Group("prob", "line", 5)
+        self.empirical_error_group = Group("user_error", "scatter", 10, Qt.black)
+        self.prediction_error_group = Group("user_error", "scatter", 10, Qt.black)
+        
         self.user_action_prob_series = dict()
-
-        self.menu_q_series = dict()
-        self.hotkey_q_series = dict()
-        self.learning_q_series = dict()
-
-        self.menu_prob_series = dict()
-        self.hotkey_prob_series = dict()
-        self.learning_prob_series = dict()
-
-        self.error_series = dict()
-        self.cmd_id_series = dict()
+        #self.cmd_id_series = dict()
 
         self.block_id = None
-        self.model = model
+        self.prediction = prediction
+        self.empirical_data = empirical_data
         self.load_history()
         #self.add_to_view(self.view)
 
 
-    ###################
-    def load_history(self):
-        for id in self.history.commands:
-            self.menu_series[id] = create_scatter_series("Menu", 10, QScatterSeries.MarkerShapeCircle, Qt.blue)
-            self.hotkey_series[id] = create_scatter_series("Hotkey", 10, QScatterSeries.MarkerShapeCircle, Qt.darkGreen)
-            self.learning_series[id] = create_scatter_series("Menu Learning", 10, QScatterSeries.MarkerShapeCircle, Qt.darkMagenta)
-            
-            self.error_series[id] = create_scatter_series("Error", 10, QScatterSeries.MarkerShapeRectangle, Qt.red )
-            self.cmd_id_series[id] = create_scatter_series("Cmd", 20, QScatterSeries.MarkerShapeCircle, QBrush( my_scatter_symbol( str(id) ) ))
-            self.user_action_prob_series[id] = create_line_series("Prob", Qt.yellow)
-            
-            self.menu_prob_series[id] = create_line_series("Prob", Qt.blue)
-            self.hotkey_prob_series[id] = create_line_series("Prob", Qt.darkGreen)
-            self.learning_prob_series[id] = create_line_series("Prob", Qt.darkMagenta)
-            
-            self.menu_q_series[id] = create_line_series("Prob", Qt.blue)
-            self.hotkey_q_series[id] = create_line_series("Prob", Qt.darkGreen)
-            self.learning_q_series[id] = create_line_series("Prob", Qt.darkMagenta)
+    def set_visible(self, id, all, show_prediction, show_empirical_data):
+        self.empirical_group.set_all_visible(id , all, show_empirical_data)
+        self.empirical_error_group.set_all_visible(id , all,  show_empirical_data)
+
+        self.prediction_group.set_all_visible(id , all,  show_prediction)
+        self.q_value_group.set_all_visible(id , all,  show_prediction)
+        self.prob_group.set_all_visible(id , all,  show_prediction)
+        self.prediction_error_group.set_all_visible(id , all,  show_prediction)
+
+        
+        for cmd in self.user_action_prob_series.keys():
+            self.user_action_prob_series[cmd].setVisible( show_prediction and (cmd == id or all) )
             
 
+    ##############################
+    def attach_control(self, layout ):
+        layout.addWidget(self.empirical_group.combo)
+        layout.addWidget(self.prediction_group.combo)
+        layout.addWidget(self.q_value_group.combo)
+        layout.addWidget(self.prob_group.combo)
+        layout.addWidget(self.empirical_error_group.combo)
+        layout.addWidget(self.prediction_error_group.combo)
+        
+    def set_view(self, view):
+        self.empirical_group.view = view
+        self.prediction_group.view = view
+        self.q_value_group.view = view
+        self.prob_group.view = view
+        self.empirical_error_group.view = view
+        self.prediction_error_group.view = view
+
+    ##############################
+    def add_series_to_chart(self, chart):
+        self.empirical_group.add_to_chart(chart)
+        self.prediction_group.add_to_chart(chart)
+        self.q_value_group.add_to_chart(chart)
+        self.prob_group.add_to_chart(chart)
+        self.empirical_error_group.add_to_chart(chart)
+        self.prediction_error_group.add_to_chart(chart)
+
+        for id in self.history.commands:
+            chart.addSeries( self.user_action_prob_series[id] )
+        chart.addSeries( self.block_id )
+
+
+    ##############################
+    def load_history(self):
+        self.empirical_group.load(self.history.commands)
+        self.empirical_error_group.load(self.history.commands)
+        self.prediction_group.load(self.history.commands)
+        self.prediction_error_group.load(self.history.commands)
+        self.q_value_group.load(self.history.commands)
+        self.prob_group.load(self.history.commands)
+
+        for id in self.history.commands:
+            #self.cmd_id_series[id] = create_scatter_series("Cmd", 20, QScatterSeries.MarkerShapeCircle, QBrush( my_scatter_symbol( str(id) ) ))
+            self.user_action_prob_series[id] = create_line_series("Prob", Qt.yellow, 1)
             self.block_id = create_scatter_series("Block", 7, QScatterSeries.MarkerShapeCircle, Qt.black)
 
-        action_vec = self.history.action if self.model else self.history.user_action
-        time_vec = self.history.time if self.model else self.history.user_time
-        success_vec = self.history.success if self.model else self.history.user_success 
+        
+        if self.prediction:
+            action_vec = self.history.action 
+            time_vec = self.history.time 
+            success_vec = self.history.success  
 
-        for i in range( len(action_vec) ):
-            #print(i, history.action[i].bin_number, history.time[i])
-            s = action_vec[i].strategy
-            cmd = self.history.cmd[i]    #add the id of the comand on the graph
-            time = round(time_vec[i],1)
-            time = min(time,7)
-            if s == Strategy.MENU :
-                self.menu_series[cmd].append( i, time )
+            for i in range( len(action_vec) ):
+                s = action_vec[i].strategy
+                cmd = self.history.cmd[i]    #add the id of the comand on the graph
+                time = round(time_vec[i],1)
+                time = min(time,7)
 
-            elif s == Strategy.HOTKEY:
-                self.hotkey_series[cmd].append(i, time)
+                self.prediction_group.add_item(cmd, s, i, time)
+                if success_vec[i] == 0:
+                    y = 0.0
+                    self.prediction_error_group.add_item(cmd, s, i, y )
 
-            elif s == Strategy.LEARNING:
-                self.learning_series[cmd].append(i, time )
-
-            if success_vec[i] == 0:
-                #y = time if self.view.param["error_on_place"] else 0.0
-                y = 0.0
-                self.error_series[cmd].append(i, y )
-            
-            #if self.view.param["show_cmd_id"]:
-            self.cmd_id_series[cmd].append(i, time + 0.2 )   
-            
-            #if self.view.param["show_block"] and history.block_trial[i] == 0:
-            if not self.model and self.history.block_trial[i] == 0:
-                self.block_id.append(i,0) 
-
-            if self.model:
                 self.user_action_prob_series[cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
                 
-                prob_vec = self.history.prob_vec[i]
-                self.menu_prob_series[cmd].append(i, prob_vec[0] * float(max_y) )
-                self.hotkey_prob_series[cmd].append(i, prob_vec[1] * float(max_y) )
-                if len(prob_vec) == 3: # menu, hotkey, learning
-                    self.learning_prob_series[cmd].append(i, prob_vec[2] * float(max_y) )
-
+                prob_vec = np.array( self.history.prob_vec[i] ) * float(max_y)
+                self.prob_group.add_items(cmd, i, prob_vec )
 
                 if len( self.history.q_value_vec) > 0 :
                     q_vec = self.history.q_value_vec[i]
-                    self.menu_q_series[cmd].append(i, q_vec[0] )
-                    self.hotkey_q_series[cmd].append(i, q_vec[1] )
-                    if len(q_vec) == 3: # menu, hotkey, learning
-                        self.learning_q_series[cmd].append(i, q_vec[2] )
+                    self.q_value_group.add_items(cmd, i, q_vec)
+            
+            #self.cmd_id_series[cmd].append(i, time + 0.2 )   
+        if self.empirical_data:
+            action_vec =  self.history.user_action
+            time_vec =  self.history.user_time
+            success_vec =  self.history.user_success 
 
-                    #self.menu_prob_series[cmd].append(i, prob_vec[0] * float(max_y) )
-                    #self.hotkey_prob_series[cmd].append(i, prob_vec[1] * float(max_y) )
-                    #if len(prob_vec) == 3: # menu, hotkey, learning
-                    #    self.learning_prob_series[cmd].append(i, prob_vec[2] * float(max_y) )
+            for i in range( len(action_vec) ):
+                s = action_vec[i].strategy
+                cmd = self.history.cmd[i]    #add the id of the comand on the graph
+                time = round(time_vec[i],1)
+                time = min(time,7)
+
+                self.empirical_group.add_item(cmd, s, i, time)
+                if success_vec[i] == 0:
+                    y = 0.0
+                    self.empirical_error_group.add_item(cmd, s, i, time )
+
+                self.user_action_prob_series[cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
+
+                if self.history.block_trial[i] == 0:
+                    self.block_id.append(i,0) 
+
+    
+
+
                 
 ##########################################
 #                                        #
@@ -169,173 +299,86 @@ class EpisodeView(QChartView):
         self.setMinimumHeight(300)
         self.d =[]
         self.param = dict()
-        self.param["show_cmd_id"] = False
-        self.param["show_block"] = True
-        self.param["error_on_place"] = False    #not used...
-        self.param["show_pred"] = False
-        self.param["show_user"] = False
-        self.param["show_menu_prob"] = False
-        self.param["show_learning_prob"] = False
-        self.param["show_hotkey_prob"] = False
-        self.param["show_user_action_prob"] = False
-
-        self.param["show_menu_q"] = False
-        self.param["show_learning_q"] = False
-        self.param["show_hotkey_q"] = False
+        #self.param["show_cmd_id"] = False
+        #self.param["show_block"] = True
+        #self.param["error_on_place"] = False    #not used...
+        self.param["show_prediction"] = False
+        self.param["show_empirical_data"] = False
         
         self.slider = QSlider(Qt.Horizontal,self)
         self.slider.setMinimum(0)
         self.slider.setSingleStep(1)
         self.slider.valueChanged.connect( self.filter )
 
-        self.type_combo = QComboBox(self)
-        self.type_combo.move(90,10)
-        self.type_combo.activated.connect(self.select_type)
-        self.type_combo.setVisible( False )
+        self.user_combo = QComboBox()
+        self.user_combo.activated.connect(self.select)
+        self.user_combo.setVisible( False )
+        self.user_combo.addItem("None")
+
+        control_widget = QWidget(self)
+        self.h_layout = QHBoxLayout()
+        control_widget.setLayout(self.h_layout)
+        self.h_layout.addWidget( self.slider )
+        self.h_layout.addWidget( self.user_combo )
+        control_widget.move(0,0)
+        control_widget.resize(600,100)
+        control_widget.setVisible( True )
         
-        self.prob_combo = QComboBox(self)
-        self.prob_combo.move(210,10)
-        self.prob_combo.activated.connect(self.select_prob)
-        self.prob_combo.addItem("None")
-        self.prob_combo.addItem("Show menu prob")
-        self.prob_combo.addItem("Show hotkey prob")
-        self.prob_combo.addItem("Show learning prob")
-        self.prob_combo.addItem("Show user action prob")
-        self.prob_combo.addItem("Show all probs")
-        self.prob_combo.setCurrentText("Show all probs")
-        self.prob_combo.setVisible( False )
-               
-        self.q_combo = QComboBox(self)
-        self.q_combo.move(380,10)
-        self.q_combo.activated.connect(self.select_q)
-        self.q_combo.addItem("None")
-        self.q_combo.addItem("Show menu q values")
-        self.q_combo.addItem("Show hotkey q values")
-        self.q_combo.addItem("Show learning q values")
-        self.q_combo.addItem("Show all q values")
-        self.q_combo.setCurrentText("Show all probs")
-        self.q_combo.setVisible( False )
-
-
-    ######################
-    def select_type(self, value):
-        type_value = self.type_combo.currentText()
-        print("type value: ", type_value)
-        self.param["show_pred"] = True
-        self.param["show_user"] = True
-        if type_value == "User only":
-            self.param["show_pred"] = False
-        if type_value == "Model only":
-            self.param["show_user"] = False
-        
-        self.filter(self.slider.value() )
-
-
-    ######################
-    def select_q(self, value):
-        q_value = self.q_combo.currentText()
-        print("q value: ", q_value)
-        self.param["show_menu_q"] = False
-        self.param["show_hotkey_q"] = False
-        self.param["show_learning_q"] = False
-
-        if "menu" in q_value :
-            self.param["show_menu_q"] = True
-        if "hotkey" in q_value :
-            self.param["show_hotkey_q"] = True
-        if "learning" in q_value :
-            self.param["show_learning_q"] = True
-        if "all" in q_value :
-            self.param["show_menu_q"] = True
-            self.param["show_hotkey_q"] = True
-            self.param["show_learning_q"] = True
-        
-        self.filter( self.slider.value() )
-
-
-    ######################
-    def select_prob(self, value):
-        prob_value = self.prob_combo.currentText()
-        print("prob value: ", prob_value)
-        self.param["show_menu_prob"] = False
-        self.param["show_hotkey_prob"] = False
-        self.param["show_learning_prob"] = False
-        self.param["user_action_prob"] = False
-
-        if "menu" in prob_value :
-            self.param["show_menu_prob"] = True
-        if "hotkey" in prob_value :
-            self.param["show_hotkey_prob"] = True
-        if "learning" in prob_value :
-            self.param["show_learning_prob"] = True
-        if "action" in prob_value :
-            self.param["show_user_action_prob"] = True
-        if "all" in prob_value :
-            self.param["show_menu_prob"] = True
-            self.param["show_hotkey_prob"] = True
-            self.param["show_learning_prob"] = True
-            self.param["show_user_action_prob"] = True
-        
-        self.filter(self.slider.value() )
-
-
-
-
-
+     
+    
     ######################    
-    def filter(self, value):
+    def filter(self, v):
         #todo. We do not manage title very well as it takes information from the last d
         #functon only works if d.history has the same commands vec
+        value = self.slider.value()
         params = None
         user_id = -1
-        print(value)
         for d in self.d:
             commands = d.history.commands
             params = d.history.params
-            if not d.model:
+            if d.empirical_data:
                 user_id = d.history.user_id
-            for id in commands:
-                cmd = -1
-                if value < len( commands ):
-                    cmd = commands[value]
-                    
-                type_visible = True if (self.param["show_pred"] and d.model) or (self.param["show_user"] and not d.model) else False
-                visible = ((value == len( commands) ) or id == cmd) and type_visible
-                self.set_type_series_visible(d, id, visible)
+            
+
+            cmd = -1
+            show_all = False
+            if value < len( commands ):
+                cmd = commands[value]
+            else: 
+                show_all = True
+
+            d.set_visible(cmd, show_all, self.param["show_prediction"], self.param["show_empirical_data"])  
                 
-                prob_visible = (value < len(commands)) and ( id == cmd )
-                self.set_prob_series_visible(d, id, prob_visible)
-                self.set_q_series_visible(d, id, prob_visible)
 
-
-
-        self.update_title(cmd, self.param["show_pred"], user_id, params)
+        self.update_title(cmd, self.param["show_prediction"], user_id, params)
   
 
     ######################    
-    def set_full_history(self, history, show_pred=False, show_user=False):   
+    def set_full_history(self, history, show_prediction=False, show_empirical_data=False):   
         self.chart().removeAllSeries()
-        self.param["show_pred"] = show_pred
-        self.param["show_user"] = show_user
+        self.param["show_prediction"] = show_prediction
+        self.param["show_empirical_data"] = show_empirical_data
         self.commands = history.commands
-        if show_pred:
-            data = EpisodeData( history, True )
-            self.add_data( data )
-            self.type_combo.addItem("Model only")
-            self.type_combo.setCurrentText("Model only")
-            self.prob_combo.setVisible( True )
-            self.q_combo.setVisible( True )
+        data = EpisodeData( history, show_prediction, show_empirical_data )
+        data.add_series_to_chart( self.chart() )
+        data.attach_control( self.h_layout )
+        data.set_view( self )
+        self.d.append( data )
 
-        if show_user:
-            data = EpisodeData( history, False )
-            self.type_combo.addItem("User only")
-            self.type_combo.setCurrentText("User only")
-            self.add_data( data )
+        if show_prediction:
+            self.user_combo.addItem("Model only")
+            self.user_combo.setCurrentText("Model only")
+            data.prob_group.combo.setVisible( True )
+            data.q_value_group.combo.setVisible( True )
+
+        if show_empirical_data:
+            self.user_combo.addItem("User only")
+            self.user_combo.setCurrentText("User only")
             
-        if show_pred and show_user:
-            self.type_combo.addItem("User & Model")
-            self.type_combo.setCurrentText("User & Model")
-            self.type_combo.setVisible(True)
+        if show_prediction and show_empirical_data:
+            self.user_combo.addItem("Both")
+            self.user_combo.setCurrentText("Both")
+            self.user_combo.setVisible(True)
 
         self.slider.setMaximum( len(self.commands) )
         self.slider.setValue( len(self.commands) )
@@ -353,52 +396,19 @@ class EpisodeView(QChartView):
         cmd_title = "all commands" if cmd == -1 else "command " + str(cmd)
         self.chart().setTitle( type_title + " data for " + cmd_title + " " + params)
 
+    ###########################
+    def select(self, v):
+        value = self.user_combo.currentText()
+        self.param["show_empirical_data"] = False
+        self.param["show_prediction"] = False
+        if "User" in value :
+            self.param["show_empirical_data"] = True
+        if "Model" in value :
+            self.param["show_prediction"] = True
+        if "Both" in value :
+            self.param["show_empirical_data"] = True
+            self.param["show_prediction"] = True
+        self.filter( self.slider.value() )
 
-    ############################
-    def add_data(self, d):
-        self.d.append( d )
-        for id in d.history.commands:
-            self.chart().addSeries(d.menu_prob_series[id])
-            self.chart().addSeries(d.hotkey_prob_series[id])
-            self.chart().addSeries(d.learning_prob_series[id])
-            self.chart().addSeries(d.user_action_prob_series[id])
-
-            self.chart().addSeries(d.menu_q_series[id])
-            self.chart().addSeries(d.hotkey_q_series[id])
-            self.chart().addSeries(d.learning_q_series[id])
-
-            self.chart().addSeries(d.menu_series[id])
-            self.chart().addSeries(d.hotkey_series[id])
-            self.chart().addSeries(d.learning_series[id])
-            self.chart().addSeries(d.error_series[id])
-
-            if self.param["show_cmd_id"]:
-                self.chart().addSeries(d.cmd_id_series[id])
-
-        if self.param["show_block"]:
-            self.chart().addSeries( d.block_id )
-
-
-    ##############################
-    def set_q_series_visible(self,d, id, visible):
-        d.menu_q_series[id].setVisible( visible and self.param["show_menu_q"] )
-        d.hotkey_q_series[id].setVisible( visible and self.param["show_hotkey_q"])
-        d.learning_q_series[id].setVisible( visible and self.param["show_learning_q"] )
-
-
-    ##############################
-    def set_prob_series_visible(self,d, id, visible):
-        d.menu_prob_series[id].setVisible( visible and self.param["show_menu_prob"] )
-        d.hotkey_prob_series[id].setVisible( visible and self.param["show_hotkey_prob"])
-        d.learning_prob_series[id].setVisible( visible and self.param["show_learning_prob"] )
-        d.user_action_prob_series[id].setVisible( visible and self.param["show_user_action_prob"])
-
-        
-    ##############################
-    def set_type_series_visible(self,d, id, visible):
-        if d.menu_series[id].isVisible() != visible:
-            d.menu_series[id].setVisible( visible )
-            d.hotkey_series[id].setVisible( visible )
-            d.learning_series[id].setVisible( visible )
-            d.error_series[id].setVisible( visible )
+    
 
