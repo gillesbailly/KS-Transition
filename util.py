@@ -85,7 +85,8 @@ class History(object):
         
         self.cmd = []                               # selected commands (== command_sequence)
         self.action = []                            # predicted action (e.g. Menu, KS, optionally, ML)
-        self.action_prob = []                       # probability that the menu chooses each action. this is a vec of three values
+        self.prob_vec = []                          # probability that the user chooses each action. this is a vec of three values
+        self.q_value_vec = []                             # q_values
         self.time = []                              # predicted time
         self.success = []                           # predicted success
 
@@ -113,10 +114,10 @@ class History(object):
 
 
     ##################################
-    def update_history(self, cmd, action, action_prob, t, success):
+    def update_history(self, cmd, action, prob_vec, t, success):
         self.cmd.append(cmd)
         self.action.append( action )
-        self.action_prob.append( action_prob )
+        self.prob_vec.append( prob_vec )
         self.time.append(t)
         self.success.append(success)
 
@@ -153,6 +154,9 @@ class User_History(History):
         self.user_action = []
         self.user_time = []
         self.user_success = []
+
+        self.user_action_prob = []
+        self.log_likelyhood = 0
         
     ##################################
     def has_user_data(self):

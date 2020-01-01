@@ -39,10 +39,9 @@ class Win_Stay_Loose_Shift_Model(Model):
         self.memory = Win_Stay_Loose_Shift_Model.Memory(env)
         self.description = "The win-stay-lose-shift model is one of the simplest models that adapts its behavior according to feedback. Consistent with the name, the model repeats rewarded actions and switches away from unrewarded actions. In the noisy version of the model, the win-stay-lose-shift rule is applied probabilistically, such that the model applies the win-stay-lose-shift rule with probability 1 − eps, and chooses randomly with probability eps. "
         
-        
     ##########################
-    def select_action(self, cmd, date):
-        actions = self.get_actions_from( cmd )
+    def action_probs(self, cmd, date):
+       
         eps = self.params.value['eps']
 
         if len(actions) == 2:
@@ -72,8 +71,8 @@ class Win_Stay_Loose_Shift_Model(Model):
                         prob[a.strategy] = (1. - eps / 3.)/2.
         prob = np.array(prob)
         prob = prob / sum(prob)
-        print(prob)
-        return np.random.choice( actions, 1, p=prob)[0], prob  
+        return prob
+
 
 
     ###########################

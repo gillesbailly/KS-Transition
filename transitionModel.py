@@ -48,6 +48,10 @@ class TransitionModel(Model):
 
 
     ########################################
+    def action_probs(self, cmd, date):
+        raise ValueError("this method is not defined (yet) for the model Transition model")
+
+    ########################################
     def select_action(self, cmd_id, date):
         kernel = copy.deepcopy(self.kernel)
         root_node = Node("R-", cmd= cmd_id, date = date, kernel = kernel, time =0, a_min = -1)

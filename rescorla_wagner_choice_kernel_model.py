@@ -38,11 +38,11 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
         super().__init__("rescorla_wagner_choice_kernel", env)
         self.description = "This model mixes the reinforcement learning model with the choice kernel model: The values update according to the reward (alpha, beta), while capturing the tendency for people to repeat their previous actions."
         self.memory = Rescorla_Wagner_Choice_Kernel_Model.Memory(env)
-        self.max_time = 2
+        self.max_time = 7
 
 
     ##########################
-    def select_action(self, cmd, date):
+    def action_prob(self, cmd, date):
         actions = self.get_actions_from( cmd )
         
         q_vec = []
@@ -56,15 +56,15 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
         prob = compound_soft_max( self.params.value['beta'], q_vec, self.params.value['beta_c'], CK_vec)
         prob = np.array(prob)
         prob = prob / sum(prob)
-        return np.random.choice( actions, 1, p=prob)[0], prob
+        return prob
 
 
     ###########################
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
-
-        self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - time -  self.memory.q[ a ] )
+        cleaned_time = time if time <6.5 else 6.5
+        self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - cleaned_time -  self.memory.q[ a ] )
 
 
     ###########################

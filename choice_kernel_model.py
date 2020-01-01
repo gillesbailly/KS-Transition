@@ -35,7 +35,7 @@ class Choice_Kernel_Model(Model):
 
 
     ##########################
-    def select_action(self, cmd, date):
+    def action_probs(self, cmd, date):
         actions = self.get_actions_from( cmd )
         CK_vec = []
         for a in actions: 
@@ -43,7 +43,7 @@ class Choice_Kernel_Model(Model):
         prob = soft_max( self.params.value['beta_c'], CK_vec)
         prob = np.array(prob)
         prob = prob / sum(prob)
-        return np.random.choice( actions, 1, p=prob)[0], prob
+        return prob
 
 
     ###########################

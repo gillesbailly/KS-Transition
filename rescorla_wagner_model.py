@@ -23,8 +23,8 @@ class Rescorla_Wagner_Model(Model):
             self.q = dict()
             for cmd in env.commands:
                 self.q[ Action(cmd, Strategy.MENU).to_string() ] = 2
-                self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
-                self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
+                self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.5
+                self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.5
 
 
 
@@ -34,33 +34,43 @@ class Rescorla_Wagner_Model(Model):
         self.memory = Rescorla_Wagner_Model.Memory(env)
         self.max_time = 7
 
-        
     ##########################
-    def select_action(self, cmd, date):
+    def q_values(self, cmd, date):
         actions = self.get_actions_from( cmd )
         q_vec = []
         for a in actions: 
             q_vec.append( self.memory.q[ a.to_string() ] )
+        return q_vec
+
+    ##########################
+    def action_probs(self, cmd, date):
+        q_vec = self.q_values( cmd, date )
         prob = soft_max( self.params.value['beta'], q_vec)
         prob = np.array(prob)
         prob = prob / sum(prob)
-        return np.random.choice( actions, 1, p=prob)[0], prob
+        return prob
+
+    ###########################
+    def has_q_values(self):
+        return True
+    
 
 
     ###########################
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
+
         cleaned_time = time if time <6.5 else 6.5
 
-        self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - time -  self.memory.q[ a ] )
+        self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - cleaned_time -  self.memory.q[ a ] )
 
-        if action.cmd == 3:
-            q_menu = self.memory.q[ Action(3, Strategy.MENU).to_string() ]
-            q_hotkey = self.memory.q[ Action(3, Strategy.HOTKEY).to_string() ]
-            q_learning = self.memory.q[ Action(3, Strategy.LEARNING).to_string() ]
+        if action.cmd == 0:
+            q_menu = self.memory.q[ Action(0, Strategy.MENU).to_string() ]
+            q_hotkey = self.memory.q[ Action(0, Strategy.HOTKEY).to_string() ]
+            q_learning = self.memory.q[ Action(0, Strategy.LEARNING).to_string() ]
 
-            #print("[", q_menu, q_hotkey, q_learning, "]")
+            print(self.max_time, time, "[", q_menu, q_hotkey, q_learning, "]")
 
 
 

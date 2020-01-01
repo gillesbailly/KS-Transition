@@ -10,6 +10,7 @@ from experiment import *
 import csv
 import numpy as np
 from util import *
+from math import *
 
 
 
@@ -58,41 +59,59 @@ class Simulator(object):
     ###################################
     def test_model(self, model, filename, _filter):
         experiment = Experiment( filename, _filter )
-        sims = []
+        sims = self.test_model_data(model, experiment)
+        return sims
 
+        
+    ###################################
+    def test_model_data(self,model, experiment):
+        sims = []
+        
         for d in experiment.data:
             data = copy.deepcopy(d)
 
             self.env.cmd_seq = copy.copy(data.cmd)
             self.env.value['n_commands'] = len( data.commands )
-            self.env.value['n_strategy'] = 2
+            self.env.value['n_strategy'] = 3
             self.env.commands = data.commands
             model.reset()
+            log_likelyhood = 0
 
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
-                action, action_prob = model.select_action( cmd, date ) #action correct
+
+                action, prob_vec = model.select_action( cmd, date ) #action correct
                 res = model.generate_step(cmd, date, action)
                 
                 data.action.append( action )
-                data.action_prob.append( action_prob )
+                data.prob_vec.append( prob_vec )
                 data.time.append( res.time )
-                data.success.append( res.success ) 
+                data.success.append( res.success )
+                if model.has_q_values():
+                    data.q_value_vec.append( model.q_values( cmd, date ) )
 
                 user_step = StepResult()
                 user_step.cmd = cmd
 
                 user_step.action = Action(cmd,data.user_action[date].strategy)
                 user_step.time = data.user_time[date]
-                user_step.success = data.user_success[date] 
+                user_step.success = data.user_success[date]
+
+                user_action_prob = model.prob_from_action( user_step.action, date)
+                data.user_action_prob.append( user_action_prob)
+
+                log_likelyhood += log2(user_action_prob)
+                #print("likelyhood:", user_action_prob, log2(user_action_prob), log_likelyhood)
+                
+
                 #if cmd == 3:
                 #    print("a_pred:", action.to_string(True), " m_user:", user_step.action.to_string(True), "time:", user_step.time)
                 model.update_model( user_step )
                 
+            
+            data.log_likelyhood = log_likelyhood
             sims.append(data)
-        return sims
-
-
+        return sims        
 
 
     ###################################
@@ -114,10 +133,10 @@ class Simulator(object):
             
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
-                action, action_prob = model.select_action( cmd, date) #action correct
+                action, prob_vec = model.select_action( cmd, date) #action correct
                 res = model.generate_step(cmd, date, action)
                 model.update_model(res)
-                history.update_history(res.cmd, res.action, action_prob, res.time, res.success)
+                history.update_history(res.cmd, res.action, prob_vec, res.time, res.success)
 
             sims.append( history )
         return sims

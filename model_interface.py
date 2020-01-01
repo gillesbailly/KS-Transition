@@ -139,10 +139,28 @@ class Model(object):
         else:
             return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY)]
 
+    ##########################
     # should return an action and the prob for each action
-    def select_action(self, cmd_id, date):
+    def select_action(self, cmd, date):
+         actions = self.get_actions_from( cmd )
+         prob = self.action_probs(cmd, date)
+         return np.random.choice( actions, 1, p=prob)[0], prob  
+    
+
+    ###########################
+    def prob_from_action(self, a, date):
+        action_vec = self.get_actions_from( a.cmd )
+        prob = self.action_probs(a.cmd, date)
+        for i in range(0, len(action_vec)):
+            action = action_vec[i]
+            if action.cmd == a.cmd and action.strategy == a.strategy:
+                return prob[i]
+        raise ValueError("The action has not been found....", a, action_vec)
+        return -1
+
+    def action_probs(self, cmd, date):
         raise ValueError(" method to implement")
-        
+
     def initial_state(self):
         return 0
 
@@ -182,6 +200,11 @@ class Model(object):
             res.time += step.time * prob
             res.success += step.success * prob
 
+
+
+    ###########################
+    def has_q_values(self):
+        return False
 
     ###########################
     def generate_step(self, cmd_id, date, action):

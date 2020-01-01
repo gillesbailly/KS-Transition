@@ -18,11 +18,8 @@ class Random_Model(Model):
         #self.params = Parameters('./parameters/random_model.csv')
 
     ##########################
-    def select_action(self, cmd, date):
+    def action_probs(self, cmd, date):
         actions = self.get_actions_from( cmd )
-
-        #self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
-        #return random.choice( actions )
         b = self.params.value['b']
         prob = [ b ]
         if len(actions) == 2:   # Menu and Hotkey actions
@@ -30,7 +27,8 @@ class Random_Model(Model):
         else:                   # Menu, Hotkey and Learning actions
             prob.append( (1.-b) /2.)
             prob.append( (1.-b) /2.)
-        return np.random.choice( actions, 1, p=prob)[0], prob          
+        return prob
+
 
     ###########################
     def generate_step(self, cmd_id, date, action):
