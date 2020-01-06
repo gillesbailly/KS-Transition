@@ -13,7 +13,7 @@ from util import *
 class Experiment(object):
 
     ####################
-    def __init__(self, path, _filter):
+    def __init__(self, path, _filter=""):
         self.data = self.load(path, _filter)
         self.header =""
 
@@ -23,7 +23,7 @@ class Experiment(object):
         return res # [key, value]
 
     #######################
-    def load(self, path, _filter):
+    def load(self, path, _filter=""):
         if not path:
             raise("The path is not valid: ", path)
             return

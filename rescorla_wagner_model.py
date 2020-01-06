@@ -8,11 +8,10 @@ import copy
             
 
 
-#####################################
-#                                   #
-#   Random MODEL                    #
-#   Users select randomly an action #
-#   If error, users perform the correct menu action and got temporal penality for that ("error cost")
+###############################
+#                             #
+#   Rescorla Wagner MODEL     #
+#   alpha and beta.           #
 ###############################
 class Rescorla_Wagner_Model(Model):
 
@@ -65,12 +64,12 @@ class Rescorla_Wagner_Model(Model):
 
         self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - cleaned_time -  self.memory.q[ a ] )
 
-        if action.cmd == 0:
-            q_menu = self.memory.q[ Action(0, Strategy.MENU).to_string() ]
-            q_hotkey = self.memory.q[ Action(0, Strategy.HOTKEY).to_string() ]
-            q_learning = self.memory.q[ Action(0, Strategy.LEARNING).to_string() ]
+        # if action.cmd == 0:
+        #     q_menu = self.memory.q[ Action(0, Strategy.MENU).to_string() ]
+        #     q_hotkey = self.memory.q[ Action(0, Strategy.HOTKEY).to_string() ]
+        #     q_learning = self.memory.q[ Action(0, Strategy.LEARNING).to_string() ]
 
-            print(self.max_time, time, "[", q_menu, q_hotkey, q_learning, "]")
+        #     print(self.max_time, time, "[", q_menu, q_hotkey, q_learning, "]")
 
 
 

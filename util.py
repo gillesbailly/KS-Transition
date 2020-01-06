@@ -55,18 +55,29 @@ class Command(object):
 #   STEP RESULT
 ###########################
 class StepResult(object):
-    def __init__(self):
-        self.cmd = -1
-        self.state = None
-        self.next_state = None
-        self.action = None
-        self.time = -1
-        self.success = -1
-        self.is_terminal = False
+    # def __init__(self):
+    #     self.cmd = -1
+    #     #self.state = None
+    #     #self.next_state = None
+    #     self.action = None
+    #     self.time = -1
+    #     self.success = -1
+    #     #self.is_terminal = False
+
+    def __init__(self, cmd = -1, action = None, time = -1, success = -1):
+        self.cmd = cmd
+        self.action = action
+        self.time = time
+        self.success = success
 
 
-
-
+class FittingData(object):
+    def __init__(self, model, user_id, technique_id, log_likelyhood):
+        self.model_name = model.name
+        self.model_params = model.get_param_value_str()
+        self.user_id = user_id
+        self.technique_id = technique_id
+        self.log_likelyhood = log_likelyhood
 
 
 ###########################
@@ -99,6 +110,7 @@ class History(object):
     def has_user_data(self):
         return False
 
+
     ##################################
     def set_commands(self, cmd_ids, cmd_seq, cmd_name, cmd_frequency):
         self.commands = cmd_ids
@@ -114,7 +126,14 @@ class History(object):
 
 
     ##################################
-    def update_history(self, cmd, action, prob_vec, t, success):
+    def update_history_short(self, action, prob_vec, time, success):
+        self.action.append( action )
+        self.prob_vec.append( prob_vec )
+        self.time.append(time)
+        self.success.append(success)
+
+    ##################################
+    def update_history_long(self, cmd, action, prob_vec, t, success):
         self.cmd.append(cmd)
         self.action.append( action )
         self.prob_vec.append( prob_vec )

@@ -1,1 +1,1 @@
-parameter;id;value;min;max;step;commentb;b;0.7;0;1;0.05; overall bias for the option Menu P(Menu) = b; P(Hotkey) + P(Learning) = 1-b
+parameter;id;value;min;max;step;commentb;b;0.7;0;1;0.1; overall bias for the option Menu P(Menu) = b; P(Hotkey) + P(Learning) = 1-b

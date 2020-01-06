@@ -41,3 +41,6 @@ class Random_Model(Model):
 
     def update_model(self, step):
         pass
+
+    def reset(self):
+        pass

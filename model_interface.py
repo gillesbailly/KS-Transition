@@ -75,7 +75,9 @@ class Environment(Parameters):
     def __init__(self, path):
         super().__init__(path)
         self.commands = self.create_command_list( self.value['n_commands'] )
+        self.action_list = self.create_action_list()
         self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
+        
 
     ###################
     # create the list of commands in the application
@@ -84,7 +86,28 @@ class Environment(Parameters):
         for i in range(nb):
             l[i] = int(i)
         return l
+    
+    ###################
+    def create_action_list(self):
+        res =[]
+        for cmd in self.commands:
+            res.append( Action(cmd, Strategy.MENU) )
+            res.append( Action(cmd, Strategy.HOTKEY) )
+            if self.value['n_strategy'] == 3:
+                res.append( Action(cmd, Strategy.LEARNING) )
+        return res
 
+
+    ###################
+    def update_from_empirical_data( self, command_ids, command_seq, n_strategy ):
+        self.value['n_commands'] = len(command_ids)
+        self.value['n_strategy'] = n_strategy
+        self.commands = command_ids
+        self.cmd_seq = command_seq
+        self.create_action_list()
+
+
+    ##################
     def update(self):
         self.commands = self.create_command_list( self.value['n_commands'] )
         self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
@@ -110,13 +133,14 @@ class Model(object):
         
 
     def reset(self):
-    	pass
+    	raise ValueError(" model.reset(): method to implement ")
         
     def get_params(self):
         return self.params
 
     def get_param_value_str(self):
         return self.params.values_str()
+
 
     def set_params(self, params):
         self.params = params
@@ -125,13 +149,7 @@ class Model(object):
         return self.env.value['n_strategy']
 
     def get_all_actions(self):
-        res =[]
-        for cmd in self.env.commands:
-            res.append( Action(cmd, Strategy.MENU) )
-            res.append( Action(cmd, Strategy.HOTKEY) )
-            if self.n_strategy() == 3:
-                res.append( Action(cmd, Strategy.LEARNING) )
-        return res
+        return env.action_list
 
     def get_actions_from(self, cmd_id):
         if self.n_strategy() == 3:
@@ -139,12 +157,26 @@ class Model(object):
         else:
             return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY)]
 
+
+
+    ##############################
+    def choice(self,options,probs):
+        x = np.random.rand()
+        cum = 0
+        for i,p in enumerate(probs):
+            cum += p
+            if x < cum:
+                break
+        return options[i]
+
+
     ##########################
     # should return an action and the prob for each action
     def select_action(self, cmd, date):
          actions = self.get_actions_from( cmd )
-         prob = self.action_probs(cmd, date)
-         return np.random.choice( actions, 1, p=prob)[0], prob  
+         probs = self.action_probs(cmd, date)
+         return self.choice(actions, probs), probs
+         #return np.random.choice( actions, 1, p=prob)[0], prob  
     
 
     ###########################
@@ -187,18 +219,18 @@ class Model(object):
         return t
 
 
-    ###########################
-    def generate_prob_step(self, cmd_id, date, action_prob):
-        action_vec = self.get_actions_from(cmd_id)
-        res = StepResult()
-        res.time = 0
-        res.success = 0
-        for i in range( len(action_prob) ):
-            action = action_vec[i]
-            prob = action_prob[i]
-            step = generate_step(cmd_id, date, action)
-            res.time += step.time * prob
-            res.success += step.success * prob
+    # ###########################
+    # def generate_prob_step(self, cmd_id, date, action_prob):
+    #     action_vec = self.get_actions_from(cmd_id)
+    #     res = StepResult()
+    #     res.time = 0
+    #     res.success = 0
+    #     for i in range( len(action_prob) ):
+    #         action = action_vec[i]
+    #         prob = action_prob[i]
+    #         step = generate_step(cmd_id, date, action)
+    #         res.time += step.time * prob
+    #         res.success += step.success * prob
 
 
 

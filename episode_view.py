@@ -58,6 +58,7 @@ class Group():
         self.view = None
         self.name = name
         self.menu = dict()
+        self.param = None
         self.hotkey = dict()
         self.learning = dict()
         self.type = _type
@@ -153,15 +154,17 @@ class EpisodeData():
 
     def __init__(self, history, prediction, empirical_data ):
         self.history = history
+        self.group = dict()
+        self.group[ "empirical" ]         = Group("empirical", "scatter", 10)
+        self.group[ "prediction" ]        = Group("prediction", "scatter", 10)
+        self.group[ "q value" ]           = Group("q value", "line", 1)
+        self.group[ "prob" ]              = Group("prob", "line", 5)
+        self.group[ "empirical_error" ]   = Group("empirical_error", "scatter", 20, Qt.red)
+        self.group[ "prediction_error" ]  = Group("prediction_error", "scatter", 20, Qt.black)
 
-        self.empirical_group = Group("user", "scatter", 10)
-        self.prediction_group = Group("prediction", "scatter", 10)
-        self.q_value_group = Group("q value", "line", 1)
-        self.prob_group = Group("prob", "line", 5)
-        self.empirical_error_group = Group("user_error", "scatter", 10, Qt.black)
-        self.prediction_error_group = Group("user_error", "scatter", 10, Qt.black)
+        self.individual = dict()
+        self.individual["user_action_prob"] = dict()
         
-        self.user_action_prob_series = dict()
         #self.cmd_id_series = dict()
 
         self.block_id = None
@@ -172,62 +175,55 @@ class EpisodeData():
 
 
     def set_visible(self, id, all, show_prediction, show_empirical_data):
-        self.empirical_group.set_all_visible(id , all, show_empirical_data)
-        self.empirical_error_group.set_all_visible(id , all,  show_empirical_data)
-
-        self.prediction_group.set_all_visible(id , all,  show_prediction)
-        self.q_value_group.set_all_visible(id , all,  show_prediction)
-        self.prob_group.set_all_visible(id , all,  show_prediction)
-        self.prediction_error_group.set_all_visible(id , all,  show_prediction)
-
-        
-        for cmd in self.user_action_prob_series.keys():
-            self.user_action_prob_series[cmd].setVisible( show_prediction and (cmd == id or all) )
+        for key in self.group.keys():
+            show = show_prediction
+            if "empirical" in key:
+                show = show_empirical_data
+            self.group[key].set_all_visible(id , all, show)
             
+
+        for key in self.individual.keys() :
+            show = show_prediction
+            if "empirical" in key :
+                show = show_empirical_data
+            ind = self.individual[key]
+            for cmd in ind.keys() :
+                ind[cmd].setVisible( show and (cmd == id or all) )    
+                
+    #############################
+    def activate_control(self, show_prediction):
+        for key in self.group.keys() : 
+            if not "empirical" in key :
+                self.group[ key ].combo.setVisible( show_prediction )         
 
     ##############################
     def attach_control(self, layout ):
-        layout.addWidget(self.empirical_group.combo)
-        layout.addWidget(self.prediction_group.combo)
-        layout.addWidget(self.q_value_group.combo)
-        layout.addWidget(self.prob_group.combo)
-        layout.addWidget(self.empirical_error_group.combo)
-        layout.addWidget(self.prediction_error_group.combo)
+        for g in self.group.values():
+            layout.addWidget( g.combo)
         
     def set_view(self, view):
-        self.empirical_group.view = view
-        self.prediction_group.view = view
-        self.q_value_group.view = view
-        self.prob_group.view = view
-        self.empirical_error_group.view = view
-        self.prediction_error_group.view = view
+        for g in self.group.values():
+            g.view = view
 
     ##############################
     def add_series_to_chart(self, chart):
-        self.empirical_group.add_to_chart(chart)
-        self.prediction_group.add_to_chart(chart)
-        self.q_value_group.add_to_chart(chart)
-        self.prob_group.add_to_chart(chart)
-        self.empirical_error_group.add_to_chart(chart)
-        self.prediction_error_group.add_to_chart(chart)
+        for g in self.group.values() :
+            g.add_to_chart( chart )
 
         for id in self.history.commands:
-            chart.addSeries( self.user_action_prob_series[id] )
+            for ind in self.individual.values() :
+                chart.addSeries( ind[id] )
+        
         chart.addSeries( self.block_id )
 
 
     ##############################
     def load_history(self):
-        self.empirical_group.load(self.history.commands)
-        self.empirical_error_group.load(self.history.commands)
-        self.prediction_group.load(self.history.commands)
-        self.prediction_error_group.load(self.history.commands)
-        self.q_value_group.load(self.history.commands)
-        self.prob_group.load(self.history.commands)
-
+        for g in self.group.values():
+            g.load( self.history.commands )
+        
         for id in self.history.commands:
-            #self.cmd_id_series[id] = create_scatter_series("Cmd", 20, QScatterSeries.MarkerShapeCircle, QBrush( my_scatter_symbol( str(id) ) ))
-            self.user_action_prob_series[id] = create_line_series("Prob", Qt.yellow, 1)
+            self.individual["user_action_prob"] [id] = create_line_series("user_action_prob", Qt.yellow, 1)
             self.block_id = create_scatter_series("Block", 7, QScatterSeries.MarkerShapeCircle, Qt.black)
 
         
@@ -242,19 +238,18 @@ class EpisodeData():
                 time = round(time_vec[i],1)
                 time = min(time,7)
 
-                self.prediction_group.add_item(cmd, s, i, time)
+                self.group["prediction"].add_item(cmd, s, i, time)
                 if success_vec[i] == 0:
                     y = 0.0
-                    self.prediction_error_group.add_item(cmd, s, i, y )
+                    self.group["prediction_error"].add_item(cmd, s, i, y )
 
-                self.user_action_prob_series[cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
-                
                 prob_vec = np.array( self.history.prob_vec[i] ) * float(max_y)
-                self.prob_group.add_items(cmd, i, prob_vec )
+                self.group["prob"].add_items(cmd, i, prob_vec )
 
                 if len( self.history.q_value_vec) > 0 :
                     q_vec = self.history.q_value_vec[i]
-                    self.q_value_group.add_items(cmd, i, q_vec)
+                    self.group["q value"].add_items(cmd, i, q_vec)
+                    
             
             #self.cmd_id_series[cmd].append(i, time + 0.2 )   
         if self.empirical_data:
@@ -268,15 +263,24 @@ class EpisodeData():
                 time = round(time_vec[i],1)
                 time = min(time,7)
 
-                self.empirical_group.add_item(cmd, s, i, time)
+                self.group["empirical"].add_item(cmd, s, i, time)
                 if success_vec[i] == 0:
                     y = 0.0
-                    self.empirical_error_group.add_item(cmd, s, i, time )
+                    self.group["empirical_error"].add_item(cmd, s, i, time )
 
-                self.user_action_prob_series[cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
+                #self.user_action_prob_series[cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
 
                 if self.history.block_trial[i] == 0:
-                    self.block_id.append(i,0) 
+                    self.block_id.append(i,0)
+
+        if self.prediction and self.empirical_data : 
+            for i in range( len(action_vec) ) :
+                cmd = self.history.cmd[i]
+                #print("episode view", i, cmd, len( self.history.cmd ))
+                #print( "len " , len( self.history.user_action_prob) )
+                #print( "value: ", self.history.user_action_prob[i] )
+                self.individual[ "user_action_prob" ][cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
+                
 
     
 
@@ -320,8 +324,8 @@ class EpisodeView(QChartView):
         control_widget.setLayout(self.h_layout)
         self.h_layout.addWidget( self.slider )
         self.h_layout.addWidget( self.user_combo )
-        control_widget.move(0,0)
-        control_widget.resize(600,100)
+        control_widget.move(0,-10)
+        control_widget.resize(800,50)
         control_widget.setVisible( True )
         
      
@@ -368,8 +372,7 @@ class EpisodeView(QChartView):
         if show_prediction:
             self.user_combo.addItem("Model only")
             self.user_combo.setCurrentText("Model only")
-            data.prob_group.combo.setVisible( True )
-            data.q_value_group.combo.setVisible( True )
+            data.activate_control( True )
 
         if show_empirical_data:
             self.user_combo.addItem("User only")
