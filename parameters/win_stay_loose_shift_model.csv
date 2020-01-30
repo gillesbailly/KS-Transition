@@ -1,1 +1,1 @@
-parameter;id;value;min;max;step;commenteps;eps;0.1;0;1;0.05; probability of a random choice
+parameter;id;value;min;max;step;commenteps;eps;0.2;0.05;1;0.05; probability of a random choice

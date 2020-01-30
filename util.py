@@ -17,26 +17,43 @@ def zipfian(s, N):
     return res
 
 
+########################
 def soft_max(beta, vec):
-    res = []
-    denum = 0
-    for v in vec:
-        denum += np.exp(beta * v)
-    for v in vec:
-        res.append( float( np.exp(beta*v) ) / float(denum) )
+    vec = vec * beta
+    return np.exp( vec ) / np.sum( np.exp( vec ), axis=0)
 
-    return res
 
+# ########################
+# def soft_max_vec(beta, vec):
+#     res = []
+#     denum = 0
+#     for v in vec:
+#         denum += np.exp(beta * v)
+#     for v in vec:
+#         res.append( float( np.exp(beta*v) ) / float(denum) )
+
+#     return res
+
+
+#######################
 def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
-    res = []
-    denum = 0
-    for (v1, v2) in zip( vec_1, vec_2 ):
-        denum += np.exp( beta_1 * v1 + beta_2 * v2 )
+    vec_1 = vec_1 * beta_1
+    vec_2 = vec_2 * beta_2     
+    return np.exp( vec_1 + vec_2 ) / np.sum( np.exp( vec_1 + vec_2 ), axis=0)
 
-    for (v1, v2) in zip( vec_1, vec_2 ) :
-        res.append( float( np.exp(beta_1 * v1 + beta_2 * v2 ) ) / float(denum) )
 
-    return res
+
+# #######################
+# def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
+#     res = []
+#     denum = 0
+#     for (v1, v2) in zip( vec_1, vec_2 ):
+#         denum += np.exp( beta_1 * v1 + beta_2 * v2 )
+
+#     for (v1, v2) in zip( vec_1, vec_2 ) :
+#         res.append( float( np.exp(beta_1 * v1 + beta_2 * v2 ) ) / float(denum) )
+
+#     return res
 
 
 
@@ -72,12 +89,14 @@ class StepResult(object):
 
 
 class FittingData(object):
-    def __init__(self, model, user_id, technique_id, log_likelyhood):
+    def __init__(self, model, user_id, technique_id, log_likelyhood, N, hotkey_count = -1):
         self.model_name = model.name
         self.model_params = model.get_param_value_str()
         self.user_id = user_id
         self.technique_id = technique_id
         self.log_likelyhood = log_likelyhood
+        self.hotkey_count = hotkey_count
+        self.N = N
 
 
 ###########################
@@ -176,11 +195,20 @@ class User_History(History):
 
         self.user_action_prob = []
         self.log_likelyhood = 0
+        self.hotkey_count = -1
         
     ##################################
     def has_user_data(self):
         return len(self.user_action) > 0
 
+    ##################################
+    def get_hotkey_count(self, re_estimate = False):
+        if self.hotkey_count == -1 or re_estimate:
+            self.hotkey_count = 0
+            for a in self.user_action:
+                if a.strategy == Strategy.HOTKEY:
+                    self.hotkey_count += 1
+        return self.hotkey_count
 
     ##################################
     def set_info(self, user_id, technique_id, technique_name):

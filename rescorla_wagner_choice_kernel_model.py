@@ -28,7 +28,7 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
                 self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
                 self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
 
-                self.CK[ Action(cmd, Strategy.MENU).to_string() ] = 0
+                self.CK[ Action(cmd, Strategy.MENU).to_string() ] = 1
                 self.CK[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0
                 self.CK[ Action(cmd, Strategy.LEARNING).to_string() ] = 0
 
@@ -42,22 +42,32 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
 
 
     ##########################
-    def action_prob(self, cmd, date):
-        actions = self.get_actions_from( cmd )
+    def q_values(self, cmd, date):
+        action_vec = self.get_actions_from( cmd )
+        q_vec = np.empty( len(action_vec) )
+        for i in range( 0, len(action_vec) ):
+            s = action_vec[i].to_string()
+            q_vec[i] = self.memory.q[ s ]
+        #for a in actions: 
+        #    q_vec.append( self.memory.q[ a.to_string() ] )
+        return q_vec
+
+
+    ##########################
+    def CK_values(self, cmd):
+        action_vec = self.get_actions_from(cmd)
+        CK_vec = np.empty( len(action_vec) )
+        for i in range( 0, len(action_vec) ) :
+            s = action_vec[i].to_string()
+            CK_vec[i] = self.memory.CK[ s ]
+        return CK_vec
+
+    ##########################
+    def action_probs(self, cmd, date):
+        q_vec = self.q_values( cmd, date )
+        CK_vec = self.CK_values(cmd)
+        return compound_soft_max( self.params.value['beta'], q_vec, self.params.value['beta_c'], CK_vec)
         
-        q_vec = []
-        for a in actions: 
-            q_vec.append( self.memory.q[ a.to_string() ] )
-
-        CK_vec = []
-        for a in actions: 
-            CK_vec.append( self.memory.CK[ a.to_string() ] )
-
-        prob = compound_soft_max( self.params.value['beta'], q_vec, self.params.value['beta_c'], CK_vec)
-        prob = np.array(prob)
-        prob = prob / sum(prob)
-        return prob
-
 
     ###########################
     def update_q_values(self, action, time):

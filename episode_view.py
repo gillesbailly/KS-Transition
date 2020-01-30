@@ -176,19 +176,15 @@ class EpisodeData():
 
     def set_visible(self, id, all, show_prediction, show_empirical_data):
         for key in self.group.keys():
-            show = show_prediction
-            if "empirical" in key:
-                show = show_empirical_data
-            self.group[key].set_all_visible(id , all, show)
+            self.group[key].set_all_visible(id , all, True)
+        self.group["empirical"].set_all_visible(id , all, show_empirical_data)
+        self.group["prediction"].set_all_visible(id , all, show_prediction)
+        
             
-
         for key in self.individual.keys() :
-            show = show_prediction
-            if "empirical" in key :
-                show = show_empirical_data
             ind = self.individual[key]
             for cmd in ind.keys() :
-                ind[cmd].setVisible( show and (cmd == id or all) )    
+                ind[cmd].setVisible( cmd == id or all )    
                 
     #############################
     def activate_control(self, show_prediction):

@@ -130,9 +130,9 @@ class Model(object):
         path = './parameters/'
         ext = '_model.csv'
         self.params = Parameters(path + self.name + ext)
-        
+        self.available_strategies = [ Strategy.HOTKEY ]
 
-    def reset(self):
+    def reset(self, technique_name):
     	raise ValueError(" model.reset(): method to implement ")
         
     def get_params(self):
@@ -146,16 +146,23 @@ class Model(object):
         self.params = params
 
     def n_strategy(self):
-        return self.env.value['n_strategy']
+        return len( self.available_strategies )
 
     def get_all_actions(self):
         return env.action_list
 
+    def set_available_strategies(self, strategies):
+        self.available_strategies = copy.copy(strategies)
+
     def get_actions_from(self, cmd_id):
-        if self.n_strategy() == 3:
-            return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY), Action(cmd_id, Strategy.LEARNING)]
-        else:
-            return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY)]
+        res = []
+        for s in self.available_strategies:
+            res.append( Action(cmd_id , s ) )
+        return res
+        #if self.n_strategy() == 3:
+        #    return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY), Action(cmd_id, Strategy.LEARNING)]
+        #else:
+        #    return [Action(cmd_id, Strategy.MENU), Action(cmd_id, Strategy.HOTKEY)]
 
 
 
@@ -217,21 +224,6 @@ class Model(object):
         if success == False:
             t += self.env.value['menu_time'] + self.env.value['error_cost']
         return t
-
-
-    # ###########################
-    # def generate_prob_step(self, cmd_id, date, action_prob):
-    #     action_vec = self.get_actions_from(cmd_id)
-    #     res = StepResult()
-    #     res.time = 0
-    #     res.success = 0
-    #     for i in range( len(action_prob) ):
-    #         action = action_vec[i]
-    #         prob = action_prob[i]
-    #         step = generate_step(cmd_id, date, action)
-    #         res.time += step.time * prob
-    #         res.success += step.success * prob
-
 
 
     ###########################

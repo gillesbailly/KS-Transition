@@ -35,19 +35,20 @@ class Rescorla_Wagner_Model(Model):
 
     ##########################
     def q_values(self, cmd, date):
-        actions = self.get_actions_from( cmd )
-        q_vec = []
-        for a in actions: 
-            q_vec.append( self.memory.q[ a.to_string() ] )
+        action_vec = self.get_actions_from( cmd )
+        q_vec = np.empty( len(action_vec) )
+        for i in range( 0, len(action_vec) ):
+            s = action_vec[i].to_string()
+            q_vec[i] = self.memory.q[ s ]
+        #for a in actions: 
+        #    q_vec.append( self.memory.q[ a.to_string() ] )
         return q_vec
 
     ##########################
     def action_probs(self, cmd, date):
         q_vec = self.q_values( cmd, date )
-        prob = soft_max( self.params.value['beta'], q_vec)
-        prob = np.array(prob)
-        prob = prob / sum(prob)
-        return prob
+        return soft_max( self.params.value['beta'], q_vec)
+        
 
     ###########################
     def has_q_values(self):
@@ -59,9 +60,7 @@ class Rescorla_Wagner_Model(Model):
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
-
         cleaned_time = time if time <6.5 else 6.5
-
         self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - cleaned_time -  self.memory.q[ a ] )
 
         # if action.cmd == 0:

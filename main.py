@@ -13,7 +13,10 @@ from util import *
 from math import *
 import time
 
-
+##########################################
+# how to deal with q0?
+# it is technique dependent
+# how to deal wiht errors...
 
 ##########################################
 #                                        #
@@ -59,7 +62,7 @@ class Simulator(object):
     # 
     ###################################
     def test_model(self, model, filename, _filter):
-        experiment = Experiment( filename, _filter )
+        experiment = Experiment( filename, env.value['n_strategy'], _filter )
         sims = self.test_model_data(model, experiment)
         return sims
 
@@ -71,12 +74,13 @@ class Simulator(object):
         for d in experiment.data:
             data = copy.deepcopy(d)
             self.env.update_from_empirical_data( copy.copy(data.commands), copy.copy(data.cmd), 3 )
-
-            model.reset()
+            available_strategies = self.strategies_from_technique( data.technique_name )
+            model.reset( available_strategies )
             log_likelyhood = 0
             data.model_name = model.name
             data.params = model.get_param_value_str()
             #print("debug env cmd seq: ", len(self.env.cmd_seq) )
+            #print( data.user_action )
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
 
@@ -91,8 +95,8 @@ class Simulator(object):
                 user_step = StepResult(cmd, Action(cmd,data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
                 user_action_prob = model.prob_from_action( user_step.action, date)
                 data.user_action_prob.append( user_action_prob)
-                if user_action_prob == 0:
-                    user_action_prob = 0.000001
+                #if user_action_prob == 0:
+                #    user_action_prob = 0.000001
                 log_likelyhood += log2(user_action_prob)
 
                 #update the model with empirical data
@@ -121,14 +125,14 @@ class Simulator(object):
             history.set_commands( self.env.commands, self.env.cmd_seq, None, None)
             history.set_model( model.name, model.get_param_value_str() )
             history.episode_id = i
-            model.reset()
+            model.reset( [Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING ] )
             
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
                 action, prob_vec = model.select_action( cmd, date) #action correct
                 res = model.generate_step(cmd, date, action)
                 model.update_model(res)
-                history.update_history(res.cmd, res.action, prob_vec, res.time, res.success)
+                history.update_history_long(res.cmd, res.action, prob_vec, res.time, res.success)
 
             sims.append( history )
         return sims
@@ -167,7 +171,7 @@ class Simulator(object):
 
     ###################################
     def analyze( self, model_vec, filename ):
-        experiment = Experiment( filename )
+        experiment = Experiment( filename, env.value['n_strategy'] )
         print("------------- EXPLORATION ---------------")
         model_name_vec = []
         for m in model_vec : 
@@ -175,11 +179,10 @@ class Simulator(object):
         print( "models: ", model_name_vec )
         
         sims = self.explore_model_and_parameter_space(model_vec, experiment)
-        print("------------- ANALYSIS ---------------")
-        self.save_loglikelyhood('./likelyhood/log.csv', sims)
-        for d in sims : 
-            print(d.model_name, d.model_params, d.user_id, d.technique_id, d.log_likelyhood)
-        return sims
+        
+        # for d in sims : 
+        #     print(d.model_name, d.model_params, d.user_id, d.technique_id, d.log_likelyhood)
+        # return sims
 
 
     def parse_params(self, params):
@@ -197,14 +200,15 @@ class Simulator(object):
     def save_loglikelyhood(self, filename, sims):
         with open(filename, mode='w') as log_file:
             writer = csv.writer(log_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ['model_name', 'user_id', 'technique_id', 'log_likelyhood', 'p1', 'p2', 'p3', 'p4', 'p5']
+            header = ['model_name', 'user_id', 'hotkey_count', 'technique_id', 'log_likelyhood', 'n_params', 'N', 'p1', 'p2', 'p3', 'p4', 'p5']
             writer.writerow( header)
     
             for d in sims:
                 name_vec, value_vec = self.parse_params( d.model_params )
-                for i in range( len( value_vec ), 5 ):
+                n_params = len( value_vec)
+                for i in range( n_params, 5 ):  # fill with null values
                     value_vec.append(-1)
-                row = [d.model_name, d.user_id, d.technique_id, d.log_likelyhood] + value_vec
+                row = [d.model_name, d.user_id, d.hotkey_count, d.technique_id, d.log_likelyhood, n_params, d.N] + value_vec
                 writer.writerow(row)
 
 
@@ -217,6 +221,10 @@ class Simulator(object):
             sims = self.explore_parameter_space(model, params, experiment)
             end = time.time()
             print("explore the model: ", model.name, " in ",  end - start)
+            print("------------- ANALYSIS ---------------")
+            file_name = './likelyhood/log_' + model.name + '.csv'
+            self.save_loglikelyhood(file_name, sims)
+
             res += sims
         return res
 
@@ -252,11 +260,20 @@ class Simulator(object):
         return res
 
     ###################################
+    def strategies_from_technique(self, technique_name):
+        if technique_name == "disable":
+            return [Strategy.HOTKEY, Strategy.LEARNING]
+        else:
+            return[Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING]     
+
+    ###################################
     def fast_test_model(self,model, experiment):
         sims = []
         for data in experiment.data:
             self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
-            model.reset()
+            availble_strategies = self.strategies_from_technique( data.technique_name )
+
+            model.reset( available_strategies )
             log_likelyhood = 0
             #print("debug env cmd seq: ", len(self.env.cmd_seq) )
             for date in range( 0, len(self.env.cmd_seq) ):
@@ -272,9 +289,9 @@ class Simulator(object):
 
                 #update the model with empirical data
                 model.update_model( user_step )
-                
-            
-            sims.append( FittingData( model, data.user_id, data.technique_id, log_likelyhood) )
+ 
+            fd = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
+            sims.append( fd )
         return sims       
 
 
@@ -317,6 +334,7 @@ def use_gui(simulator, model_vec):
 
 ##################################
 def use_terminal(simulator, model_vec):
+    
     simulator.analyze( model_vec, './experiment/grossman_cleaned_data.csv' )
 
 
@@ -324,11 +342,12 @@ def use_terminal(simulator, model_vec):
 if __name__=="__main__":
     
     env = Environment("./parameters/environment.csv")
+    env.value['n_strategy'] = 3 #only menus and hotkeys
     print(env.value)
     simulator = Simulator(env)
     model_vec_long = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
-    model_vec_short = [Random_Model(env)]
+    model_vec_short = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env)]
 
-    #use_gui(simulator, model_vec_long)
-    use_terminal(simulator, model_vec_short)
+    use_gui(simulator, model_vec_long)
+    #use_terminal(simulator, model_vec_short)
 

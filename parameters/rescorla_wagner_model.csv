@@ -1,1 +1,1 @@
-parameter;id;value;min;max;step;commentalpha;alpha;0.4;0;1;0.1;learning ratebeta;beta;4;0;10;2;Inverse temperature that controls the level of stochasticity
+parameter;id;value;min;max;step;commentalpha;alpha;0.25;0.05;1;0.05;learning ratebeta;beta;1;0.5;3;0.5;Inverse temperature that controls the level of stochasticity
