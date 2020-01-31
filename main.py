@@ -66,6 +66,7 @@ class Simulator(object):
         sims = self.test_model_data(model, experiment)
         return sims
 
+
         
     ###################################
     def test_model_data(self,model, experiment):
@@ -86,10 +87,12 @@ class Simulator(object):
 
                 #result from the model
                 action, prob_vec = model.select_action( cmd, date ) #action correct
-                res = model.generate_step(cmd, date, action) 
-                data.update_history_short( action, prob_vec, res.time, res.success )
+                res = model.generate_step(cmd, date, action)
+                a_vec = model.get_actions_from( cmd )
+                probs = values_long_format(a_vec, prob_vec)
+                data.update_history_short( action, probs, res.time, res.success )
                 if model.has_q_values():
-                    data.q_value_vec.append( model.q_values( cmd, date ) )
+                    data.q_value_vec.append( values_long_format(a_vec, model.q_values( cmd, date )) )
 
                 # model against empirical data
                 user_step = StepResult(cmd, Action(cmd,data.user_action[date].strategy),  data.user_time[date], data.user_success[date])

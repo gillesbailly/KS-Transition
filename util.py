@@ -4,6 +4,12 @@ import numpy as np
 from builtins import object
 
 
+def values_long_format(actions, values):
+    res = [-1,-1,-1]
+    for i in range( 0, len(actions)):
+        res[ actions[i].strategy ] = values[i]
+    return res
+
 
 def zipfian(s, N):
     res = np.zeros(N)
