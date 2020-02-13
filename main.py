@@ -274,7 +274,7 @@ class Simulator(object):
         sims = []
         for data in experiment.data:
             self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
-            availble_strategies = self.strategies_from_technique( data.technique_name )
+            available_strategies = self.strategies_from_technique( data.technique_name )
 
             model.reset( available_strategies )
             log_likelyhood = 0
@@ -349,7 +349,7 @@ if __name__=="__main__":
     print(env.value)
     simulator = Simulator(env)
     model_vec_long = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
-    model_vec_short = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env)]
+    model_vec_short = [Rescorla_Wagner_Model(env)]
 
     use_gui(simulator, model_vec_long)
     #use_terminal(simulator, model_vec_short)

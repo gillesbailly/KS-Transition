@@ -131,6 +131,7 @@ class Model(object):
         ext = '_model.csv'
         self.params = Parameters(path + self.name + ext)
         self.available_strategies = [ Strategy.HOTKEY ]
+        self.max_time = 7.0
 
     def reset(self, technique_name):
     	raise ValueError(" model.reset(): method to implement ")

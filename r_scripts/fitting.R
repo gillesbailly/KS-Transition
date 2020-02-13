@@ -59,6 +59,40 @@ scatter_plot_likelyhood_hotkeycount_technique_model <- function(df_original, pat
 
 
 ##############################
+distrib_params <- function(df, graph_path){
+  g <- ggplot(df, aes(x=p1)) + geom_histogram(binwidth = 0.1, colour="black", fill="white")
+  g <- g+ facet_grid(technique_name ~ model_name)
+  g <- g + ggtitle( "P1 = b IF Random ELSE alpha" ) + xlab("Models") + ylab("Technique")
+  plot(g)
+  filename <- paste( graph_path, "distrib_p1.pdf", sep="")
+  ggsave(filename)
+  
+  df <- df %>% filter(p2!=-1)
+  g <- ggplot(df, aes(x=p2)) + geom_histogram(binwidth = 0.5, colour="black", fill="white")
+  g <- g+ facet_grid(technique_name ~ model_name)
+  g <- g + ggtitle( "P2 = beta" ) + xlab("Models") + ylab("Technique")
+  plot(g)
+  filename <- paste( graph_path, "distrib_p2.pdf", sep="")
+  ggsave(filename)
+  df <- df %>% filter(p3!=-1)
+  g <- ggplot(df, aes(x=p3)) + geom_histogram(binwidth = 0.1, colour="black", fill="white")
+  g <- g+ facet_grid(technique_name ~ model_name)
+  g <- g + ggtitle( "P3 = alphaC" ) + xlab("Models") + ylab("Technique")
+  plot(g)
+  filename <- paste( graph_path, "distrib_p3.pdf", sep="")
+  ggsave(filename)
+  df <- df %>% filter(p4!=-1)
+  g <- ggplot(df, aes(x=p4)) + geom_histogram(binwidth = 0.5, colour="black", fill="white")
+  g <- g+ facet_grid(technique_name ~ model_name)
+  g <- g + ggtitle( "P4 = betaC" ) + xlab("Models") + ylab("Technique")
+  plot(g)
+  filename <- paste( graph_path, "distrib_p4.pdf", sep="")
+  ggsave(filename)
+  
+}
+
+
+##############################
 parallel_coord <- function(df_original, nb_param, graph_path) {
   df_user <- df_original %>% group_by(model_name, user_id) %>% filter(log_likelyhood == max(log_likelyhood) )
   df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p1 == min(p1)) #use to avoid doublons
@@ -95,6 +129,19 @@ parallel_coord <- function(df_original, nb_param, graph_path) {
   
   #ggparcoord(df_user, columns=6:9, groupColumn=11, alphaLines = 0.3, scale="globalminmax")
 }
+
+
+#########################################################
+#########################################################
+best_params <- function(df_original, graph_path) {
+  df_user <- df_original %>% group_by(model_name, user_id) %>% filter(log_likelyhood == max(log_likelyhood) )
+  df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p1 == min(p1)) #use to avoid doublons
+  df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p2 == min(p2)) #use to avoid doublons
+  df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p3 == min(p3)) #use to avoid doublons
+  df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p4 == min(p4)) #use to avoid doublons
+  return (df_user)
+}
+
 
 
 #########################################################
@@ -223,22 +270,26 @@ load_data_frame <-function(path){
 
 
 
-
 ###################################
 main <- function(){
   db_path <- "/Users/bailly/GARDEN/transition_model/likelyhood/"
   graph_path <- "/Users/bailly/GARDEN/transition_model/graphs/fitting/"
   
   df <- load_data_frame(db_path)
+  
   #bar_plot_likelyhood_technique_model(df,graph_path)
-  bar_plot_bic_technique_model(df, graph_path)
+  #bar_plot_bic_technique_model(df, graph_path)
   #scatter_plot_likelyhood_hotkeycount_technique_model(df, graph_path)
   #parallel_coord(df, 4, graph_path)
+  the_best_params <- best_params(df, graph_path)
+  #View(the_best_params)
+  distrib_params(the_best_params, graph_path)
+  
+  
   #analyze_one_param_model(df, "random", "b", graph_path)
   #analyze_one_param_model(df, "win_stay_loose_shift", "eps", graph_path)
   #analyze_two_param_model(df, "rescorla_wagner", c("alpha", "beta"), graph_path)
   #analyze_two_param_model(df, "choice_kernel", c("alpha_c", "beta_c"), graph_path)
-  
   #analyze_more_param_model(df, "rescorla_wagner_choice_kernel", c("alpha_c", "beta_c"), graph_path)
   
   return(df)
@@ -290,9 +341,9 @@ visualize_raw_data <- function(){
 #######################################
 #          Main                       #
 #######################################
-g<-ggplot()
+#g<-ggplot()
 #visualize_emmanouil_data()
-visualize_raw_data()
-#df = main()
+#visualize_raw_data()
+df = main()
 
 

@@ -19,26 +19,23 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
         
     class Memory(Model):
 
-        def __init__(self, env):
+        def __init__(self, env, q_0, CK_0):
             self.q = dict()     # q values related to performance
             self.CK = dict()    # CK related to habits
-
             for cmd in env.commands:
-                self.q[ Action(cmd, Strategy.MENU).to_string() ] = 0.5
-                self.q[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0.1
-                self.q[ Action(cmd, Strategy.LEARNING).to_string() ] = 0.1
+                for s in q_0.keys() :
+                    self.q[ Action(cmd, s).to_string() ] = q_0[s]
 
-                self.CK[ Action(cmd, Strategy.MENU).to_string() ] = 1
-                self.CK[ Action(cmd, Strategy.HOTKEY).to_string() ] = 0
-                self.CK[ Action(cmd, Strategy.LEARNING).to_string() ] = 0
+                for s in CK_0.keys() :
+                    self.CK[ Action(cmd, s).to_string() ] = CK_0[s]
 
 
 
     def __init__(self, env):
         super().__init__("rescorla_wagner_choice_kernel", env)
         self.description = "This model mixes the reinforcement learning model with the choice kernel model: The values update according to the reward (alpha, beta), while capturing the tendency for people to repeat their previous actions."
-        self.memory = Rescorla_Wagner_Choice_Kernel_Model.Memory(env)
-        self.max_time = 7
+        self.memory = None
+        self.reset(self.available_strategies)
 
 
     ##########################
@@ -73,17 +70,16 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
     def update_q_values(self, action, time):
         a = action.to_string()
         alpha = self.params.value['alpha']
-        cleaned_time = time if time <6.5 else 6.5
-        self.memory.q[ a ] = self.memory.q[ a ] + alpha * (self.max_time - cleaned_time -  self.memory.q[ a ] )
+        cleaned_time = time if time < self.max_time else self.max_time
+        reward = 1. - cleaned_time / self.max_time 
+        self.memory.q[ a ] = self.memory.q[ a ] + alpha * ( reward -  self.memory.q[ a ] )
 
 
     ###########################
     def update_CK_values(self, action):
         alpha = self.params.value['alpha_c']
-        strategies = [Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING]
-        cmd = action.cmd
-        for s in strategies:
-            a = Action(cmd, s).to_string()
+        for s in self.available_strategies:
+            a = Action(action.cmd, s).to_string()
             a_t_k = 1 if action.strategy == s else 0
             self.memory.CK[ a ] = self.memory.CK[ a ] + alpha * (a_t_k -  self.memory.CK[ a ] )
          
@@ -104,5 +100,35 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
         self.update_CK_values( step.action )
 
 
-    def reset(self):
-        self.memory = Rescorla_Wagner_Choice_Kernel_Model.Memory(self.env)
+    ##########################
+    def q_0(self, available_strategies):
+        q_0 = dict()
+        default_strategy = Strategy.MENU
+        if not (default_strategy in self.available_strategies):
+            default_strategy = Strategy.LEARNING
+            if not (default_strategy in self.available_strategies):
+                default_strategy = Strategy.HOTKEY
+            
+        for s in self.available_strategies:
+            q_0[ s ] = 1 if s == default_strategy else 0
+        return q_0
+
+
+    ##########################
+    def CK_0(self, available_strategies):
+        CK_0 = dict()
+        default_strategy = Strategy.MENU
+        if not (default_strategy in self.available_strategies):
+            default_strategy = Strategy.LEARNING
+            if not (default_strategy in self.available_strategies):
+                default_strategy = Strategy.HOTKEY
+            
+        for s in self.available_strategies:
+            CK_0[ s ] = 1 if s == default_strategy else 0
+        return CK_0
+
+
+    #########################
+    def reset(self, available_strategies):
+        self.set_available_strategies( available_strategies )
+        self.memory = Rescorla_Wagner_Choice_Kernel_Model.Memory(self.env, self.q_0( self.available_strategies), self.CK_0( self.available_strategies))

@@ -20,7 +20,6 @@ class Choice_Kernel_Model(Model):
     class Memory(Model):
 
         def __init__(self, env, CK_0 ):
-            print( CK_0 )
             self.CK = dict()
             for cmd in env.commands:
                 for s in CK_0.keys() :

@@ -42,7 +42,6 @@ class Win_Stay_Loose_Shift_Model(Model):
         actions = self.get_actions_from( cmd )
         n = len(actions)
         probs = np.zeros( n )
-        print("actions:  ", actions)
         for i in range(0, n) :
             a = actions[i]
             if (self.memory.strategy[ cmd ] == a.strategy):

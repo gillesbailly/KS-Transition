@@ -243,7 +243,7 @@ class EpisodeData():
                 self.group["prob"].add_items(cmd, i, prob_vec )
 
                 if len( self.history.q_value_vec) > 0 :
-                    q_vec = self.history.q_value_vec[i]
+                    q_vec = np.array(self.history.q_value_vec[i]) * float(max_y)
                     self.group["q value"].add_items(cmd, i, q_vec)
                     
             

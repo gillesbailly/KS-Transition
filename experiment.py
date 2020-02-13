@@ -50,8 +50,6 @@ class Experiment(object):
 
                         if user_id != int( row[1] ):
                             if user_id > -1:
-                                if history.user_time == -1:
-                                    print("what the problem...........")
                                 res.append(history)
                             history = User_History()
                         user_id = int(row[1])
@@ -84,18 +82,14 @@ class Experiment(object):
                            # if include the learning strategy
                             if ub_id == 2  :
                                 s = Strategy.LEARNING
-                            if ub_id == 1:
-                                print("experiment ub_id == 1")
 
                             history.user_action.append( Action(cmd, s) )                
                             history.user_time.append( time )
                             success = 1 if int(row[15]) == 0 else 0
                             history.user_success.append( success )
-                            if user_id == 2 and s == Strategy.MENU:
-                                print("s=", Strategy.MENU, ub_id, time, success)
+
                 else:
                     headerFlag = False
-                    print("header: ", row)
                     self.header = row
 
                     if not all_filter:
