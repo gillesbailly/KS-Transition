@@ -5,6 +5,7 @@ from win_stay_loose_shift_model import *
 from rescorla_wagner_model import *
 from choice_kernel_model import *
 from rescorla_wagner_choice_kernel_model import *
+from alpha_beta_model import *
 from simulationWidget import *
 from experiment import *
 import csv
@@ -264,6 +265,7 @@ class Simulator(object):
 
     ###################################
     def strategies_from_technique(self, technique_name):
+        #print(technique_name)
         if technique_name == "disable":
             return [Strategy.HOTKEY, Strategy.LEARNING]
         else:
@@ -271,25 +273,30 @@ class Simulator(object):
 
     ###################################
     def fast_test_model(self,model, experiment):
+        #debug_step = 1
         sims = []
         for data in experiment.data:
             self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
             available_strategies = self.strategies_from_technique( data.technique_name )
-
+            #print("fast test: ", available_strategies)
             model.reset( available_strategies )
             log_likelyhood = 0
             #print("debug env cmd seq: ", len(self.env.cmd_seq) )
             for date in range( 0, len(self.env.cmd_seq) ):
+                #debug_step +=1
                 cmd = self.env.cmd_seq[date]
 
                 # model against empirical data
-                user_step = StepResult(cmd, Action(cmd,data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
+                user_step = StepResult(cmd, Action(cmd, data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
                 user_action_prob = model.prob_from_action( user_step.action, date)
+                
+                #if debug_step == 100:
+                #    exit(0)
                 #data.user_action_prob.append( user_action_prob)
                 if user_action_prob == 0:
                     user_action_prob = 0.000001
                 log_likelyhood += log2(user_action_prob)
-
+                #print(model.name, user_action_prob, log_likelyhood)
                 #update the model with empirical data
                 model.update_model( user_step )
  
@@ -348,9 +355,13 @@ if __name__=="__main__":
     env.value['n_strategy'] = 3 #only menus and hotkeys
     print(env.value)
     simulator = Simulator(env)
-    model_vec_long = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Rescorla_Wagner_Model(env), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
-    model_vec_short = [Rescorla_Wagner_Model(env)]
+    model_vec_long = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Alpha_Beta_Model(env, ['IG'], [0]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]), Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]), Alpha_Beta_Model(env, ['CK'], [1]), Alpha_Beta_Model(env, ['RW'], [0.3]), Rescorla_Wagner_Model(env), Rescorla_Wagner_Model(env, True), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
+    #model_vec_short = [Rescorla_Wagner_Model(env, True)]
+    #model_vec_short = [  Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]), Rescorla_Wagner_Choice_Kernel_Model(env) ]
+    model_vec_short = [  Alpha_Beta_Model(env, ['IG'], [0]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]) ]
 
-    use_gui(simulator, model_vec_long)
-    #use_terminal(simulator, model_vec_short)
+
+
+    #use_gui(simulator, model_vec_long)
+    use_terminal(simulator, model_vec_short)
 

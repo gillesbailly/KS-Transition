@@ -25,10 +25,13 @@ class Rescorla_Wagner_Model(Model):
                     self.q[ Action(cmd, s).to_string() ] = q_0[s]
 
 
-    def __init__(self, env):
-        super().__init__("rescorla_wagner", env)
+    def __init__(self, env, q0_as_parameter = False):
+        tmp_name = "rescorla_wagner_q0" if q0_as_parameter else "rescorla_wagner"
+        super().__init__(tmp_name, env)
         self.description = "In this model, participants first learn the expected value of each method based on the history of previous outcomes and then use these values to make a decision about what to do next. A simple model of learning is the Rescorla-Wagner learning rule (Rescorla et al., 1972) whereby the value of option k, Q_t^k is updated in response to reward rt according to: \n \n Q_{t+1}^k = Q_t^k + alpha(r_t - Q_t^k) \n \n where alpha is the learning rate, which takes a value between 0 and 1 and captures the extent to which the prediction error, (r_t − Q_t^k ), updates the value. A simple model of decision making is to assume that participants use the options values to guide their decisions, choosing the most valuable option most frequently, but occasionally making mistakes (or exploring) by choosing a low value option. One choice rule with these properties is known as the softmax choice rule."
+        self.description += "Generally, all qvalues are initialized to 0. However, in the context of command selection, the initial q_value of the default method is higher and equal to 0.3. The extended version of this model includes the parameter q0 (initial qValue of the default method) which indicates the propension of the user to favor the default method"
         self.memory = None
+        self.initial_q_value_default_method = 0.3
         self.reset(self.available_strategies)
 
     ##########################
@@ -83,6 +86,7 @@ class Rescorla_Wagner_Model(Model):
     ##########################
     def q_0(self, available_strategies):
         q_0 = dict()
+        q0_value = self.params.value['q0'] if 'q0' in self.params.value else self.initial_q_value_default_method
         default_strategy = Strategy.MENU
         if not (default_strategy in self.available_strategies):
             default_strategy = Strategy.LEARNING
@@ -90,13 +94,13 @@ class Rescorla_Wagner_Model(Model):
                 default_strategy = Strategy.HOTKEY
             
         for s in self.available_strategies:
-            q_0[ s ] = 1 if s == default_strategy else 0
+            q_0[ s ] = q0_value if s == default_strategy else 0
         return q_0
 
 
     ##########################
     def update_model(self, step):
-        self.update_q_values( step.action, step.time )
+        self.update_q_values( Action(step.cmd, step.action.strategy) , step.time )
 
 
     ##########################

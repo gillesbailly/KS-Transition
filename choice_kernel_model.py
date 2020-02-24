@@ -24,6 +24,7 @@ class Choice_Kernel_Model(Model):
             for cmd in env.commands:
                 for s in CK_0.keys() :
                     self.CK[ Action(cmd, s).to_string() ] = CK_0[s]
+                    #print("Choice Kernel: ", cmd, s, CK_0[s])
 
 
     def __init__(self, env):
@@ -54,7 +55,7 @@ class Choice_Kernel_Model(Model):
         alpha = self.params.value['alpha_c']
         for s in self.available_strategies:
             a = Action(action.cmd, s).to_string()
-            a_t_k = 1 if action.strategy == s else 0
+            a_t_k = 1. if action.strategy == s else 0.
             self.memory.CK[ a ] = self.memory.CK[ a ] + alpha * (a_t_k -  self.memory.CK[ a ] )
          
 
@@ -70,7 +71,7 @@ class Choice_Kernel_Model(Model):
 
     ##########################
     def update_model(self, step):
-        self.update_CK_values( step.action)
+        self.update_CK_values( Action(step.cmd, step.action.strategy) )
 
 
     ##########################
@@ -83,7 +84,7 @@ class Choice_Kernel_Model(Model):
                 default_strategy = Strategy.HOTKEY
             
         for s in self.available_strategies:
-            CK_0[ s ] = 1 if s == default_strategy else 0
+            CK_0[ s ] = 1. if s == default_strategy else 0.
         return CK_0
 
     ##########################

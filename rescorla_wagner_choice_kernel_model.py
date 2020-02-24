@@ -35,6 +35,7 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
         super().__init__("rescorla_wagner_choice_kernel", env)
         self.description = "This model mixes the reinforcement learning model with the choice kernel model: The values update according to the reward (alpha, beta), while capturing the tendency for people to repeat their previous actions."
         self.memory = None
+        self.initial_q_value_default_method = 0.3
         self.reset(self.available_strategies)
 
 
@@ -96,13 +97,14 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
 
     ##########################
     def update_model(self, step):
-        self.update_q_values( step.action, step.time )
-        self.update_CK_values( step.action )
+        self.update_q_values( Action(step.cmd, step.action.strategy), step.time )
+        self.update_CK_values( Action(step.cmd, step.action.strategy) )
 
 
     ##########################
     def q_0(self, available_strategies):
         q_0 = dict()
+        q0_value = self.initial_q_value_default_method
         default_strategy = Strategy.MENU
         if not (default_strategy in self.available_strategies):
             default_strategy = Strategy.LEARNING
@@ -110,7 +112,7 @@ class Rescorla_Wagner_Choice_Kernel_Model(Model):
                 default_strategy = Strategy.HOTKEY
             
         for s in self.available_strategies:
-            q_0[ s ] = 1 if s == default_strategy else 0
+            q_0[ s ] = q0_value if s == default_strategy else 0
         return q_0
 
 

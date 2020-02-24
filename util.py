@@ -47,6 +47,11 @@ def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
     vec_2 = vec_2 * beta_2     
     return np.exp( vec_1 + vec_2 ) / np.sum( np.exp( vec_1 + vec_2 ), axis=0)
 
+def extended_soft_max(beta_vec, value_vec):
+    vec = np.zeros( len(value_vec[0]) )
+    for i in range(0, len(value_vec)):
+        vec += beta_vec[i] * value_vec[i]
+    return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
 # #######################
@@ -78,20 +83,13 @@ class Command(object):
 #   STEP RESULT
 ###########################
 class StepResult(object):
-    # def __init__(self):
-    #     self.cmd = -1
-    #     #self.state = None
-    #     #self.next_state = None
-    #     self.action = None
-    #     self.time = -1
-    #     self.success = -1
-    #     #self.is_terminal = False
 
-    def __init__(self, cmd = -1, action = None, time = -1, success = -1):
+    def __init__(self, cmd = -1, action = None, time = -1, success = -1, info_gain = -1):
         self.cmd = cmd
         self.action = action
         self.time = time
         self.success = success
+        self.information_gain = -1
 
 
 class FittingData(object):

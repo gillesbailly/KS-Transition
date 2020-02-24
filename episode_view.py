@@ -245,7 +245,12 @@ class EpisodeData():
                 if len( self.history.q_value_vec) > 0 :
                     q_vec = np.array(self.history.q_value_vec[i]) * float(max_y)
                     self.group["q value"].add_items(cmd, i, q_vec)
-                    
+                
+                #for name in self.history.value.keys():
+                #   g_name = 'v_' + name
+                #    self.group[ 'v_' + name ] = Group( g_name, "line", 1)
+                #    v_vec = p.array( self.history.value[name][i] ) * float(max_y)
+                #    self.group[ g_name ].add_items(cmd, i, v_vec)
             
             #self.cmd_id_series[cmd].append(i, time + 0.2 )   
         if self.empirical_data:

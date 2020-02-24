@@ -191,6 +191,7 @@ class Model(object):
     def prob_from_action(self, a, date):
         action_vec = self.get_actions_from( a.cmd )
         prob = self.action_probs(a.cmd, date)
+        #print("prob_from action:", prob,)
         for i in range(0, len(action_vec)):
             action = action_vec[i]
             if action.cmd == a.cmd and action.strategy == a.strategy:

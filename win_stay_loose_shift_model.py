@@ -104,7 +104,7 @@ class Win_Stay_Loose_Shift_Model(Model):
 
    ##########################
     def update_model(self, step):
-        self.update_action_success(step.action, step.success)
+        self.update_action_success( Action(step.cmd, step.action.strategy) , step.success)
 
 
     def default_strategy(self, available_strategies):

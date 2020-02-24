@@ -9,6 +9,7 @@ library(reshape2)
 ###########################################################################
 bar_plot_likelyhood_technique_model <- function(df_original, path){
   df_max_user <- df_original %>% group_by(model_name, technique_name, user_id) %>% summarize(log_likelyhood = - max(log_likelyhood)) %>% arrange(model_name, technique_name, log_likelyhood)
+  View(df_max_user)
   g <- ggplot() 
   g <- g + geom_bar(data = df_max_user, aes(y = log_likelyhood, x = user_id, group = as.factor( model_name ), fill=model_name), stat="identity", position = "dodge")
   g <- g + facet_grid(technique_name ~ .)
@@ -133,13 +134,27 @@ parallel_coord <- function(df_original, nb_param, graph_path) {
 
 #########################################################
 #########################################################
-best_params <- function(df_original, graph_path) {
+best_params_users <- function(df_original, graph_path) {
   df_user <- df_original %>% group_by(model_name, user_id) %>% filter(log_likelyhood == max(log_likelyhood) )
   df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p1 == min(p1)) #use to avoid doublons
   df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p2 == min(p2)) #use to avoid doublons
   df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p3 == min(p3)) #use to avoid doublons
   df_user <- df_user %>% group_by(model_name, user_id) %>% filter(p4 == min(p4)) #use to avoid doublons
   return (df_user)
+}
+
+
+#########################################################
+#########################################################
+best_params_techniques <- function(df_original, graph_path) {
+  #remove non-hotkey users
+  df <- df_original %>% filter(hotkey_count != 0 )
+  df <- df %>% group_by(model_name, technique_id, p1,p2,p3,p4) %>% summarize(log_likelyhood = mean(log_likelyhood) )
+  View(df)
+  df2 <- df %>% group_by(model_name, technique_id) %>% filter(log_likelyhood == max(log_likelyhood) )
+  View(df2)
+
+  return (df2)
 }
 
 
@@ -276,14 +291,18 @@ main <- function(){
   graph_path <- "/Users/bailly/GARDEN/transition_model/graphs/fitting/"
   
   df <- load_data_frame(db_path)
+  df <- df %>%filter(model_name!="IG" & model_name != "random") %>% arrange(user_id, p1, p2, model_name)
+  #View(df)
   
-  #bar_plot_likelyhood_technique_model(df,graph_path)
-  #bar_plot_bic_technique_model(df, graph_path)
+  best_params_techniques(df, graph_path)
+  bar_plot_likelyhood_technique_model(df,graph_path)
+  bar_plot_bic_technique_model(df, graph_path)
   #scatter_plot_likelyhood_hotkeycount_technique_model(df, graph_path)
   #parallel_coord(df, 4, graph_path)
-  the_best_params <- best_params(df, graph_path)
+  the_best_params <- best_params_users(df, graph_path)
   #View(the_best_params)
   distrib_params(the_best_params, graph_path)
+  
   
   
   #analyze_one_param_model(df, "random", "b", graph_path)
