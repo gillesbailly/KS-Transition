@@ -1,5 +1,5 @@
 from alpha_beta_model_abstract import *
-
+import math
 
 
 ################################################
@@ -27,6 +27,18 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
             if name == 'RW' :       #Rescorla Wagner
                 self.memory.value[ name ][ a ] = self.memory.value[name][ a ] + alpha * (reward -  self.memory.value[name][ a ] )    
 
+            if name == 'RW2' :
+                reward = 1. - math.log(1+ cleaned_time) / math.log(1 + self.max_time)
+                self.memory.value[ name ][ a ] = self.memory.value[name][ a ] + alpha * (reward -  self.memory.value[name][ a ] )    
+
+            if name == 'RWD' :
+                s = Strategy.HOTKEY
+                for cmd in self.env.commands:
+                    self.memory.value[name][ Action(cmd, s).to_string() ] = self.memory.value[name][ Action(cmd, s).to_string() ] + self.alpha_from_name('D') * (0 -  self.memory.value[name][ Action(cmd, s).to_string() ] )
+
+                #reward = 1. - math.log(1+ cleaned_time) / math.log(1 + self.max_time)
+                self.memory.value[ name ][ a ] = self.memory.value[name][ a ] + alpha * (reward -  self.memory.value[name][ a ] )
+
             elif name == "CK" :         # Choice Kernel
                 #print("updaate CK")
                 for s in self.available_strategies:
@@ -34,15 +46,21 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
                     a_t_k = 1. if action.strategy == s else 0.
                     self.memory.value[ name ][ a_ck ] = self.memory.value[ name ][ a_ck ] + alpha * (a_t_k -  self.memory.value[ name ][ a_ck ] )
 
-            elif name == "IG" :         # Informtion gain
+            elif name == "IG_OLD" :         # Informtion gain
                 info_gain = step.information_gain 
                 if info_gain <0  :
                     info_gain = self.information_gain(step.cmd, step.action.strategy, step.success)
 
                 self.memory.value[ name ][ a ] = info_gain
                 self.memory.hotkey_knowledge[step.cmd ] += info_gain
-             
-               
+
+            elif name == "IG" :
+                if action.strategy == Strategy.LEARNING:
+                    a_ig = Action(step.cmd, Strategy.HOTKEY).to_string()
+                    tmp = self.memory.value[ name ][ a_ig ]
+                    self.memory.value[ 'RW' ][ a_ig ] = self.memory.value['RW'][ a_ig ] + alpha * (1. -  self.memory.value['RW'][ a_ig ] )    
+                    #print("IG: ", tmp, self.memory.value[ 'RW' ][ a_ig ],  )
+
 
     ###########################
     def information_gain(self, cmd, strategy, success):

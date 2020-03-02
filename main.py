@@ -1,4 +1,5 @@
 import sys
+import os.path
 from transitionModel import *
 from random_model import *
 from win_stay_loose_shift_model import *
@@ -12,6 +13,7 @@ import csv
 import numpy as np
 from util import *
 from math import *
+import pandas as pd
 import time
 
 ##########################################
@@ -173,20 +175,21 @@ class Simulator(object):
 
 
 
-    ###################################
-    def analyze( self, model_vec, filename ):
-        experiment = Experiment( filename, env.value['n_strategy'] )
-        print("------------- EXPLORATION ---------------")
-        model_name_vec = []
-        for m in model_vec : 
-            model_name_vec.append( m.name )
-        print( "models: ", model_name_vec )
+    # ###################################
+    # def analyze( self, model_vec, filename ):
+    #     print(env.value['n_strategy'])
+    #     experiment = Experiment( filename, env.value['n_strategy'] )
+    #     print("------------- EXPLORATION ---------------")
+    #     #model_name_vec = []
+    #     #for m in model_vec : 
+    #     #    model_name_vec.append( m.name )
+    #     #print( "models: ", model_name_vec )
         
-        sims = self.explore_model_and_parameter_space(model_vec, experiment)
+    #     sims = self.explore_model_and_parameter_space(model_vec, experiment)
         
-        # for d in sims : 
-        #     print(d.model_name, d.model_params, d.user_id, d.technique_id, d.log_likelyhood)
-        # return sims
+    #     # for d in sims : 
+    #     #     print(d.model_name, d.model_params, d.user_id, d.technique_id, d.log_likelyhood)
+    #     # return sims
 
 
     def parse_params(self, params):
@@ -201,11 +204,16 @@ class Simulator(object):
 
 
     ###################################
-    def save_loglikelyhood(self, filename, sims):
-        with open(filename, mode='w') as log_file:
+    def save_loglikelyhood(self, filename, sims, overwrite = False):
+        mode = 'w' if overwrite else 'a'
+        exist = os.path.exists(filename)
+
+        with open(filename, mode= mode ) as log_file:
             writer = csv.writer(log_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ['model_name', 'user_id', 'hotkey_count', 'technique_id', 'log_likelyhood', 'n_params', 'N', 'p1', 'p2', 'p3', 'p4', 'p5']
-            writer.writerow( header)
+            
+            if not exist or mode == 'w':
+                header = ['model_name', 'user_id', 'hotkey_count', 'technique_id', 'log_likelyhood', 'n_params', 'N', 'p1', 'p2', 'p3', 'p4', 'p5']
+                writer.writerow( header)
     
             for d in sims:
                 name_vec, value_vec = self.parse_params( d.model_params )
@@ -216,25 +224,41 @@ class Simulator(object):
                 writer.writerow(row)
 
 
+    def is_tested_parameter(self, params, df_log_model):
+        name_vec, value_vec = self.parse_params( params )
+        n_params = len( value_vec)
+        for i in range( n_params, 5 ):  # fill with null values
+            value_vec.append(-1)
+        #print(df_log_model.p1)
+        #print(value_vec)
+
+        res = df_log_model[ (df_log_model.p1 == float(value_vec[0])) & (df_log_model.p2 == float(value_vec[1]) ) & (df_log_model.p3 == float(value_vec[2]) )& (df_log_model.p4 == float(value_vec[3])) & (df_log_model.p5 == float(value_vec[4]))] 
+        #print("---------------------- res: ", res, len(res.user_id))
+        return len(res.user_id) == 0
+
     ###################################
-    def explore_model_and_parameter_space(self, model_vec, experiment):
+    def explore_model_and_parameter_space(self, model_vec, experiment, overwrite= True):
         res = []
+
         for model in model_vec :
+            
+            df_log_model = None if overwrite else pd.read_csv('./likelyhood/log_' + model.name + '.csv', delimiter=';')
+
             start = time.time()
             params = list( model.get_params().value.keys() )
-            sims = self.explore_parameter_space(model, params, experiment)
+            sims = self.explore_parameter_space(model, params, experiment, overwrite, df_log_model)
             end = time.time()
             print("explore the model: ", model.name, " in ",  end - start)
             print("------------- ANALYSIS ---------------")
             file_name = './likelyhood/log_' + model.name + '.csv'
-            self.save_loglikelyhood(file_name, sims)
+            self.save_loglikelyhood(file_name, sims, overwrite)
 
             res += sims
         return res
 
 
     ###################################
-    def explore_parameter_space(self, model, param_vec, experiment):
+    def explore_parameter_space(self, model, param_vec, experiment, overwrite, df_log_model):
         if len(param_vec) == 0:
             return []
 
@@ -249,14 +273,21 @@ class Simulator(object):
             model.params.value[param_name] = value
             sims = []
             if len(param_vec) == 1:
-                start = time.time()
-                sims = self.fast_test_model(model, experiment)
-                end = time.time()
-                print("wip: ", model.name, model.get_param_value_str(), end-start)
-                
+                execute = overwrite
+                if not execute :
+                    execute = self.is_tested_parameter(model.get_param_value_str(), df_log_model)
+
+                if execute:
+                    start = time.time()
+                    sims = self.fast_test_model(model, experiment)
+                    end = time.time()
+                    print("wip: ", model.name, model.get_param_value_str(), end-start)
+                else:
+                    print("ignore")
+
             else:
                 sub_param_vec = param_vec[ 1: len(param_vec) ]
-                sims = self.explore_parameter_space(model, sub_param_vec, experiment)
+                sims = self.explore_parameter_space(model, sub_param_vec, experiment, overwrite, df_log_model)
             res = res + sims
             
 
@@ -275,33 +306,35 @@ class Simulator(object):
     def fast_test_model(self,model, experiment):
         #debug_step = 1
         sims = []
+        max_user_id = 3
         for data in experiment.data:
-            self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
-            available_strategies = self.strategies_from_technique( data.technique_name )
-            #print("fast test: ", available_strategies)
-            model.reset( available_strategies )
-            log_likelyhood = 0
-            #print("debug env cmd seq: ", len(self.env.cmd_seq) )
-            for date in range( 0, len(self.env.cmd_seq) ):
-                #debug_step +=1
-                cmd = self.env.cmd_seq[date]
+            if data.user_id < max_user_id:
+                self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
+                available_strategies = self.strategies_from_technique( data.technique_name )
+                #print("fast test: ", available_strategies)
+                model.reset( available_strategies )
+                log_likelyhood = 0
+                #print("debug env cmd seq: ", len(self.env.cmd_seq) )
+                for date in range( 0, len(self.env.cmd_seq) ):
+                    #debug_step +=1
+                    cmd = self.env.cmd_seq[date]
 
-                # model against empirical data
-                user_step = StepResult(cmd, Action(cmd, data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
-                user_action_prob = model.prob_from_action( user_step.action, date)
+                    # model against empirical data
+                    user_step = StepResult(cmd, Action(cmd, data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
+                    user_action_prob = model.prob_from_action( user_step.action, date)
                 
-                #if debug_step == 100:
-                #    exit(0)
-                #data.user_action_prob.append( user_action_prob)
-                if user_action_prob == 0:
-                    user_action_prob = 0.000001
-                log_likelyhood += log2(user_action_prob)
-                #print(model.name, user_action_prob, log_likelyhood)
-                #update the model with empirical data
-                model.update_model( user_step )
+                    #if debug_step == 100:
+                    #    exit(0)
+                    #data.user_action_prob.append( user_action_prob)
+                    if user_action_prob == 0:
+                        user_action_prob = 0.000001
+                    log_likelyhood += log2(user_action_prob)
+                    #print(model.name, user_action_prob, log_likelyhood)
+                    #update the model with empirical data
+                    model.update_model( user_step )
  
-            fd = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
-            sims.append( fd )
+                fd = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
+                sims.append( fd )
         return sims       
 
 
@@ -343,9 +376,25 @@ def use_gui(simulator, model_vec):
 
 
 ##################################
-def use_terminal(simulator, model_vec):
+def use_terminal(simulator, model_vec, overwrite = True):
     
-    simulator.analyze( model_vec, './experiment/grossman_cleaned_data.csv' )
+    #simulator.analyze( model_vec, './experiment/grossman_cleaned_data.csv' )
+    filename = './experiment/grossman_cleaned_data.csv'
+    experiment = Experiment( filename, env.value['n_strategy'] )
+    print("------------- EXPLORATION ---------------")
+    sims = simulator.explore_model_and_parameter_space(model_vec, experiment, overwrite)
+        #model_name_vec = []
+        #for m in model_vec : 
+        #    model_name_vec.append( m.name )
+        #print( "models: ", model_name_vec )
+        
+        #sims = self.explore_model_and_parameter_space(model_vec, experiment)
+        
+        # for d in sims : 
+        #     print(d.model_name, d.model_params, d.user_id, d.technique_id, d.log_likelyhood)
+        # return sims
+
+
 
 
 
@@ -355,13 +404,15 @@ if __name__=="__main__":
     env.value['n_strategy'] = 3 #only menus and hotkeys
     print(env.value)
     simulator = Simulator(env)
-    model_vec_long = [Random_Model(env), Win_Stay_Loose_Shift_Model(env), Alpha_Beta_Model(env, ['IG'], [0]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]), Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]), Alpha_Beta_Model(env, ['CK'], [1]), Alpha_Beta_Model(env, ['RW'], [0.3]), Rescorla_Wagner_Model(env), Rescorla_Wagner_Model(env, True), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
+    model_vec_long = [Alpha_Beta_Model(env, ['RWD', 'D'], [0.3, 0]), Random_Model(env), Win_Stay_Loose_Shift_Model(env), Alpha_Beta_Model(env, ['IG'], [0]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]), Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]), Alpha_Beta_Model(env, ['CK'], [1]), Alpha_Beta_Model(env, ['RW'], [0.3]), Rescorla_Wagner_Model(env), Rescorla_Wagner_Model(env, True), Choice_Kernel_Model(env), Rescorla_Wagner_Choice_Kernel_Model(env), TransitionModel(env)]
     #model_vec_short = [Rescorla_Wagner_Model(env, True)]
     #model_vec_short = [  Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]), Rescorla_Wagner_Choice_Kernel_Model(env) ]
-    model_vec_short = [  Alpha_Beta_Model(env, ['IG'], [0]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]) ]
+    model_vec_short = [  Alpha_Beta_Model(env, ['RWD', 'D'], [0.3, 0]), Alpha_Beta_Model(env, ['RW'], [0.3]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]), Alpha_Beta_Model(env, ['CK'], [1]), Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]) ]
+    #model_vec_short = [  Alpha_Beta_Model(env, ['RWD', 'D'], [0.3, 0])]
 
+    model_vec_short = [ Alpha_Beta_Model(env, ['CK'], [1]) ]
 
 
     #use_gui(simulator, model_vec_long)
-    use_terminal(simulator, model_vec_short)
+    use_terminal(simulator, model_vec_short, False)
 

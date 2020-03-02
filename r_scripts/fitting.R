@@ -76,7 +76,7 @@ distrib_params <- function(df, graph_path){
   filename <- paste( graph_path, "distrib_p2.pdf", sep="")
   ggsave(filename)
   df <- df %>% filter(p3!=-1)
-  g <- ggplot(df, aes(x=p3)) + geom_histogram(binwidth = 0.1, colour="black", fill="white")
+  g <- ggplot(df, aes(x=p3)) + geom_histogram(binwidth = 0.025, colour="black", fill="white")
   g <- g+ facet_grid(technique_name ~ model_name)
   g <- g + ggtitle( "P3 = alphaC" ) + xlab("Models") + ylab("Technique")
   plot(g)
@@ -292,6 +292,8 @@ main <- function(){
   
   df <- load_data_frame(db_path)
   df <- df %>%filter(model_name!="IG" & model_name != "random") %>% arrange(user_id, p1, p2, model_name)
+  #df <- df %>%filter(model_name=="RW_CK" | model_name == "CK") %>% arrange(user_id, p1, p2, model_name)
+  
   #View(df)
   
   best_params_techniques(df, graph_path)
@@ -300,7 +302,7 @@ main <- function(){
   #scatter_plot_likelyhood_hotkeycount_technique_model(df, graph_path)
   #parallel_coord(df, 4, graph_path)
   the_best_params <- best_params_users(df, graph_path)
-  #View(the_best_params)
+  View(the_best_params)
   distrib_params(the_best_params, graph_path)
   
   
