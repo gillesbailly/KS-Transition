@@ -286,7 +286,7 @@ class Simulator(object):
     def fast_test_model(self,model, experiment):
         #debug_step = 1
         sims = []
-        max_user_id = 12
+        max_user_id = 15
         for data in experiment.data:
             if data.user_id < max_user_id:
                 self.env.update_from_empirical_data(data.commands, data.cmd, 3 )

@@ -36,6 +36,13 @@ if __name__=="__main__":
             model_vec.append( Alpha_Beta_Model(env, 'RW_D') )
         elif name == "RW_CK":
             model_vec.append( Alpha_Beta_Model(env, 'RW_CK') )
+        elif name == "RW_IG":
+            model_vec.append( Alpha_Beta_Model(env, 'RW_IG') )
+        elif name == "CK_D":
+            model_vec.append( Alpha_Beta_Model(env, 'CK_D') )
+        elif name == "CK_IG":
+            model_vec.append( Alpha_Beta_Model(env, 'CK_IG') )
+
 
 
     print("------------- EXPLORATION ---------------")
