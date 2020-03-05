@@ -26,18 +26,18 @@ if __name__=="__main__":
     #model_vec_short = [ Alpha_Beta_Model(env, 'RW_D') ]
     args = sys.argv
     model_vec = []
-    for i in range(1, len(sys.argv) )
+    for i in range(1, len(sys.argv) ) :
         name = sys.argv[i]
         if name == "RW": 
-            model.vec.append( Alpha_Beta_Model(env, 'RW') )
+            model_vec.append( Alpha_Beta_Model(env, 'RW') )
         elif name == "CK":
-            model.vec.append( Alpha_Beta_Model(env, 'CK') )
+            model_vec.append( Alpha_Beta_Model(env, 'CK') )
         elif name == "RW_D":
-            model.vec.append( Alpha_Beta_Model(env, 'RW_D') )
+            model_vec.append( Alpha_Beta_Model(env, 'RW_D') )
         elif name == "RW_CK":
-            model.vec.append( Alpha_Beta_Model(env, 'RW_CK') )
-            elif sys.argv
+            model_vec.append( Alpha_Beta_Model(env, 'RW_CK') )
+
 
     print("------------- EXPLORATION ---------------")
-    sims = simulator.explore_model_and_parameter_space(model_vec_short, experiment, overwrite)
+    sims = simulator.explore_model_and_parameter_space(model_vec, experiment, overwrite)
 
