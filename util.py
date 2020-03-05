@@ -96,6 +96,7 @@ class FittingData(object):
     def __init__(self, model, user_id, technique_id, log_likelyhood, N, hotkey_count = -1):
         self.model_name = model.name
         self.model_params = model.get_param_value_str()
+        self.n_BIC_params = model.count_BIC_params()
         self.user_id = user_id
         self.technique_id = technique_id
         self.log_likelyhood = log_likelyhood

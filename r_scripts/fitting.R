@@ -293,7 +293,7 @@ main <- function(){
   df <- load_data_frame(db_path)
   df <- df %>%filter(model_name!="IG" & model_name != "random") %>% arrange(user_id, p1, p2, model_name)
   #df <- df %>%filter(model_name=="RW_CK" | model_name == "CK") %>% arrange(user_id, p1, p2, model_name)
-  
+  df <- df %>%filter(log_likelyhood >-5000)
   #View(df)
   
   best_params_techniques(df, graph_path)

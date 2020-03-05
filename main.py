@@ -33,6 +33,7 @@ class Simulator(object):
     def __init__(self, environment):
         self.name = "Simulator"
         self.env = environment
+        self.ignore_count = 0
 
 
     ###################################
@@ -236,12 +237,13 @@ class Simulator(object):
         #print("---------------------- res: ", res, len(res.user_id))
         return len(res.user_id) == 0
 
+
     ###################################
     def explore_model_and_parameter_space(self, model_vec, experiment, overwrite= True):
         res = []
 
         for model in model_vec :
-            
+            self.ignore_count = 0
             df_log_model = None if overwrite else pd.read_csv('./likelyhood/log_' + model.name + '.csv', delimiter=';')
 
             start = time.time()
@@ -252,7 +254,7 @@ class Simulator(object):
             print("------------- ANALYSIS ---------------")
             file_name = './likelyhood/log_' + model.name + '.csv'
             self.save_loglikelyhood(file_name, sims, overwrite)
-
+            print("we ignore ", self.ignore_count, " parameter estimations")
             res += sims
         return res
 
@@ -283,7 +285,7 @@ class Simulator(object):
                     end = time.time()
                     print("wip: ", model.name, model.get_param_value_str(), end-start)
                 else:
-                    print("ignore")
+                    self.ignore_count+=1
 
             else:
                 sub_param_vec = param_vec[ 1: len(param_vec) ]
@@ -306,7 +308,7 @@ class Simulator(object):
     def fast_test_model(self,model, experiment):
         #debug_step = 1
         sims = []
-        max_user_id = 3
+        max_user_id = 12
         for data in experiment.data:
             if data.user_id < max_user_id:
                 self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
@@ -410,9 +412,9 @@ if __name__=="__main__":
     model_vec_short = [  Alpha_Beta_Model(env, ['RWD', 'D'], [0.3, 0]), Alpha_Beta_Model(env, ['RW'], [0.3]), Alpha_Beta_Model(env, ['RW', 'IG'], [0.3, 0]), Alpha_Beta_Model(env, ['CK'], [1]), Alpha_Beta_Model(env, ['RW', 'CK'], [0.3, 1]) ]
     #model_vec_short = [  Alpha_Beta_Model(env, ['RWD', 'D'], [0.3, 0])]
 
-    model_vec_short = [ Alpha_Beta_Model(env, ['CK'], [1]) ]
+    model_vec_short = [ Alpha_Beta_Model(env, ['RW'], [0.3]) ]
 
 
     #use_gui(simulator, model_vec_long)
-    use_terminal(simulator, model_vec_short, False)
+    use_terminal(simulator, model_vec_short, True)
 

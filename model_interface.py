@@ -135,7 +135,14 @@ class Model(object):
 
     def reset(self, technique_name):
     	raise ValueError(" model.reset(): method to implement ")
-        
+    
+    def count_BIC_params(self) :
+        count = 0
+        for name in self.params.range.keys() :
+            if self.params.range[name][0] < self.params.range[name][1] : # min != max
+                count += 1
+        return count
+
     def get_params(self):
         return self.params
 
