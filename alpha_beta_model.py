@@ -32,7 +32,7 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
 
         if 'IG_LEARNING' in self.params.value.keys() :
             alpha_IG_Learning = self.params.value['IG_LEARNING']
-            if action.strategy == Strategy.LEARNING:
+            if action.strategy == Strategy.LEARNING and self.success == True:
                 a_ig = Action(step.cmd, Strategy.HOTKEY).to_string()
                 tmp = self.memory.value[ name ][ a_ig ]
                 self.memory.value[ 'RW' ][ a_ig ] = self.memory.value['RW'][ a_ig ] + alpha_IG_Learning * (1. -  self.memory.value['RW'][ a_ig ] )    
@@ -40,7 +40,7 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
 
         if 'IG_MENU' in self.params.value.keys() :
             alpha_IG_Menu = self.params.value['IG_MENU']
-            if action.strategy == Strategy.MENU:
+            if action.strategy == Strategy.MENU and self.success == True:
                 a_ig = Action(step.cmd, Strategy.HOTKEY).to_string()
                 tmp = self.memory.value[ name ][ a_ig ]
                 self.memory.value[ 'RW' ][ a_ig ] = self.memory.value['RW'][ a_ig ] + alpha_IG_Menu * (1. -  self.memory.value['RW'][ a_ig ] )   
