@@ -121,7 +121,8 @@ class History(object):
         self.cmd = []                               # selected commands (== command_sequence)
         self.action = []                            # predicted action (e.g. Menu, KS, optionally, ML)
         self.prob_vec = []                          # probability that the user chooses each action. this is a vec of three values
-        self.q_value_vec = []                             # q_values
+        self.rw_vec = []                            # rw q_values
+        self.ck_vec = []                            # ck values
         self.time = []                              # predicted time
         self.success = []                           # predicted success
 

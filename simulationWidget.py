@@ -100,10 +100,10 @@ class SimulatorUI(QTabWidget):
             show_user = True if history.has_user_data() else False
             chart_view.set_full_history(history, show_pred, show_user)
             l.addWidget(chart_view)
-            if history.has_user_data():
-                 chart_view_user = EpisodeView()
-                 l.addWidget(chart_view_user)
-                 chart_view_user.set_full_history(history, False, True)
+            #if history.has_user_data():
+            #     chart_view_user = EpisodeView()
+            #     l.addWidget(chart_view_user)
+            #     chart_view_user.set_full_history(history, False, True)
 
         print("add _sims: ", len(chart_view_vec) )
         self.chart_view_dict[ self.currentIndex() ] = chart_view_vec

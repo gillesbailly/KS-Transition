@@ -236,8 +236,13 @@ class Model(object):
 
 
     ###########################
-    def has_q_values(self):
+    def has_RW_values(self):
         return False
+
+    ###########################
+    def has_CK_values(self):
+        return False
+
 
     ###########################
     def generate_step(self, cmd_id, date, action):

@@ -1,6 +1,6 @@
-from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
+from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QAbstractSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QObject
 from PyQt5.QtWidgets import QSlider, QComboBox, QWidget, QHBoxLayout
 from util import *
 import sys
@@ -52,7 +52,7 @@ def my_scatter_symbol(c):
 #             GROUP                      #
 #                                        #
 ##########################################
-class Group():
+class Group(QObject):
     def __init__(self, name, _type, size, default_color=Qt.white):
         self.default_color = Qt.white
         self.view = None
@@ -75,19 +75,36 @@ class Group():
         
         self.filter = Strategy_Filter.ALL
 
+    ###########################
+    def menu_series_clicked(self, p):
+        print(self.name, " menu: ", p, self.sender() )
+
+    ###########################
+    def hotkey_series_clicked(self, p):
+        print(self.name, " hotkey: ", p, self.sender() )
+
+    ###########################
+    def learning_series_clicked(self, p):
+        print(self.name, " learning: ", p, self.sender() )
+
 
     ###########################
     def load(self, commands):
         for id in commands:
             if self.type == "scatter" :
                 self.menu[id] = create_scatter_series("Menu", self.size, QScatterSeries.MarkerShapeCircle, Qt.blue if self.default_color == Qt.white else self.default_color)
+                self.menu[id].hovered.connect( self.menu_series_clicked )
                 self.hotkey[id] = create_scatter_series("Hotkey", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkGreen if self.default_color == Qt.white else self.default_color)
+                self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
                 self.learning[id] = create_scatter_series("Menu Learning", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkMagenta if self.default_color == Qt.white else self.default_color)
+                self.learning[id].clicked.connect( self.learning_series_clicked )
             elif self.type == "line" :
                 self.menu[id] = create_line_series("Prob", Qt.blue if self.default_color == Qt.white else self.default_color, self.size)
+                self.menu[id].hovered.connect( self.menu_series_clicked )
                 self.hotkey[id] = create_line_series("Prob", Qt.darkGreen if self.default_color == Qt.white else self.default_color, self.size)
+                self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
                 self.learning[id] = create_line_series("Prob", Qt.darkMagenta if self.default_color == Qt.white else self.default_color, self.size)
-
+                self.learning[id].clicked.connect( self.learning_series_clicked )
 
     ###########################
     def select(self, v):
@@ -155,15 +172,17 @@ class EpisodeData():
     def __init__(self, history, prediction, empirical_data ):
         self.history = history
         self.group = dict()
+        self.individual = dict()
+        self.individual["user_action_prob"] = dict()
+        self.group[ "RW" ]         = Group("RW", "line", 1)
+        self.group[ "CK" ]         = Group("CK", "line", 1)
+        self.group[ "prob" ]              = Group("prob", "line", 5)
         self.group[ "empirical" ]         = Group("empirical", "scatter", 10)
         self.group[ "prediction" ]        = Group("prediction", "scatter", 10)
-        self.group[ "q value" ]           = Group("q value", "line", 1)
-        self.group[ "prob" ]              = Group("prob", "line", 5)
         self.group[ "empirical_error" ]   = Group("empirical_error", "scatter", 20, Qt.red)
         self.group[ "prediction_error" ]  = Group("prediction_error", "scatter", 20, Qt.black)
 
-        self.individual = dict()
-        self.individual["user_action_prob"] = dict()
+        
         
         #self.cmd_id_series = dict()
 
@@ -180,7 +199,6 @@ class EpisodeData():
         self.group["empirical"].set_all_visible(id , all, show_empirical_data)
         self.group["prediction"].set_all_visible(id , all, show_prediction)
         
-            
         for key in self.individual.keys() :
             ind = self.individual[key]
             for cmd in ind.keys() :
@@ -242,9 +260,15 @@ class EpisodeData():
                 prob_vec = np.array( self.history.prob_vec[i] ) * float(max_y)
                 self.group["prob"].add_items(cmd, i, prob_vec )
 
-                if len( self.history.q_value_vec) > 0 :
-                    q_vec = np.array(self.history.q_value_vec[i]) * float(max_y)
-                    self.group["q value"].add_items(cmd, i, q_vec)
+                if len( self.history.rw_vec) > 0 :
+                    rw_vec = np.array(self.history.rw_vec[i]) * float(max_y)
+                    self.group["RW"].add_items(cmd, i, rw_vec)
+                    
+                if len( self.history.ck_vec) > 0 :
+                    ck_vec = np.array(self.history.ck_vec[i]) * float(max_y)
+                    self.group["CK"].add_items(cmd, i, ck_vec)
+                    
+
                 
                 #for name in self.history.value.keys():
                 #   g_name = 'v_' + name
@@ -314,6 +338,7 @@ class EpisodeView(QChartView):
         self.slider.setMinimum(0)
         self.slider.setSingleStep(1)
         self.slider.valueChanged.connect( self.filter )
+        self.slider.setMinimumWidth(100)
 
         self.user_combo = QComboBox()
         self.user_combo.activated.connect(self.select)
@@ -326,11 +351,25 @@ class EpisodeView(QChartView):
         self.h_layout.addWidget( self.slider )
         self.h_layout.addWidget( self.user_combo )
         control_widget.move(0,-10)
-        control_widget.resize(800,50)
+        control_widget.resize(900,50)
         control_widget.setVisible( True )
         
      
-    
+    ######################
+    # def mouseReleaseEvent(self, e):
+    #     print( "#series: ", len( self.chart().series() ) ) 
+    #     for s in self.chart().series():
+    #         if s.isVisible() :
+    #             p = e.pos()
+    #             p_prev  = e.pos()
+    #             p_series = self.chart().mapToValue(p, s)
+    #             print("prev: ", p_prev, " ", p, " ", p_series)
+    #         #print( p_series.x(), p_series.y() )
+    #             if s :
+    #                 print( s.name() )
+    #         #else:
+    #             #print("series = none")
+
     ######################    
     def filter(self, v):
         #todo. We do not manage title very well as it takes information from the last d
@@ -344,7 +383,6 @@ class EpisodeView(QChartView):
             if d.empirical_data:
                 user_id = d.history.user_id
             
-
             cmd = -1
             show_all = False
             if value < len( commands ):
@@ -354,7 +392,6 @@ class EpisodeView(QChartView):
 
             d.set_visible(cmd, show_all, self.param["show_prediction"], self.param["show_empirical_data"])  
                 
-
         self.update_title(cmd, self.param["show_prediction"], user_id, params)
   
 

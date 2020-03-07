@@ -47,6 +47,13 @@ class Alpha_Beta_Model_Abstract(Model):
 
 
     ##########################
+    def has_RW_values(self) :
+        return 'RW' in self.alpha.keys()
+
+    def has_CK_values(self) :
+        return 'CK' in self.alpha.keys()
+
+    ##########################
     def build_alpha_beta_dicts(self):
         for key in self.params.value.keys():
             key_vec = key.split('_')

@@ -16,10 +16,11 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
   
     ###########################
     def update_model(self, step):
+        self.min_time = 0.4
         action = Action(step.cmd, step.action.strategy)
         a = action.to_string()
         cleaned_time = step.time if step.time < self.max_time else self.max_time
-        reward = 1. - cleaned_time / self.max_time
+        reward = 1. - (cleaned_time - self.min_time) / (self.max_time - self.min_time)
 
 
         if 'DECAY' in self.params.value.keys() :
@@ -32,17 +33,15 @@ class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
 
         if 'IG_LEARNING' in self.params.value.keys() :
             alpha_IG_Learning = self.params.value['IG_LEARNING']
-            if action.strategy == Strategy.LEARNING and self.success == True:
+            if action.strategy == Strategy.LEARNING and step.success == True:
                 a_ig = Action(step.cmd, Strategy.HOTKEY).to_string()
-                tmp = self.memory.value[ name ][ a_ig ]
                 self.memory.value[ 'RW' ][ a_ig ] = self.memory.value['RW'][ a_ig ] + alpha_IG_Learning * (1. -  self.memory.value['RW'][ a_ig ] )    
                 #print("IG: ", tmp, self.memory.value[ 'RW' ][ a_ig ],  )
 
         if 'IG_MENU' in self.params.value.keys() :
             alpha_IG_Menu = self.params.value['IG_MENU']
-            if action.strategy == Strategy.MENU and self.success == True:
+            if action.strategy == Strategy.MENU and step.success == True:
                 a_ig = Action(step.cmd, Strategy.HOTKEY).to_string()
-                tmp = self.memory.value[ name ][ a_ig ]
                 self.memory.value[ 'RW' ][ a_ig ] = self.memory.value['RW'][ a_ig ] + alpha_IG_Menu * (1. -  self.memory.value['RW'][ a_ig ] )   
 
 

@@ -59,7 +59,7 @@ class Simulator(object):
     # 
     ###################################
     def test_model(self, model, filename, _filter):
-        experiment = Experiment( filename, env.value['n_strategy'], _filter )
+        experiment = Experiment( filename, self.env.value['n_strategy'], _filter )
         sims = self.test_model_data(model, experiment)
         return sims
 
@@ -88,8 +88,12 @@ class Simulator(object):
                 a_vec = model.get_actions_from( cmd )
                 probs = values_long_format(a_vec, prob_vec)
                 data.update_history_short( action, probs, res.time, res.success )
-                if model.has_q_values():
-                    data.q_value_vec.append( values_long_format(a_vec, model.q_values( cmd, date )) )
+                if model.has_RW_values():
+                    data.rw_vec.append( values_long_format(a_vec, model.values( 'RW', cmd, date )) )
+
+                if model.has_CK_values():
+                    data.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
+
 
                 # model against empirical data
                 user_step = StepResult(cmd, Action(cmd,data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
@@ -129,10 +133,17 @@ class Simulator(object):
             
             for date in range( 0, len(self.env.cmd_seq) ):
                 cmd = self.env.cmd_seq[date]
+                a_vec = model.get_actions_from( cmd )
                 action, prob_vec = model.select_action( cmd, date) #action correct
                 res = model.generate_step(cmd, date, action)
                 model.update_model(res)
                 history.update_history_long(res.cmd, res.action, prob_vec, res.time, res.success)
+                if model.has_RW_values():
+                    history.rw_vec.append( values_long_format(a_vec, model.values( 'RW', cmd, date )) )
+
+                if model.has_CK_values():
+                    history.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
+
 
             sims.append( history )
         return sims
