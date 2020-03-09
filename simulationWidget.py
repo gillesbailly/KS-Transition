@@ -95,7 +95,7 @@ class SimulatorUI(QTabWidget):
 
         for history in sims:
             chart_view = EpisodeView()
-            
+            chart_view_vec.append(chart_view)
             show_pred = True
             show_user = True if history.has_user_data() else False
             chart_view.set_full_history(history, show_pred, show_user)
@@ -271,6 +271,7 @@ class Window(QWidget):
         self.simulator = simulator
         self.model = None
         self.model_dic = dict()
+        self.views = []
 
         self.setWindowTitle("Model of the transition from menus to shortcuts")
         self.resize(900, 900)
@@ -351,7 +352,7 @@ class Window(QWidget):
         #######################
         n_episodeLab = QLabel("# episodes: ")
         self.n_episodeSpinBox = createSpinbox([1,100],1,self.update_values,10,isSpinbox=True)
-        launch_button = QPushButton('Launch')
+        launch_button = QPushButton('Simulate')
         launch_button.clicked.connect(self.simulate)
         self.sim_name1 = QLineEdit( "[Sim]")
         #sim_name2 = QLabel( simulator.env.to_string() )
@@ -374,7 +375,13 @@ class Window(QWidget):
         result_layout.addWidget( self.simulatorUI )
         result_layout.addLayout(runLayout)
 
-    
+    ############################
+    def select_command(self,c):
+        print("select command ", c)
+        for view in self.views :
+            print("select command view", c)
+            view.slider.setValue(c)
+        
 
     ############################
     def add_model(self, model):
@@ -411,6 +418,7 @@ class Window(QWidget):
         #print("simulate: ", self.model, self.model_dic)
         sims = self.simulator.run(self.model, self.n_episodeSpinBox.value() )
         view_vec = self.simulatorUI.add_sims(sims, self.sim_name1.text() )
+        self.views = np.append( self.views, view_vec )
 
         to_print = True
         if to_print:

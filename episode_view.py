@@ -52,7 +52,7 @@ def my_scatter_symbol(c):
 #             GROUP                      #
 #                                        #
 ##########################################
-class Group(QObject):
+class Group():
     def __init__(self, name, _type, size, default_color=Qt.white):
         self.default_color = Qt.white
         self.view = None
@@ -66,18 +66,18 @@ class Group(QObject):
         self.combo = QComboBox()
         self.combo.activated.connect(self.select)
         self.combo.setVisible( False )
-        self.combo.addItem("none")
-        self.combo.addItem("menu " + name)
-        self.combo.addItem("hotkey " + name)
-        self.combo.addItem("learning " + name)
-        self.combo.addItem("all")
-        self.combo.setCurrentText("all")
+        self.combo.addItem(name + " (none)")
+        self.combo.addItem(name +" (menu) " )
+        self.combo.addItem(name +" (hotkey) " )
+        self.combo.addItem(name +" (learning) " )
+        self.combo.addItem(name +" (all)")
+        self.combo.setCurrentText(name +" (all)")
         
         self.filter = Strategy_Filter.ALL
 
     ###########################
-    def menu_series_clicked(self, p):
-        print(self.name, " menu: ", p, self.sender() )
+    def menu_series_clicked(self):
+        print(self.name, " menu: ", self.sender() )
 
     ###########################
     def hotkey_series_clicked(self, p):
@@ -93,14 +93,14 @@ class Group(QObject):
         for id in commands:
             if self.type == "scatter" :
                 self.menu[id] = create_scatter_series("Menu", self.size, QScatterSeries.MarkerShapeCircle, Qt.blue if self.default_color == Qt.white else self.default_color)
-                self.menu[id].hovered.connect( self.menu_series_clicked )
+                self.menu[id].clicked.connect( self.menu_series_clicked )
                 self.hotkey[id] = create_scatter_series("Hotkey", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkGreen if self.default_color == Qt.white else self.default_color)
                 self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
                 self.learning[id] = create_scatter_series("Menu Learning", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkMagenta if self.default_color == Qt.white else self.default_color)
                 self.learning[id].clicked.connect( self.learning_series_clicked )
             elif self.type == "line" :
                 self.menu[id] = create_line_series("Prob", Qt.blue if self.default_color == Qt.white else self.default_color, self.size)
-                self.menu[id].hovered.connect( self.menu_series_clicked )
+                self.menu[id].clicked.connect( self.menu_series_clicked )
                 self.hotkey[id] = create_line_series("Prob", Qt.darkGreen if self.default_color == Qt.white else self.default_color, self.size)
                 self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
                 self.learning[id] = create_line_series("Prob", Qt.darkMagenta if self.default_color == Qt.white else self.default_color, self.size)
@@ -109,6 +109,7 @@ class Group(QObject):
     ###########################
     def select(self, v):
         value = self.combo.currentText()
+        print("select: ", value)
         self.filter = Strategy_Filter.NONE
         if "menu" in value :
             self.filter = Strategy_Filter.MENU
@@ -418,7 +419,7 @@ class EpisodeView(QChartView):
             
         if show_prediction and show_empirical_data:
             self.user_combo.addItem("Both")
-            self.user_combo.setCurrentText("Both")
+            self.user_combo.setCurrentText("User only")
             self.user_combo.setVisible(True)
 
         self.slider.setMaximum( len(self.commands) )
