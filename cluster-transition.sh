@@ -6,7 +6,7 @@
 #/home/gbailly/miniconda3/bin/python main-console.py "RW" &
 #/home/gbailly/miniconda3/bin/python main-console.py "CK" &
 #/home/gbailly/miniconda3/bin/python main-console.py "RW_D" &
-/home/gbailly/miniconda3/bin/python main-console.py "RW_IG" &
+/home/gbailly/miniconda3/bin/python main-console.py "RW_CK" &
 /home/gbailly/miniconda3/bin/python main-console.py "RW_IGM" &
 
 #/home/gbailly/miniconda3/bin/python main-console.py "RW_CK" &

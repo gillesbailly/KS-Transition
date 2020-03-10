@@ -42,6 +42,8 @@ if __name__=="__main__":
             model_vec.append( Alpha_Beta_Model(env, 'CK_D') )
         elif name == "CK_IG":
             model_vec.append( Alpha_Beta_Model(env, 'CK_IG') )
+        elif name == "RW_IGM":
+            model_vec.append( Alpha_Beta_Model(env, 'RW_IGM') )
 
 
 
