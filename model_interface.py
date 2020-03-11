@@ -218,22 +218,27 @@ class Model(object):
     def initial_belief(self):
         return 0
 
-
-    ###########################
-    def time(self, action, success):
-        s = action.strategy
+    def time_strategy(self, strategy, success) :
         t = 0
-        if s == Strategy.MENU:
+        if strategy == Strategy.MENU:
             t = self.env.value['menu_time']
-        elif s == Strategy.LEARNING:
+        elif strategy == Strategy.LEARNING:
             t = self.env.value['menu_time'] + self.env.value['learning_cost']
-        elif s == Strategy.HOTKEY:
+        elif strategy == Strategy.HOTKEY:
             t = self.env.value['hotkey_time']
 
         if success == False:
             t += self.env.value['menu_time'] + self.env.value['error_cost']
         return t
 
+    ###########################
+    def success(self, action):
+        return True
+
+
+    ###########################
+    def time(self, action, success):
+        return self.time_strategy(action.strategy, success)
 
     ###########################
     def has_RW_values(self):
@@ -243,6 +248,8 @@ class Model(object):
     def has_CK_values(self):
         return False
 
+    def has_CTRL_values(self):
+        return False
 
     ###########################
     def generate_step(self, cmd_id, date, action):
