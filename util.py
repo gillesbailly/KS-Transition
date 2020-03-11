@@ -1,6 +1,7 @@
 import sys
 import random
 import numpy as np
+import math
 from builtins import object
 
 
@@ -99,9 +100,12 @@ class FittingData(object):
         self.n_BIC_params = model.count_BIC_params()
         self.user_id = user_id
         self.technique_id = technique_id
-        self.log_likelyhood = log_likelyhood
+        self.log_likelyhood = round(log_likelyhood)
         self.hotkey_count = hotkey_count
         self.N = N
+
+    def bic(self) :
+        return round(- 2 * self.log_likelyhood + self.n_BIC_params * math.log(self.N) )
 
 
 ###########################
@@ -123,6 +127,7 @@ class History(object):
         self.prob_vec = []                          # probability that the user chooses each action. this is a vec of three values
         self.rw_vec = []                            # rw q_values
         self.ck_vec = []                            # ck values
+        self.ctrl_vec =[]
         self.time = []                              # predicted time
         self.success = []                           # predicted success
 
@@ -202,6 +207,7 @@ class User_History(History):
         self.user_action_prob = []
         self.log_likelyhood = 0
         self.hotkey_count = -1
+        self.fd = None
         
     ##################################
     def has_user_data(self):
@@ -296,6 +302,12 @@ class Action(object):
 
     def command(self):
         return self.cmd
+
+    def __eq__(self, other): 
+        if not isinstance(other, Action):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+        return self.cmd == other.cmd and self.strategy == other.strategy
 
     def copy(self):
         return Action(self.cmd, self.strategy)

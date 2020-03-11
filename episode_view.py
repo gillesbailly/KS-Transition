@@ -1,7 +1,7 @@
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QAbstractSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
 from PyQt5.QtCore import pyqtSignal, Qt, QObject
-from PyQt5.QtWidgets import QSlider, QComboBox, QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QSlider, QComboBox, QLabel, QWidget, QHBoxLayout
 from util import *
 import sys
 
@@ -77,15 +77,15 @@ class Group():
 
     ###########################
     def menu_series_clicked(self):
-        print(self.name, " menu: ", self.sender() )
+        print(self.name, " menu: " )
 
     ###########################
     def hotkey_series_clicked(self, p):
-        print(self.name, " hotkey: ", p, self.sender() )
+        print(self.name, " hotkey: ", p )
 
     ###########################
     def learning_series_clicked(self, p):
-        print(self.name, " learning: ", p, self.sender() )
+        print(self.name, " learning: ", p )
 
 
     ###########################
@@ -157,10 +157,13 @@ class Group():
         
         for series in self.menu.values():
             chart.addSeries(series)
+            series.clicked.connect( self.menu_series_clicked )
         for series in self.hotkey.values():
             chart.addSeries(series)
+            series.clicked.connect( self.hotkey_series_clicked )
         for series in self.learning.values():
             chart.addSeries(series)
+            series.clicked.connect( self.learning_series_clicked )
 
 ##########################################
 #                                        #
@@ -175,9 +178,10 @@ class EpisodeData():
         self.group = dict()
         self.individual = dict()
         self.individual["user_action_prob"] = dict()
+        self.group[ "prob" ]              = Group("prob", "line", 5)
         self.group[ "RW" ]         = Group("RW", "line", 1)
         self.group[ "CK" ]         = Group("CK", "line", 1)
-        self.group[ "prob" ]              = Group("prob", "line", 5)
+        self.group[ "CTRL" ]       = Group("CTRL", "line", 1)
         self.group[ "empirical" ]         = Group("empirical", "scatter", 10)
         self.group[ "prediction" ]        = Group("prediction", "scatter", 10)
         self.group[ "empirical_error" ]   = Group("empirical_error", "scatter", 20, Qt.red)
@@ -269,6 +273,9 @@ class EpisodeData():
                     ck_vec = np.array(self.history.ck_vec[i]) * float(max_y)
                     self.group["CK"].add_items(cmd, i, ck_vec)
                     
+                if len( self.history.ctrl_vec) > 0 :
+                    ctrl_vec = np.array(self.history.ctrl_vec[i]) * float(max_y)
+                    self.group["CTRL"].add_items(cmd, i, ctrl_vec)
 
                 
                 #for name in self.history.value.keys():
@@ -346,14 +353,20 @@ class EpisodeView(QChartView):
         self.user_combo.setVisible( False )
         self.user_combo.addItem("None")
 
+        self.likelyhood_label = QLabel()
+        self.bic_label = QLabel()
+
         control_widget = QWidget(self)
         self.h_layout = QHBoxLayout()
         control_widget.setLayout(self.h_layout)
         self.h_layout.addWidget( self.slider )
         self.h_layout.addWidget( self.user_combo )
+        self.h_layout.addWidget(self.likelyhood_label)
+        self.h_layout.addWidget(self.bic_label)
         control_widget.move(0,-10)
-        control_widget.resize(900,50)
+        control_widget.resize(1000,60)
         control_widget.setVisible( True )
+
         
      
     ######################
@@ -402,6 +415,11 @@ class EpisodeView(QChartView):
         self.param["show_prediction"] = show_prediction
         self.param["show_empirical_data"] = show_empirical_data
         self.commands = history.commands
+
+        self.likelyhood_label.setText( str(history.fd.log_likelyhood) )
+        self.bic_label.setText( str(history.fd.bic() ) )
+
+
         data = EpisodeData( history, show_prediction, show_empirical_data )
         data.add_series_to_chart( self.chart() )
         data.attach_control( self.h_layout )

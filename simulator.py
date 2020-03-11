@@ -87,27 +87,28 @@ class Simulator(object):
                 res = model.generate_step(cmd, date, action)
                 a_vec = model.get_actions_from( cmd )
                 probs = values_long_format(a_vec, prob_vec)
+
                 data.update_history_short( action, probs, res.time, res.success )
                 if model.has_RW_values():
                     data.rw_vec.append( values_long_format(a_vec, model.values( 'RW', cmd, date )) )
 
                 if model.has_CK_values():
                     data.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
-
+                if model.has_CTRL_values():
+                    history.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
 
                 # model against empirical data
-                user_step = StepResult(cmd, Action(cmd,data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
-                user_action_prob = model.prob_from_action( user_step.action, date)
+                user_action = Action(cmd,data.user_action[date].strategy)
+                user_action_prob = prob_vec[ a_vec.index(user_action) ]
+                user_step = StepResult(cmd, user_action,  data.user_time[date], data.user_success[date])
+                
                 data.user_action_prob.append( user_action_prob)
-                #if user_action_prob == 0:
-                #    user_action_prob = 0.000001
                 log_likelyhood += log2(user_action_prob)
 
                 #update the model with empirical data
                 model.update_model( user_step )
                 
-            
-            data.log_likelyhood = log_likelyhood
+            data.fd = fd = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
             sims.append(data)
         return sims        
 
@@ -144,6 +145,8 @@ class Simulator(object):
                 if model.has_CK_values():
                     history.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
 
+                if model.has_CTRL_values():
+                    history.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
 
             sims.append( history )
         return sims

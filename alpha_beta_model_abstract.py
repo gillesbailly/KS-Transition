@@ -53,11 +53,15 @@ class Alpha_Beta_Model_Abstract(Model):
     def has_CK_values(self) :
         return 'CK' in self.alpha.keys()
 
+    def has_CTRL_values(self) :
+        return 'CTRL' in self.alpha.keys()
+
+
     ##########################
     def build_alpha_beta_dicts(self):
         for key in self.params.value.keys():
             key_vec = key.split('_')
-            #print(key_vec)
+            print(key_vec)
             if 'ALPHA' in key_vec[0] :
                 self.alpha[ key_vec[1] ] = self.params.value[ key ]
             if 'BETA' in key_vec[0] :
@@ -103,13 +107,13 @@ class Alpha_Beta_Model_Abstract(Model):
         result = StepResult()
         result.cmd = cmd_id
         result.action = action.copy()
-        result.success = (action.cmd == cmd_id)  #always correct
+        result.success = self.success(action) 
         result.time = self.time(action, result.success)
         return result
 
 
     ##########################
-    def update_model(self, step):
+    def update_model(self, step, _memory = 0):
         raise ValueError(" update_values: method to implement ")
         #self.update_values( step.action, step.time, step.error )
 
@@ -130,6 +134,9 @@ class Alpha_Beta_Model_Abstract(Model):
             #print("value 0: ", s, value_0[ s ], self.available_strategies)
         return value_0
 
+    #########################
+    def custom_reset_memory(self):
+        pass 
 
     #########################
     def reset(self, available_strategies):
@@ -140,4 +147,5 @@ class Alpha_Beta_Model_Abstract(Model):
         self.memory = Alpha_Beta_Model_Abstract.Memory(self.env, value_names )
         for name in value_names :
             self.memory.set_initial_value( self.env, name, self.value_0(available_strategies, name) )
+        self.custom_reset_memory()
 
