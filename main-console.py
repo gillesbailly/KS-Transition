@@ -5,6 +5,7 @@ from win_stay_loose_shift_model import *
 from rescorla_wagner_model import *
 from choice_kernel_model import *
 from rescorla_wagner_choice_kernel_model import *
+from trans import *
 from alpha_beta_model import *
 from experiment import *
 from simulator import *
@@ -44,6 +45,8 @@ if __name__=="__main__":
             model_vec.append( Alpha_Beta_Model(env, 'CK_IG') )
         elif name == "RW_IGM":
             model_vec.append( Alpha_Beta_Model(env, 'RW_IGM') )
+        elif name == "TRANS" :
+            model_vec.append( Trans(en, 'trans') )
 
 
 

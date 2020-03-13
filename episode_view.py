@@ -415,9 +415,9 @@ class EpisodeView(QChartView):
         self.param["show_prediction"] = show_prediction
         self.param["show_empirical_data"] = show_empirical_data
         self.commands = history.commands
-
-        self.likelyhood_label.setText( str(history.fd.log_likelyhood) )
-        self.bic_label.setText( str(history.fd.bic() ) )
+        if isinstance(history, User_History) :
+            self.likelyhood_label.setText( str(history.fd.log_likelyhood) )
+            self.bic_label.setText( str(history.fd.bic() ) )
 
 
         data = EpisodeData( history, show_prediction, show_empirical_data )
