@@ -46,7 +46,7 @@ if __name__=="__main__":
         elif name == "RW_IGM":
             model_vec.append( Alpha_Beta_Model(env, 'RW_IGM') )
         elif name == "TRANS" :
-            model_vec.append( Trans(en, 'trans') )
+            model_vec.append( Trans(env, 'trans') )
 
 
 
