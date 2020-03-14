@@ -446,7 +446,13 @@ class EpisodeView(QChartView):
         self.update_title(-1, True, True, history.params)
         self.chart().createDefaultAxes()
         self.chart().axisY().setRange(0, max_y)
-        self.chart().axisX().setRange(0, len(history.action)+1)
+        self.chart().axisY().setTitleText("Time")        
+        self.chart().axisX().setRange(0, len(history.action))
+        self.chart().axisX().setTitleText("Trial id")
+        self.chart().axisX().setTickType(QValueAxis.TicksFixed)
+        self.chart().axisX().setTickCount(13)
+        self.chart().axisX().setLabelFormat("%i")
+    
 
 
     ############################

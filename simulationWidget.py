@@ -1,10 +1,10 @@
 import sys
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QPointF
 from PyQt5.Qt import PYQT_VERSION_STR
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
 from PyQt5.QtPrintSupport import *
-from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
+from PyQt5.QtChart import QChart, QSplineSeries, QChartView, QLineSeries, QBarSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from transitionModel import *
 from episode_view import *
 from util import *
@@ -32,7 +32,12 @@ def createCheckBoxLayout(checkBoxInfo, layout):
 
 ############################
 def createSpinbox(range,initialValue,handleValueChanged,step,isSpinbox=False):
-    spinbox = QSpinBox() if isSpinbox else QDoubleSpinBox()
+    spinbox = None
+    if isSpinbox : 
+        spinbox = QSpinBox()
+    else: 
+        spinbox = QDoubleSpinBox()
+        spinbox.setDecimals(3)
     #spinbox = QSlider()
     spinbox.setRange(range[0],range[1])
     spinbox.setValue(initialValue)
@@ -82,7 +87,48 @@ class SimulatorUI(QTabWidget):
         self.setCurrentIndex( index )
         return result_layout
 
+    #########################
+    def summary_graph(self, sims):
+        chart = QChart()
+        summary_view = QChartView()
+        summary_view.setChart( chart )
 
+        chart.setDropShadowEnabled(False)
+        chart.legend().setVisible(False)
+        summary_view.setRenderHint(QPainter.Antialiasing)
+        summary_view.setMinimumHeight(300)
+        nb_sims = len( sims )
+        nb_blocks = 12
+        nb_trial = 60
+        count_hotkey = np.zeros( nb_blocks+1 )
+
+        for history in sims :
+            action_vec = history.action 
+            success_vec = history.success
+            for i in range(0, len(action_vec) ) :
+                if action_vec[i].strategy == Strategy.HOTKEY and success_vec[i] == True :
+                    block_id = round( float(i) / float(nb_trial) )
+                    count_hotkey[block_id] += 1
+        count_hotkey = count_hotkey * 100. / (float(len( sims ) * float(nb_trial) ) )
+
+        series = QLineSeries()
+        for i in range(0, len(count_hotkey)) :
+            series.append( QPointF(i, count_hotkey[i] ) )
+        chart.addSeries( series )
+            
+        chart.createDefaultAxes()
+        chart.axisY().setRange(0, 100)
+        chart.axisY().setTitleText(" Percentage of Correct Hotkeys")
+        
+        chart.axisX().setRange(0, nb_blocks)
+        chart.axisX().setTitleText('Block id (60 trials)')
+        chart.axisX().setTickType(QValueAxis.TicksFixed)
+        chart.axisX().setTickCount(13)
+        chart.axisX().setLabelFormat("%i")
+        
+
+
+        return summary_view
 
     #########################
     def add_sims(self, sims, name_sims, show_pred=True): #updatecanvas
@@ -104,6 +150,14 @@ class SimulatorUI(QTabWidget):
             #     chart_view_user = EpisodeView()
             #     l.addWidget(chart_view_user)
             #     chart_view_user.set_full_history(history, False, True)
+
+        summary = self.summary_graph( sims )
+        l.addWidget( summary)
+
+
+        
+
+
 
         print("add _sims: ", len(chart_view_vec) )
         self.chart_view_dict[ self.currentIndex() ] = chart_view_vec
@@ -351,7 +405,7 @@ class Window(QWidget):
 
         #######################
         n_episodeLab = QLabel("# episodes: ")
-        self.n_episodeSpinBox = createSpinbox([1,100],1,self.update_values,10,isSpinbox=True)
+        self.n_episodeSpinBox = createSpinbox([1,100],1,self.update_values,1,isSpinbox=True)
         launch_button = QPushButton('Simulate')
         launch_button.clicked.connect(self.simulate)
         self.sim_name1 = QLineEdit( "[Sim]")
