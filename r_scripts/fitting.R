@@ -44,6 +44,38 @@ bar_plot_bic_technique_model <- function(df_original, path){
   
 }
 
+#######################
+bar_plot_bic_model <- function(df_original, path){
+  #print(nrow(df_original))
+  #df_mean_model <- df_original 
+  #%>% filter(model_name == 'CK') 
+  #print(nrow(df_mean_model))
+  #df_mean_model <- df_mean_model 
+  df_mean_model <- df_original%>% group_by(model_name, p1, p2, p3, p4, p5, p6, n_params) %>% summarize(log_likelyhood = mean(log_likelyhood))
+  #print(nrow(df_mean_model))
+  df_mean_model <- df_mean_model %>% group_by(model_name, n_params) %>% filter(log_likelyhood == max(log_likelyhood))
+  #print(nrow(df_mean_model))
+  df_mean_model$N <- 720
+  df_mean_model$bic <- 0
+  df_mean_model$bic <- -2 * df_mean_model$log_likelyhood + df_mean_model$n_params * log(df_mean_model$N)  #* df_max_user$N
+  View(df_mean_model)
+  print( "average BIC" )
+  print(mean(df_mean_model$bic) )
+}
+
+#######################
+bar_plot_bic_model_technique <- function(df_original, path){
+  df_mean_model_technique <- df_original %>% group_by(model_name, technique_name, p1, p2, p3, p4, p5, p6, n_params) %>% summarize(log_likelyhood = mean(log_likelyhood))
+  df_mean_model_technique <- df_mean_model_technique %>% group_by(model_name, technique_name, n_params) %>% filter(log_likelyhood == max(log_likelyhood))
+  df_mean_model_technique$N <- 720
+  df_mean_model_technique$bic <- 0
+  df_mean_model_technique$n_params = df_mean_model_technique$n_params + 1
+  df_mean_model_technique$bic <- -2 * df_mean_model_technique$log_likelyhood + df_mean_model_technique$n_params * log(df_mean_model_technique$N)  #* df_max_user$N
+  View(df_mean_model_technique)
+  print( "average BIC considering technique")
+  print( mean(df_mean_model_technique$bic) )
+}
+
 
 #############################
 scatter_plot_likelyhood_hotkeycount_technique_model <- function(df_original, path){
@@ -75,6 +107,7 @@ distrib_params <- function(df, graph_path){
   plot(g)
   filename <- paste( graph_path, "distrib_p2.pdf", sep="")
   ggsave(filename)
+
   df <- df %>% filter(p3!=-1)
   g <- ggplot(df, aes(x=p3)) + geom_histogram(binwidth = 0.025, colour="black", fill="white")
   g <- g+ facet_grid(technique_name ~ model_name)
@@ -282,7 +315,61 @@ load_data_frame <-function(path){
   return( res )
 }
 
+###################################
+all_likelyhood_per_param_model <- function(df, path){
+  #df_max_user <- df_original %>% group_by(model_name, technique_name, hotkey_count, user_id) %>% summarize(log_likelyhood = - max(log_likelyhood)) %>% arrange(model_name, technique_name, log_likelyhood)
+  g <- ggplot()
+  g <- g + geom_point(data = df, alpha = 0.05, aes(y = log_likelyhood, x = p1) )
+  g <- g + facet_grid(user_id ~ model_name)
+  g <- g + ggtitle( "log Likelyhood per param, model" )
+  g <- g + xlab("p1") + ylab("log_likelyhood")
+  g <- g + ylim(-5000,0)
+  plot(g)
+  filename <- paste(path, "log_likelyhood_model_p1_.pdf", sep="")
+  ggsave( filename)
 
+  g <- ggplot()
+  g <- g + geom_point(data = df, alpha = 0.05, aes(y = log_likelyhood, x = p2) )
+  g <- g + facet_grid(user_id ~ model_name)
+  g <- g + ggtitle( "log Likelyhood per param, model" )
+  g <- g + xlab("p2") + ylab("log_likelyhood")
+  g <- g + ylim(-1000,0)
+  plot(g)
+  filename <- paste(path, "log_likelyhood_model_p2_.pdf", sep="")
+  ggsave( filename)
+
+  g <- ggplot()
+  g <- g + geom_point(data = df, alpha = 0.05, aes(y = log_likelyhood, x = p3) )
+  g <- g + facet_grid(user_id ~ model_name)
+  g <- g + ggtitle( "log Likelyhood per param, model" )
+  g <- g + xlab("p3") + ylab("log_likelyhood")
+  g <- g + ylim(-1000,0)
+  plot(g)
+  filename <- paste(path, "log_likelyhood_model_p3_.pdf", sep="")
+  ggsave( filename)
+  
+  g <- ggplot() 
+  ff <- df %>% filter(model_name == "RW_D" | model_name == "RW_IG")
+  g <- g + geom_point(data = ff, alpha = 0.05, aes(y = log_likelyhood, x = p4) )
+  g <- g + facet_grid(user_id ~ model_name)
+  g <- g + ggtitle( "log Likelyhood per param, model" )
+  g <- g + xlab("p4") + ylab("log_likelyhood")
+  g <- g + ylim(-1000,0)
+  plot(g)
+  filename <- paste(path, "log_likelyhood_model_p4_.pdf", sep="")
+  ggsave( filename)
+  
+  g <- ggplot()
+  g <- g + geom_point(data = df, alpha = 0.05, aes(y = log_likelyhood, x = p5) )
+  g <- g + facet_grid(user_id ~ model_name)
+  g <- g + ggtitle( "log Likelyhood per param, model" )
+  g <- g + xlab("p5") + ylab("log_likelyhood")
+  g <- g + ylim(-1000,0)
+  plot(g)
+  filename <- paste(path, "log_likelyhood_model_p5_.pdf", sep="")
+  ggsave( filename)
+  
+}
 
 
 ###################################
@@ -293,16 +380,19 @@ main <- function(){
   df <- load_data_frame(db_path)
   df <- df %>%filter(model_name!="IG" & model_name != "random") %>% arrange(user_id, p1, p2, model_name)
   #df <- df %>%filter(model_name=="RW_CK" | model_name == "CK") %>% arrange(user_id, p1, p2, model_name)
-  df <- df %>%filter(log_likelyhood >-5000)
-  #View(df)
+  #df <- df %>%filter(log_likelyhood >-5000)
   
-  best_params_techniques(df, graph_path)
+  #View(df)
+  bar_plot_bic_model(df, graph_path)
+  bar_plot_bic_model_technique(df, graph_path)
+  all_likelyhood_per_param_model(df, graph_path)
+  #best_params_techniques(df, graph_path)
   bar_plot_likelyhood_technique_model(df,graph_path)
   bar_plot_bic_technique_model(df, graph_path)
   #scatter_plot_likelyhood_hotkeycount_technique_model(df, graph_path)
   #parallel_coord(df, 4, graph_path)
   the_best_params <- best_params_users(df, graph_path)
-  View(the_best_params)
+  #View(the_best_params)
   distrib_params(the_best_params, graph_path)
   
   

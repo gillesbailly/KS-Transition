@@ -8,6 +8,8 @@ from math import *
 import pandas as pd
 import time
 import copy
+from scipy.optimize import minimize
+import datetime
 
 ##########################################
 # how to deal with q0?
@@ -250,6 +252,83 @@ class Simulator(object):
 
 
     ###################################
+    def optimize_models(self, model_vec, experiment, target, overwrite= True):
+        user_group = []
+        if target == "all" :
+            user_group = np.arange(43)
+        elif target == "traditional":
+            user_group = np.arange(0,43,3)
+        elif target == "audio" :
+            user_group = np.arange(1,43,3)
+        elif target == "disable" :
+            user_group = np.arange(2,43,3)
+        else :
+            user_id.append( int(target_group) )
+
+        experiment_bis =[]
+        for d in experiment :
+            if d.user_id in user_group :
+                experiment_bis.append( d )
+
+
+        file_name = './likelyhood/optimisation/log_' + model.name + '.csv'
+        for model in model_vec :    
+            start = time.time()
+            param_name_vec = list( model.get_params().value.keys() )
+            param_0_vec = [0.01, 0.1, 6, 2, 0.2]
+            #np.zeros( len(param_name_vec) )
+            
+            #print( param_name_vec )
+            #res = self.optimize_model(model, param_0_vec, experiment)
+            options = dict()
+            options['maxiter'] = 1
+            bnds = ((0,0.5), (0,1), (0,12), (1,3), (0,1))
+            res = minimize(self.model_fit, param_0_vec, args = (param_name_vec, model, experiment_bis, target_group), method='L-BFGS-B', bounds =bnds, options={'maxiter': 6, 'disp':0, 'eps':0.1})
+            print(res)
+            end = time.time()
+            print("optmize the model: ", model.name, " in ",  end - start)
+            print(res)
+
+
+    ###################################
+    def save_optimized_loglikelyhood(self, filename, model, target, param_names, res, overwrite = False):
+        mode = 'w' if overwrite else 'a'
+        exist = os.path.exists(filename)
+
+        with open(filename, mode= mode ) as log_file:
+            writer = csv.writer(log_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            
+            if not exist or mode == 'w':
+                header = ['date', 'model_name', 'target', 'log_likelyhood', 'n_params' ] + param_names
+                writer.writerow( header)
+            
+            now = datetime.datetime.now()
+            date_str = now.strftime("%Y-%m-%d %H:%M:%S")
+            row = [date_str, model.name, target, res.fun, len(param_names) ] + res.x
+            writer.writerow(row)
+
+
+    ##################################
+    def model_fit(self, param_value, param_name, model, experiment, target_group):
+        for i in range(0, len(param_name) ) :
+            name = param_name[i]
+            if name == "HORIZON" :
+                value = int( param_value[i] )
+            else :
+                value = param_value[i] 
+            model.params.value[ name ] = value
+        sims = self.fast_test_model( model, experiment )
+        log_likelyhood = 0
+        for d in sims:
+            log_likelyhood += d.log_likelyhood
+        log_likelyhood / len( sims )
+        print("get log_likelyhood for params ", param_value, ": ", log_likelyhood)
+        return - log_likelyhood
+
+            
+
+
+    ###################################
     def explore_parameter_space(self, model, param_vec, experiment, overwrite, df_log_model):
         if len(param_vec) == 0:
             return []
@@ -298,28 +377,23 @@ class Simulator(object):
 
     ###################################
     def fast_test_model(self,model, experiment):
-        #debug_step = 1
         sims = []
         max_user_id = 15
         for data in experiment.data:
             if data.user_id < max_user_id:
+                #print("user:", data.user_id)
                 self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
                 available_strategies = self.strategies_from_technique( data.technique_name )
-                #print("fast test: ", available_strategies)
                 model.reset( available_strategies )
                 log_likelyhood = 0
-                #print("debug env cmd seq: ", len(self.env.cmd_seq) )
                 for date in range( 0, len(self.env.cmd_seq) ):
-                    #debug_step +=1
                     cmd = self.env.cmd_seq[date]
 
                     # model against empirical data
                     user_step = StepResult(cmd, Action(cmd, data.user_action[date].strategy),  data.user_time[date], data.user_success[date])
                     user_action_prob = model.prob_from_action( user_step.action, date)
                 
-                    #if debug_step == 100:
-                    #    exit(0)
-                    #data.user_action_prob.append( user_action_prob)
+                    
                     if user_action_prob == 0:
                         user_action_prob = 0.000001
                     log_likelyhood += log2(user_action_prob)

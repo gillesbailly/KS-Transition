@@ -61,7 +61,7 @@ class Alpha_Beta_Model_Abstract(Model):
     def build_alpha_beta_dicts(self):
         for key in self.params.value.keys():
             key_vec = key.split('_')
-            print(key_vec)
+            #print(key_vec)
             if 'ALPHA' in key_vec[0] :
                 self.alpha[ key_vec[1] ] = self.params.value[ key ]
             if 'BETA' in key_vec[0] :

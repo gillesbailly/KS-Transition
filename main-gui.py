@@ -12,31 +12,6 @@ import numpy as np
 import argparse
 
 
-    # ###################################
-    # # test all parameters of the model
-    # def run_sims(self, model, n_episode):
-    #     print("params alpha: ", model.params.get_info('alpha') )
-    #     a_info = model.params.get_info('alpha')
-    #     printer = QPrinter()
-    #     printer.setOutputFormat( QPrinter.PdfFormat )
-    #     printer.setOutputFileName('./graphs/results.pdf')
-    #     painter = QPainter()
-
-    #     if not painter.begin(printer):
-    #         print("failed to open file, is it writable?");
-    
-    #     for a in np.arange(a_info[1], a_info[2], a_info[3]):
-    #         sims = self.run( model, n_episode)
-    #         filename = './results/log_' + 'alpha_' + str(a) + '.csv'
-    #     #simulator.save(filename, sims)
-    #         w = window.simulatorUI.add_sims(sims, filename).parentWidget()
-    #         w.show()
-    #         w.render( painter )
-
-    #     painter.end()
-
-
-
 
 
 if __name__=="__main__":

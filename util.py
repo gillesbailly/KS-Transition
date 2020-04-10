@@ -203,11 +203,15 @@ class User_History(History):
         self.user_action = []
         self.user_time = []
         self.user_success = []
+        self.user_extra_info = []
+        self.start_transition = []
+        self.stop_transition = []
 
         self.user_action_prob = []
         self.log_likelyhood = 0
         self.hotkey_count = -1
         self.fd = None
+        
         
     ##################################
     def has_user_data(self):

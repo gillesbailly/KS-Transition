@@ -50,6 +50,8 @@ if __name__=="__main__":
 
 
 
-    print("------------- EXPLORATION ---------------")
-    sims = simulator.explore_model_and_parameter_space(model_vec, experiment, overwrite)
+    #print("------------- EXPLORATION ---------------")
+    #sims = simulator.explore_model_and_parameter_space(model_vec, experiment, overwrite)
 
+    print("-------------------optimisation------------")
+    simulator.optimize_models(model_vec, experiment)
