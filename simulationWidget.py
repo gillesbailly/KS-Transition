@@ -372,7 +372,8 @@ class Window(QWidget):
         path_lab.setMaximumWidth(40)
         self.user_data_edit = QLineEdit()
         test_path_layout = QHBoxLayout()
-        self.user_data_edit.setText('./experiment/grossman_cleaned_data.csv')
+        self.user_data_edit.setText( './experiment/hotkeys_formatted_dirty.csv' )
+        #self.user_data_edit.setText('./experiment/grossman_cleaned_data.csv')
         self.user_data_edit.setMaximumWidth( max_w - 50 )
         test_path_layout.addWidget(path_lab)
         test_path_layout.addWidget(self.user_data_edit)
@@ -516,7 +517,7 @@ class Window(QWidget):
         print("test model")
         filename = self.user_data_edit.text()
         _filter = self.filter_edit.text()
-        sims = self.simulator.test_model(self.model, filename, _filter)
+        sims = self.simulator.test_model(self.model, filename, True, _filter)
         view_vec = self.simulatorUI.add_sims(sims, "Test", True)
         self.envUI.refresh()
 

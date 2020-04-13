@@ -8,7 +8,7 @@ from math import *
 import pandas as pd
 import time
 import copy
-from scipy.optimize import minimize
+from scipy.optimize import *
 import datetime
 
 ##########################################
@@ -60,8 +60,8 @@ class Simulator(object):
     # Test model against empirical data
     # 
     ###################################
-    def test_model(self, model, filename, _filter):
-        experiment = Experiment( filename, self.env.value['n_strategy'], _filter )
+    def test_model(self, model, filename, raw, _filter):
+        experiment = Experiment( filename, self.env.value['n_strategy'], raw, _filter )
         sims = self.test_model_data(model, experiment)
         return sims
 
@@ -252,7 +252,7 @@ class Simulator(object):
 
 
     ###################################
-    def optimize_models(self, model_vec, experiment, target, overwrite= True):
+    def optimize_models(self, model_vec, experiment, target, fixed_params ):
         user_group = []
         if target == "all" :
             user_group = np.arange(43)
@@ -263,35 +263,66 @@ class Simulator(object):
         elif target == "disable" :
             user_group = np.arange(2,43,3)
         else :
-            user_id.append( int(target_group) )
+            user_group.append( int(target) )
 
-        experiment_bis =[]
-        for d in experiment :
+        experiment_data =[]
+        for d in experiment.data :
             if d.user_id in user_group :
-                experiment_bis.append( d )
+                experiment_data.append( d )
 
 
-        file_name = './likelyhood/optimisation/log_' + model.name + '.csv'
+        
         for model in model_vec :    
             start = time.time()
-            param_name_vec = list( model.get_params().value.keys() )
-            param_0_vec = [0.01, 0.1, 6, 2, 0.2]
+            param_name_vec = copy.copy( list( model.get_params().value.keys() ) )
+            param_value_vec = copy.copy( list( model.get_params().value.values() ) )
+            param_0_vec = [0.05, 0.1, 7, 2, 0.4]
+            bnds = ((0,1), (0,1), (0,12), (1,2.5), (0,1))
+            for key in fixed_params :
+                index = param_name_vec.index(key)
+                del param_name_vec[ index ]
+                del param_value_vec[ index ]
+                #del bnds[ index ]
+
+            print(param_name_vec, param_value_vec, bnds)
             #np.zeros( len(param_name_vec) )
             
             #print( param_name_vec )
             #res = self.optimize_model(model, param_0_vec, experiment)
             options = dict()
             options['maxiter'] = 1
-            bnds = ((0,0.5), (0,1), (0,12), (1,3), (0,1))
-            res = minimize(self.model_fit, param_0_vec, args = (param_name_vec, model, experiment_bis, target_group), method='L-BFGS-B', bounds =bnds, options={'maxiter': 6, 'disp':0, 'eps':0.1})
+            self.minll = 10000000
+            res = differential_evolution(self.model_fit, bounds =bnds, args = (param_name_vec, model, experiment_data, fixed_params), maxiter=6)
+            #res = minimize(self.model_fit, param_value_vec, args = (param_name_vec, model, experiment_data, fixed_params), method='L-BFGS-B', bounds =bnds, options={'maxiter': 6, 'disp':0, 'eps':0.05})
+                        
+
+            res_x = res.x
+            ll = res.fun
             print(res)
+            #res_x = [0.05, 0.2, 7, 0.4]
+            #ll = -1000
             end = time.time()
+
             print("optmize the model: ", model.name, " in ",  end - start)
-            print(res)
+            param_res = []
+            for i in range( 0, len(res_x) ) :
+                name = param_name_vec[ i ]
+                v = res_x[ i ]
+                if name == 'KM' :
+                    v = v / 10. 
+                param_res.append( round(v,3) )
+
+            for key in fixed_params :
+                param_res.append( fixed_params[key] )
+                param_name_vec.append( key )
+            print(fixed_params, param_name_vec)
+            file_name = './likelyhood/optimisation/log_' + model.name + '.csv'
+            self.save_optimized_loglikelyhood(file_name, model, target, ll, param_name_vec, param_res )
+            #print(res)
 
 
     ###################################
-    def save_optimized_loglikelyhood(self, filename, model, target, param_names, res, overwrite = False):
+    def save_optimized_loglikelyhood(self, filename, model, target, likelyhood, param_names, param_values, overwrite = False):
         mode = 'w' if overwrite else 'a'
         exist = os.path.exists(filename)
 
@@ -304,25 +335,32 @@ class Simulator(object):
             
             now = datetime.datetime.now()
             date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-            row = [date_str, model.name, target, res.fun, len(param_names) ] + res.x
+            row = [date_str, model.name, target, likelyhood, len(param_names) ] + param_values
+
             writer.writerow(row)
 
 
     ##################################
-    def model_fit(self, param_value, param_name, model, experiment, target_group):
+    def model_fit(self, param_value, param_name, model, experiment_data, fixed_params):
         for i in range(0, len(param_name) ) :
             name = param_name[i]
             if name == "HORIZON" :
                 value = int( param_value[i] )
-            else :
+            elif name == "KM":
+                value = param_value[i] / 10.
+            else:
                 value = param_value[i] 
             model.params.value[ name ] = value
-        sims = self.fast_test_model( model, experiment )
+            for key in fixed_params :
+                model.params.value[key] = fixed_params[ key ]
+        sims = self.fast_test_model( model, experiment_data )
         log_likelyhood = 0
         for d in sims:
             log_likelyhood += d.log_likelyhood
         log_likelyhood / len( sims )
-        print("get log_likelyhood for params ", param_value, ": ", log_likelyhood)
+        if self.minll > - log_likelyhood :
+            self.minll = - log_likelyhood
+            print("get log_likelyhood for params ", param_value, ": ", log_likelyhood)
         return - log_likelyhood
 
             
@@ -376,10 +414,10 @@ class Simulator(object):
     
 
     ###################################
-    def fast_test_model(self,model, experiment):
+    def fast_test_model(self,model, experiment_data):
         sims = []
         max_user_id = 15
-        for data in experiment.data:
+        for data in experiment_data:
             if data.user_id < max_user_id:
                 #print("user:", data.user_id)
                 self.env.update_from_empirical_data(data.commands, data.cmd, 3 )

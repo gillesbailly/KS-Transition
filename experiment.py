@@ -15,7 +15,7 @@ from util import *
 class Experiment(object):
 
     ####################
-    def __init__(self, path, n_strategy, raw_data = False, _filter=""):
+    def __init__(self, path, n_strategy, raw_data = True, _filter=""):
         self.count_pure_hotkey = 0
         self.count_pure_menu = 0
         self.count_hotkey_menu = 0
@@ -23,7 +23,7 @@ class Experiment(object):
         self.count_menu_unknown = 0
         self.count_unknown = 0
         if raw_data : 
-            self.data = self.load_raw_data(path)
+            self.data = self.load_raw_data(path, _filter)
         else :
             self.data = self.load(path, n_strategy, _filter)
         
@@ -159,10 +159,14 @@ class Experiment(object):
         # s = Strategy.LEARNING
 
 
-    def load_raw_data(self, path) :
+    def load_raw_data(self, path, _filter="") :
         if not path:
             raise("The path is not valid: ", path)
             return
+
+        all_filter = (_filter =="")
+        index_filter = -1
+        value_filter = -1
 
         with open(path, 'r') as csvFile:
             reader = csv.reader(csvFile, delimiter= ',')
@@ -173,6 +177,7 @@ class Experiment(object):
             res = []
             for row in reader:
                 if not headerFlag:
+                    if all_filter or (value_filter == row[index_filter] ):
                         if user_id != int( row[1] ):
                             if user_id > -1:
                                 res.append(history)
@@ -216,6 +221,11 @@ class Experiment(object):
                     self.header = row
                     for i in range(0, len(self.header) ) :
                         print("header ", i, self.header[i] )
+
+                    if not all_filter:
+                        filtering = self.filtering(_filter)
+                        index_filter = self.header.index(filtering[0]) # index key
+                        value_filter = filtering[1]
 
             if time != -1:
                 res.append( history )
