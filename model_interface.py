@@ -251,6 +251,9 @@ class Model(object):
     def has_CTRL_values(self):
         return False
 
+    def has_knowledge(self) :
+        return False
+
     ###########################
     def generate_step(self, cmd_id, date, action):
         raise ValueError(" generate_step: method to implement ")

@@ -1,18 +1,19 @@
 from alpha_beta_model_abstract import *
 import math
 
+DISCOUNT = 0.9
 
 ################################################
 #                                              #
 #Implementation of the alpha/beta abstractclas #
 #                                              #
 ################################################
-class Trans(Alpha_Beta_Model_Abstract):
+class TransD(Alpha_Beta_Model_Abstract):
 
     
     def __init__(self, env, name):
         super().__init__(env, name)
-        self.max_knowledge = 0.97
+        self.max_knowledge = 0.99
      
 
     ########################## 
@@ -33,16 +34,21 @@ class Trans(Alpha_Beta_Model_Abstract):
         ################
         #   update K   #
         ################
+        decay = self.params.value['DECAY']
+        for cmd in self.env.commands:
+            memory.hotkey_knowledge[ cmd ] += decay * ( 0 - memory.hotkey_knowledge[ cmd ] )
+
         km = self.params.value['KM']
         kl = self.params.value['KL']
-        if step.action.strategy == Strategy.MENU :
+        if step.action.strategy == Strategy.MENU or step.success == False :
             memory.hotkey_knowledge[ step.cmd ] += km * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
+        else :
+             memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
+        #elif step.action.strategy == Strategy.LEARNING and step.success:
+        #    memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
         
-        elif step.action.strategy == Strategy.LEARNING and step.success:
-            memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
-        
-        elif step.action.strategy == Strategy.HOTKEY and step.success :
-            memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
+        #elif step.action.strategy == Strategy.HOTKEY and step.success :
+        #    memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
     
 
     ##########################
@@ -136,13 +142,19 @@ class Trans(Alpha_Beta_Model_Abstract):
             gv = gv_correct * k + gv_error * (1. - k)
             #print("h=", horizon, "s: ", s_vec[i], "k:",k, time_correct, time_error, t, "gv:", gv )
 
-            gv_all[i] = t + self.params.value['DISCOUNT'] * gv
+            gv_all[i] = t + DISCOUNT * gv
 
         return gv_all if horizon == horizon_param else np.amin(gv_all)
 
 
 
-    
+    #########################
+    def custom_reset_memory(self):
+        for cmd in self.env.commands:
+                self.memory.hotkey_knowledge[ cmd ] = self.params.value['K0']
+
+
+        
 
 
 

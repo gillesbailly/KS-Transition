@@ -73,11 +73,6 @@ class Experiment(object):
                         return Strategy.LEARNING
                     else :
                         return Strategy.HOTKEY
-
-                #else :
-                #    print(row)
-                #    print( "method == 1 but no modifier press" )
-                #    exit(0)
                     
             
             elif method == 0 :   # menu
@@ -89,6 +84,8 @@ class Experiment(object):
                 
                 else :
                     return Strategy.MENU
+            else :
+                return -1 #error in the file
         
         else :   #ERROR
 
@@ -144,19 +141,37 @@ class Experiment(object):
 
                     
 
+    def add_and_save(self, file_in, file_out ) :
 
 
+        with open(file_out, mode= 'w' ) as out:
+            writer = csv.writer(out, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            
+            with open(file_in, 'r') as csvFile:
+                reader = csv.reader(csvFile, delimiter= ',')
+                technique_name_vec = ["traditional", "audio", "disable"]
+                strategy_name_vec = ["menu", "hotkey", "learning", "none"]
+                header_flag = True
 
+                for row in reader:
+                    if header_flag :
+                        header_flag = False
+                        row.append("strategy")
+                        row.append("strategy_name")
+                        row.append("technique_name")
+                        writer.writerow(row)
 
-        # ub_id = int( row[13] )
-        # history.ub_name[ ub_id ] = row[12]
-        # history.ub_id.append( ub_id )
-                        
-        # s = Strategy.HOTKEY if ub_id == 3 else Strategy.MENU
+                    else :
+                        technique_name = technique_name_vec[ int( row[4] ) ]
+                        strategy = self.strategy( row )
+                        #print(strategy)
 
-        # # if include the learning strategy
-        # if ub_id == 2  :
-        # s = Strategy.LEARNING
+                        strategy_name = strategy_name_vec[ strategy ]
+                        row.append( strategy )
+                        row.append( strategy_name ) 
+                        row.append( technique_name )
+                        writer.writerow(row)
+
 
 
     def load_raw_data(self, path, _filter="") :
@@ -219,8 +234,8 @@ class Experiment(object):
                 else:
                     headerFlag = False
                     self.header = row
-                    for i in range(0, len(self.header) ) :
-                        print("header ", i, self.header[i] )
+                    #for i in range(0, len(self.header) ) :
+                        #print("header ", i, self.header[i] )
 
                     if not all_filter:
                         filtering = self.filtering(_filter)
@@ -230,7 +245,7 @@ class Experiment(object):
             if time != -1:
                 res.append( history )
 
-            print("pure menu: ", self.count_pure_menu, "pure hotkey: ", self.count_pure_hotkey, "unknown: ", self.count_unknown, "hotkey->menu: ", self.count_hotkey_menu, "hotkey->learning: ", self.count_hotkey_learning, "menu->?: ", self.count_menu_unknown)
+            #print("pure menu: ", self.count_pure_menu, "pure hotkey: ", self.count_pure_hotkey, "unknown: ", self.count_unknown, "hotkey->menu: ", self.count_hotkey_menu, "hotkey->learning: ", self.count_hotkey_learning, "menu->?: ", self.count_menu_unknown)
 
         return res
 

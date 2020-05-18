@@ -6,6 +6,7 @@ from rescorla_wagner_model import *
 from choice_kernel_model import *
 from rescorla_wagner_choice_kernel_model import *
 from trans import *
+from transD import *
 from alpha_beta_model import *
 from experiment import *
 from simulator import *
@@ -50,8 +51,15 @@ if __name__=="__main__":
             model_vec.append( Alpha_Beta_Model(env, 'CK_IG') )
         elif name == "RW_IGM":
             model_vec.append( Alpha_Beta_Model(env, 'RW_IGM') )
-        elif name == "TRANS" :
+        elif name == "trans" :
             model_vec.append( Trans(env, 'trans') )
+        elif name == "TRANS_D" :
+            model_vec.append( TransD(env, 'TRANS_D') )
+        elif name == "TRANS_DK0" :
+            model_vec.append( TransD(env, 'TRANS_DK0') )
+        else :
+            print("this is not the right model name")
+            exit(0)
 
 
 
@@ -59,7 +67,9 @@ if __name__=="__main__":
     #sims = simulator.explore_model_and_parameter_space(model_vec, experiment, overwrite)
 
     print("-------------------optimisation------------")
-    target = "1"
-    #fixed_params = {'HORIZON':1}
-    fixed_params = dict()
-    simulator.optimize_models(model_vec, experiment, target, fixed_params)
+    for target in [1,4, 10, 13] :
+        print("target users: ", target)
+        #target = "9"
+        #fixed_params = {'HORIZON':1}
+        fixed_params = dict()
+        simulator.optimize_models(model_vec, experiment, str( target ), fixed_params)

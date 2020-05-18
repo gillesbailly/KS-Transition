@@ -178,6 +178,7 @@ class EpisodeData():
         self.group = dict()
         self.individual = dict()
         self.individual["user_action_prob"] = dict()
+        self.individual["knowledge"] = dict()
         self.group[ "prob" ]              = Group("prob", "line", 5)
         self.group[ "RW" ]         = Group("RW", "line", 1)
         self.group[ "CK" ]         = Group("CK", "line", 1)
@@ -242,7 +243,8 @@ class EpisodeData():
             g.load( self.history.commands )
         
         for id in self.history.commands:
-            self.individual["user_action_prob"] [id] = create_line_series("user_action_prob", Qt.yellow, 1)
+            self.individual["user_action_prob"] [id] = create_line_series("user_action_prob", Qt.yellow, 3)
+            self.individual["knowledge"] [id] = create_line_series("knowledge", Qt.black, 10)    
             self.block_id = create_scatter_series("Block", 7, QScatterSeries.MarkerShapeCircle, Qt.black)
 
         
@@ -273,10 +275,13 @@ class EpisodeData():
                     ck_vec = np.array(self.history.ck_vec[i]) * float(max_y)
                     self.group["CK"].add_items(cmd, i, ck_vec)
                     
-                if len( self.history.ctrl_vec) > 0 :
+                if len( self.history.ctrl_vec ) > 0 :
                     ctrl_vec = np.array(self.history.ctrl_vec[i]) * float(max_y)
                     self.group["CTRL"].add_items(cmd, i, ctrl_vec)
 
+                print( "len knowledge: ", len( self.history.knowledge ) )
+                if len( self.history.knowledge ) > 0 :
+                    self.individual[ "knowledge" ][cmd].append(i, self.history.knowledge[i] * float(max_y) )
                 
                 #for name in self.history.value.keys():
                 #   g_name = 'v_' + name
@@ -309,10 +314,9 @@ class EpisodeData():
         if self.prediction and self.empirical_data : 
             for i in range( len(action_vec) ) :
                 cmd = self.history.cmd[i]
-                #print("episode view", i, cmd, len( self.history.cmd ))
-                #print( "len " , len( self.history.user_action_prob) )
-                #print( "value: ", self.history.user_action_prob[i] )
                 self.individual[ "user_action_prob" ][cmd].append(i, self.history.user_action_prob[i] * float(max_y) )
+               
+                    
                 
 
     

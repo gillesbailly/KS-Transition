@@ -130,8 +130,9 @@ class Alpha_Beta_Model_Abstract(Model):
                 default_strategy = Strategy.HOTKEY
             
         for s in self.available_strategies:
-            value_0[ s ] = self.v0[ name ] if s == default_strategy else 0
-            #print("value 0: ", s, value_0[ s ], self.available_strategies)
+            value_0[ s ] = 0
+            if ( s == default_strategy ) and ( name in self.v0 ) 
+            value_0[ s ] = self.v0[ name ]
         return value_0
 
     #########################

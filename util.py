@@ -100,7 +100,7 @@ class FittingData(object):
         self.n_BIC_params = model.count_BIC_params()
         self.user_id = user_id
         self.technique_id = technique_id
-        self.log_likelyhood = round(log_likelyhood)
+        self.log_likelyhood = round(log_likelyhood,2)
         self.hotkey_count = hotkey_count
         self.N = N
 
@@ -128,6 +128,7 @@ class History(object):
         self.rw_vec = []                            # rw q_values
         self.ck_vec = []                            # ck values
         self.ctrl_vec =[]
+        self.knowledge = []
         self.time = []                              # predicted time
         self.success = []                           # predicted success
 

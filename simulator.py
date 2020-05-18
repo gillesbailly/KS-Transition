@@ -96,8 +96,11 @@ class Simulator(object):
 
                 if model.has_CK_values():
                     data.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
-                if model.has_CTRL_values():
-                    history.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
+                #if model.has_CTRL_values():
+                #    history.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
+
+                if model.has_knowledge() :
+                    data.knowledge.append( model.knowledge( cmd ) )
 
                 # model against empirical data
                 user_action = Action(cmd,data.user_action[date].strategy)
@@ -105,12 +108,15 @@ class Simulator(object):
                 user_step = StepResult(cmd, user_action,  data.user_time[date], data.user_success[date])
                 
                 data.user_action_prob.append( user_action_prob)
+                if user_action_prob == 0:
+                    user_action_prob = 0.00000001
+
                 log_likelyhood += log2(user_action_prob)
 
                 #update the model with empirical data
                 model.update_model( user_step )
                 
-            data.fd = fd = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
+            data.fd  = FittingData( model, data.user_id, data.technique_id, log_likelyhood, len(self.env.cmd_seq),  data.get_hotkey_count() )
             sims.append(data)
         return sims        
 
@@ -149,6 +155,8 @@ class Simulator(object):
 
                 if model.has_CTRL_values():
                     history.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
+
+                    
 
             sims.append( history )
         return sims
@@ -265,6 +273,7 @@ class Simulator(object):
         else :
             user_group.append( int(target) )
 
+        #filter only useful experiment data
         experiment_data =[]
         for d in experiment.data :
             if d.user_id in user_group :
@@ -273,26 +282,34 @@ class Simulator(object):
 
         
         for model in model_vec :    
-            start = time.time()
+            self.start = time.time()
             param_name_vec = copy.copy( list( model.get_params().value.keys() ) )
-            param_value_vec = copy.copy( list( model.get_params().value.values() ) )
-            param_0_vec = [0.05, 0.1, 7, 2, 0.4]
-            bnds = ((0,1), (0,1), (0,12), (1,2.5), (0,1))
-            for key in fixed_params :
-                index = param_name_vec.index(key)
-                del param_name_vec[ index ]
-                del param_value_vec[ index ]
-                #del bnds[ index ]
+            #param_value_vec = copy.copy( list( model.get_params().value.values() ) )
+            #param_0_vec = [0.05, 0.1, 7, 2, 0.4]
+            #bnds = ((0,1), (0,1), (0,12), (1.5,2.5), (0,1))
+            bnds = []
+            for name in param_name_vec :
+                info = model.params.get_info(name)  #1 min, 2. max, 3. step
+                bnds.append( [info[1], info[2] ] )
+            print(param_name_vec, bnds)
+            #exit(0)
+            
 
-            print(param_name_vec, param_value_vec, bnds)
+            # for key in fixed_params :
+            #     index = param_name_vec.index(key)
+            #     del param_name_vec[ index ]
+            #     del param_value_vec[ index ]
+  
+
+            #print(param_name_vec, param_value_vec, bnds)
             #np.zeros( len(param_name_vec) )
             
             #print( param_name_vec )
             #res = self.optimize_model(model, param_0_vec, experiment)
-            options = dict()
-            options['maxiter'] = 1
+            #options = dict()
+            #options['maxiter'] = 1
             self.minll = 10000000
-            res = differential_evolution(self.model_fit, bounds =bnds, args = (param_name_vec, model, experiment_data, fixed_params), maxiter=6)
+            res = differential_evolution(self.model_fit, bounds = bnds, args = (param_name_vec, model, experiment_data, fixed_params) )
             #res = minimize(self.model_fit, param_value_vec, args = (param_name_vec, model, experiment_data, fixed_params), method='L-BFGS-B', bounds =bnds, options={'maxiter': 6, 'disp':0, 'eps':0.05})
                         
 
@@ -301,23 +318,25 @@ class Simulator(object):
             print(res)
             #res_x = [0.05, 0.2, 7, 0.4]
             #ll = -1000
-            end = time.time()
+            self.end = time.time()
 
-            print("optmize the model: ", model.name, " in ",  end - start)
-            param_res = []
-            for i in range( 0, len(res_x) ) :
-                name = param_name_vec[ i ]
-                v = res_x[ i ]
-                if name == 'KM' :
-                    v = v / 10. 
-                param_res.append( round(v,3) )
+            print("optmize the model: ", model.name, " in ",  self.end - self.start)
+            # param_res = []
+            # for i in range( 0, len(res_x) ) :
+            #     name = param_name_vec[ i ]
+            #     v = res_x[ i ]
+            #     if name == 'KM' :
+            #         v = v / 10.
+            #     if name == 'HORIZON' :
+            #         v = int(v) 
+            #     param_res.append( round(v,3) )
 
-            for key in fixed_params :
-                param_res.append( fixed_params[key] )
-                param_name_vec.append( key )
-            print(fixed_params, param_name_vec)
-            file_name = './likelyhood/optimisation/log_' + model.name + '.csv'
-            self.save_optimized_loglikelyhood(file_name, model, target, ll, param_name_vec, param_res )
+            # for key in fixed_params :
+            #     param_res.append( fixed_params[key] )
+            #     param_name_vec.append( key )
+            # print(fixed_params, param_name_vec)
+            file_name = './likelyhood/optimisation/log_' + model.name + '_' + target + '.csv'
+            self.save_optimized_loglikelyhood(file_name, model, target, ll, param_name_vec, res.x )
             #print(res)
 
 
@@ -335,32 +354,52 @@ class Simulator(object):
             
             now = datetime.datetime.now()
             date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-            row = [date_str, model.name, target, likelyhood, len(param_names) ] + param_values
+            row = [date_str, model.name, target, likelyhood, len(param_names) ]
+            for i in param_values :
+                row.append ( str(round(i, 4) ) ) 
 
             writer.writerow(row)
 
 
     ##################################
     def model_fit(self, param_value, param_name, model, experiment_data, fixed_params):
+        # for i in range(0, len(param_name) ) :
+        #     name = param_name[i]
+        #     if name == "HORIZON" :
+        #         value = int( param_value[i] )
+        #     elif name == "KM":
+        #         value = param_value[i] / 10.
+        #     else:
+        #         value = param_value[i] 
+        #     model.params.value[ name ] = value
+        #     for key in fixed_params :
+        #         model.params.value[key] = fixed_params[ key ]
+        
         for i in range(0, len(param_name) ) :
-            name = param_name[i]
-            if name == "HORIZON" :
-                value = int( param_value[i] )
-            elif name == "KM":
-                value = param_value[i] / 10.
-            else:
-                value = param_value[i] 
-            model.params.value[ name ] = value
-            for key in fixed_params :
-                model.params.value[key] = fixed_params[ key ]
+             name = param_name[i]
+             value = param_value[i]
+             model.params.value[ name ] = value
+
+
+        if model.name == 'trans' or model.name == 'TRANS_D':
+            i_KM = param_name.index('KM')
+            i_KL = param_name.index('KL')
+            if param_value[ i_KM ] > param_value[ i_KL ] :
+                print("km > kl")
+                return 1000000
+
         sims = self.fast_test_model( model, experiment_data )
         log_likelyhood = 0
+        
         for d in sims:
             log_likelyhood += d.log_likelyhood
         log_likelyhood / len( sims )
-        if self.minll > - log_likelyhood :
+        if self.minll >= - log_likelyhood :
             self.minll = - log_likelyhood
-            print("get log_likelyhood for params ", param_value, ": ", log_likelyhood)
+            print( time.time() - self.start, ": best p &ll  ", param_value, ": ", log_likelyhood)
+        #else :
+        #    print( time.time() - self.start, ": p &ll  ", param_value, ": ", log_likelyhood)
+            
         return - log_likelyhood
 
             
@@ -416,7 +455,8 @@ class Simulator(object):
     ###################################
     def fast_test_model(self,model, experiment_data):
         sims = []
-        max_user_id = 15
+        max_user_id = 43
+        #print("length: ", len(experiment_data) )
         for data in experiment_data:
             if data.user_id < max_user_id:
                 #print("user:", data.user_id)
