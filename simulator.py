@@ -162,6 +162,52 @@ class Simulator(object):
         return sims
 
 
+    def simple_simulate(self, model, data) :
+        data.set_model( model.name, model.get_param_value_str() )
+        self.env.update_from_empirical_data(data.commands, data.cmd, 3 )
+        available_strategies = self.strategies_from_technique( data.technique_name )
+        model.reset( available_strategies )
+
+        for date in range( 0, len(self.env.cmd_seq) ):
+            cmd = self.env.cmd_seq[date]
+            #a_vec = model.get_actions_from( cmd )
+            a_vec = model.get_actions_from( cmd )
+            action, prob_vec = model.select_action( cmd, date) #action correct
+            res = model.generate_step(cmd, date, action)
+            model.update_model(res)
+            data.update_history_long(res.cmd, res.action, prob_vec, res.time, res.success)
+            if model.has_RW_values():
+                data.rw_vec.append( values_long_format(a_vec, model.values( 'RW', cmd, date )) )
+
+            if model.has_CK_values():
+                data.ck_vec.append( values_long_format(a_vec, model.values('CK', cmd, date )) )
+
+            if model.has_CTRL_values():
+                data.ck_vec.append( values_long_format(a_vec, model.values('CTRL', cmd, date )) )
+
+            if model.has_knowledge() :
+                    data.knowledge.append( model.knowledge( cmd ) )
+
+        return data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ###################################
     # explore model
     # this method is recursive.
@@ -381,11 +427,11 @@ class Simulator(object):
              model.params.value[ name ] = value
 
 
-        if model.name == 'trans' or model.name == 'TRANS_D':
+        if model.name == 'trans' or 'TRANS' in model.name :
             i_KM = param_name.index('KM')
             i_KL = param_name.index('KL')
             if param_value[ i_KM ] > param_value[ i_KL ] :
-                print("km > kl")
+                #print("km > kl")
                 return 1000000
 
         sims = self.fast_test_model( model, experiment_data )

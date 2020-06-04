@@ -1,4 +1,4 @@
-from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QAbstractSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
+from PyQt5.QtChart import QChart, QChartView, QLineSeries, QBarSeries, QAreaSeries, QAbstractSeries, QHorizontalBarSeries, QBarSet, QScatterSeries, QValueAxis, QBarCategoryAxis
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
 from PyQt5.QtCore import pyqtSignal, Qt, QObject, QPointF
 from PyQt5.QtWidgets import QSlider, QComboBox, QLabel, QWidget, QHBoxLayout
@@ -20,6 +20,7 @@ def create_scatter_series(name, marker_size, marker_shape, brush):
     series.setMarkerSize(marker_size)
     series.setMarkerShape(marker_shape)
     series.setPen(Qt.transparent)
+    series.setOpacity(0.7)
     return series
 
 def create_line_series(name, color, size=1):
@@ -30,6 +31,7 @@ def create_line_series(name, color, size=1):
     pen.setWidth(size);
     pen.setColor(color);
     series.setPen(pen);
+    series.setOpacity(0.7)
     return series
 
 def my_scatter_symbol(c):
@@ -80,20 +82,26 @@ class Group():
 
     ###########################
     def load(self, commands):
+        alpha_color = 100
+        hotkey_color = QColor(0,100,0, alpha_color)
+        menu_color = QColor(0,0,200, alpha_color)
+        learning_color = QColor(200,0,100, alpha_color)
+
+
         for id in commands:
             if self.type == "scatter" :
-                self.menu[id] = create_scatter_series("Menu", self.size, QScatterSeries.MarkerShapeCircle, Qt.blue if self.default_color == Qt.white else self.default_color)
+                self.menu[id] = create_scatter_series("Menu", self.size, QScatterSeries.MarkerShapeCircle, menu_color if self.default_color == Qt.white else self.default_color)
                 self.menu[id].clicked.connect( self.menu_series_clicked )
-                self.hotkey[id] = create_scatter_series("Hotkey", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkGreen if self.default_color == Qt.white else self.default_color)
+                self.hotkey[id] = create_scatter_series("Hotkey", self.size, QScatterSeries.MarkerShapeCircle, hotkey_color if self.default_color == Qt.white else self.default_color)
                 self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
-                self.learning[id] = create_scatter_series("Menu Learning", self.size, QScatterSeries.MarkerShapeCircle, Qt.darkMagenta if self.default_color == Qt.white else self.default_color)
+                self.learning[id] = create_scatter_series("Menu Learning", self.size, QScatterSeries.MarkerShapeCircle, learning_color if self.default_color == Qt.white else self.default_color)
                 self.learning[id].clicked.connect( self.learning_series_clicked )
             elif self.type == "line" :
-                self.menu[id] = create_line_series("Prob", Qt.blue if self.default_color == Qt.white else self.default_color, self.size)
+                self.menu[id] = create_line_series("Prob", menu_color if self.default_color == Qt.white else self.default_color, self.size)
                 self.menu[id].clicked.connect( self.menu_series_clicked )
-                self.hotkey[id] = create_line_series("Prob", Qt.darkGreen if self.default_color == Qt.white else self.default_color, self.size)
+                self.hotkey[id] = create_line_series("Prob", hotkey_color if self.default_color == Qt.white else self.default_color, self.size)
                 self.hotkey[id].clicked.connect( self.hotkey_series_clicked )
-                self.learning[id] = create_line_series("Prob", Qt.darkMagenta if self.default_color == Qt.white else self.default_color, self.size)
+                self.learning[id] = create_line_series("Prob", learning_color if self.default_color == Qt.white else self.default_color, self.size)
                 self.learning[id].clicked.connect( self.learning_series_clicked )
 
 
@@ -135,13 +143,14 @@ class Group():
 ##########################################
 class EpisodeData():
 
-    def __init__(self, history, target_cmd ):
+    def __init__(self, history, target_cmd, show_user = False, show_meta_info = True ):
         self.history = history
         self.group = dict()
         self.group[ "empirical" ]         = Group("empirical", "scatter", 10)
         self.group[ "empirical_error" ]   = Group("empirical_error", "scatter", 18, Qt.red)
         self.group[ "prob" ]              = Group("prob", "line", 5)
-
+        self.show_user = show_user
+        self.show_meta_info = show_meta_info
         
         self.individual = dict()
         self.individual["user_action_prob"] = None
@@ -180,9 +189,17 @@ class EpisodeData():
         #self.outlier_3 = create_scatter_series("outlier_3", 18, QScatterSeries.MarkerShapeCircle, Qt.magenta)
         #self.outlier_4 = create_scatter_series("outlier_4", 18, QScatterSeries.MarkerShapeCircle, Qt.magenta)
 
-        action_vec =  self.history.user_action
-        time_vec =  self.history.user_time
-        success_vec =  self.history.user_success 
+        
+        action_vec =  self.history.action
+        time_vec =  self.history.time
+        success_vec =  self.history.success
+
+        if self.show_user:
+            action_vec =  self.history.user_action
+            time_vec =  self.history.user_time
+            success_vec =  self.history.user_success
+
+
         max_time = 7.5
 
         for i in range( len(action_vec) ):
@@ -206,13 +223,13 @@ class EpisodeData():
                 if time >= 5 * max_time :
                     self.outlier_2.append(i, time_band1+2 )
 
-                if len( self.history.prob_vec ) > 0 :
+                if len( self.history.prob_vec ) > 0 and self.show_meta_info :
                     prob_vec = np.array( self.history.prob_vec[i] ) * float(max_y)
                     self.group["prob"].add_items(cmd, i, prob_vec )
-                if len( self.history.user_action_prob) > 0 :
+                if len( self.history.user_action_prob) > 0 and self.show_meta_info :
                     self.individual[ "user_action_prob" ].append(i, self.history.user_action_prob[i] * float(max_y) )
 
-                if len( self.history.knowledge ) > 0 :
+                if len( self.history.knowledge ) > 0 and self.show_meta_info :
                     self.individual[ "knowledge" ].append(i, self.history.knowledge[i] * float(max_y) )
 
             if self.history.block_trial[i] == 0:
@@ -236,8 +253,10 @@ class EpisodeView(QChartView):
         chart.legend().setVisible(False)
         self.setChart(chart)
         self.setRenderHint(QPainter.Antialiasing)
-        self.setMinimumHeight(300)
-        self.setMinimumWidth(850)
+        self.setMinimumHeight(200)
+        self.setMaximumHeight(200)
+        
+        self.setMinimumWidth(750)
         self.d = None
         self.cmd = -1
         
@@ -245,27 +264,35 @@ class EpisodeView(QChartView):
 
 
     ######################    
-    def set_full_history(self, history, target_cmd ):   
+    def set_full_history(self, history, target_cmd, show_user= False , show_meta_info = True):   
         self.chart().removeAllSeries()
         self.commands = history.commands
         self.d = history
         self.cmd = target_cmd
         self.trial_id = -1
-        data = EpisodeData( history, target_cmd )
+        data = EpisodeData( history, target_cmd, show_user, show_meta_info )
         data.add_series_to_chart( self.chart() )
 
         self.cursorLine = QLineSeries()
         self.cursorLine << QPointF(0,0) << QPointF(0,10)
         self.chart().addSeries( self.cursorLine )
 
-        self.start_transition = QLineSeries()
+        self.top_transition = QLineSeries()
+        self.bottom_transition = QLineSeries()
         x_start_trans = history.start_transition[ history.commands.index(target_cmd) ]
-        self.start_transition << QPointF(x_start_trans, 0) << QPointF(x_start_trans,10)
-        self.chart().addSeries( self.start_transition )
+        x_stop_trans = history.stop_transition[ history.commands.index(target_cmd) ]
+        #print(history.user_id, target_cmd, history.commands.index(target_cmd), x_start_trans, x_stop_trans)
+        
+        self.top_transition << QPointF(x_start_trans, max_y) << QPointF(x_stop_trans, max_y)
+        self.bottom_transition << QPointF(x_start_trans, 0) << QPointF(x_stop_trans, 0)
+        self.area_transition = QAreaSeries(self.top_transition, self.bottom_transition)
+        area_color = Qt.yellow
+        self.area_transition.setBrush( QColor(255,255,0,50) )
+        self.chart().addSeries( self.area_transition )
         
 
         
-        self.chart().setTitle( "user: " + str(history.user_id) + " - cmd: " + str(target_cmd) + " - technique: " + history.technique_name  )
+        self.chart().setTitle( "MODEL: " + history.model_name + "      user: " + str(history.user_id) + " - cmd: " + str(target_cmd) + " - technique: " + history.technique_name  )
         self.chart().layout().setContentsMargins(0, 0, 0, 0);
         self.chart().createDefaultAxes()
         self.chart().axisY().setRange(0, max_y)

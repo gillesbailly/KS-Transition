@@ -12,8 +12,13 @@ bar_plot_bic_technique_model <- function(df_original, path){
   df_max_user <-df_max_user %>% filter(model_name != "random")
   df_max_user$bic <- 0
   df_max_user$bic <- 2 * df_max_user$log_likelyhood + df_max_user$n_params * log(df_max_user$N)  #* df_max_user$N
+  level_order <- c("RW", "RW_without", "CK", "RW_CK", "trans", "TRANS_D", "TRANS_DK0", "TRANS_DCK")
+  df_max_user$model_name <- factor(df_max_user$model_name, levels = level_order)
+  with( df_max_user, df_max_user[order(model_name) ] )
+  View(df_max_user)
+  
   g <- ggplot() 
-  g <- g + geom_bar(data = df_max_user, aes(y = bic, x = user_id, group = as.factor(model_name ), fill=model_name), stat="identity", position = "dodge")
+  g <- g + geom_bar(data = df_max_user, aes(y = bic, x = user_id, group = factor(model_name, level_order) , fill = factor(model_name, level_order) ), stat="identity")#, position = "dodge")
   g <- g + facet_grid(technique_name ~ .)
   g <- g + ggtitle( "BIC per model, technique and user" ) + xlab("User") + ylab("Log likelyhood")
   plot(g)
@@ -307,10 +312,11 @@ bar_plot_bic_technique_model <- function(df_max_user, path){
   df_max_user$N = 720
   df_max_user$bic <- -2 * df_max_user$log_likelyhood + df_max_user$n_params * log(df_max_user$N)  #* df_max_user$N
   df_max_user$bic <- - df_max_user$bic
+  color_mapping = c("RW_without" = "dodgerblue3", "RW" = "dodgerblue", "CK_without" = "tomato3", "CK"= "tomato", "RW_CK_without" = "darkorchid3", "RW_CK" = "orchid", "trans"= "magenta4", "TRANS_D" = "chartreuse4", "TRANS_DK0"= "chartreuse", "TRANS_DCK"= "green4", "TRANS_DCK0"= "black")
   g <- ggplot() 
-  g <- g + geom_bar(data = df_max_user, aes(y = bic, x = target, group = as.factor(model_name ), fill=model_name), stat="identity", position = "dodge")
+  g <- g + geom_bar(data = df_max_user, aes(y = bic, x = participant, group = model_name, fill=model_name), stat="identity", position = "dodge")
   g <- g + facet_grid(technique_name ~ .)
-  g <- g + ggtitle( "BIC per model, technique and user" ) + xlab("User") + ylab("- Log L")
+  g <- g + ggtitle( "BIC per model, technique and user" ) + xlab("User") + ylab("- Log L") + scale_fill_manual("legend", values = color_mapping )
   plot(g)
   filename <- paste(path, "bic_model_technique_users.pdf", sep="")
   ggsave( filename )
@@ -320,9 +326,13 @@ bar_plot_bic_technique_model <- function(df_max_user, path){
 ###########################################################################
 ###########################################################################
 bar_plot_likelyhood_technique_model <- function(df_max_user, path){
+  fill_mapping = c("RW_without" = "dodgerblue3", "RW" = "dodgerblue", "CK_without" = "tomato3", "CK"= "tomato", "RW_CK_without" = "darkorchid3", "RW_CK" = "orchid", "trans"= "magenta4", "TRANS_D" = "chartreuse4", "TRANS_DK0"= "chartreuse", "TRANS_DCK"= "green4" , "TRANS_DCK0"= "black")
+  color_mapping = c("RW_without" = "none", "RW" = "black", "CK_without" = "none", "CK"= "black", "RW_CK_without" = "none", "RW_CK" = "black", "trans"= "none", "TRANS_D" = "none", "TRANS_DK0"= "black", "TRANS_DCK"= "green4" , "TRANS_DCK0"= "black")
+  
   g <- ggplot() 
-  g <- g + geom_bar(data = df_max_user, aes(y = log_likelyhood, x = target, group = as.factor( model_name ), fill=model_name), stat="identity", position = "dodge")
-  g <- g + facet_grid(technique_name ~ .)+ ggtitle( "Likelyhood per model, technique and user" ) + xlab("User") + ylab("-Log L")
+  g <- g + geom_bar(data = df_max_user, aes(y = log_likelyhood, x = participant, group = as.factor( model_name ), fill=model_name), stat="identity", position = "dodge")
+  g <- g + facet_grid(technique_name ~ .)+ ggtitle( "Likelyhood per model, technique and user" ) + xlab("User") + ylab("-Log L") 
+  g <- g + scale_fill_manual("legend", values = fill_mapping ) + scale_colour_manual("legend", values = color_mapping)
   plot(g)
   filename <- paste(path, "likelyhood_model_technique_users_1.pdf", sep="")
   ggsave( filename )
@@ -351,7 +361,7 @@ analyze_trans_parameter <- function ( model_name, path, graph_path ){
     df[ df['HORIZON'] == 0 , 'KM' ] <- v_default
     df[ df['HORIZON'] == 0 , 'KL' ] <- v_default
     df[ df['HORIZON'] <= 1 , 'DISCOUNT' ] <- v_default
-    View(df)  
+
     g_horizon <- ggplot(df, aes(x=HORIZON)) + geom_histogram(binwidth = 1, colour="black", fill="white")
     g_horizon <- g_horizon+ facet_grid( rows = vars(technique_name) )
     g_horizon <- g_horizon + ylab("nb users")
@@ -487,9 +497,6 @@ analyze_trans_parameter <- function ( model_name, path, graph_path ){
 ##############################
 parallel_coord <- function(df_original, nb_param, graph_path) {
   
-
-  
-  
 }
 
 
@@ -508,6 +515,7 @@ load_data_frame <-function(path){
   res['temp'] = res[ 'target' ] %% 3
   res[ res['temp'] == 1, 'technique_name'] <- 'Audio'
   res[ res['temp'] == 2, 'technique_name'] <- 'Disable'
+  res['participant'] = floor( res["target"] / 3 )
   
   
   
@@ -520,13 +528,16 @@ main <- function(){
   db_path <- "/Users/bailly/GARDEN/transition_model/likelyhood/optimisation"
   graph_path <- "/Users/bailly/GARDEN/transition_model/graphs/fitting_optimisation/"
   
-  analyze_trans_parameter( "TRANS_D", db_path, graph_path )
+  #analyze_trans_parameter( "TRANS_D", db_path, graph_path )
   #analyze_trans_parameter( "RW_CK", db_path, graph_path )
   
   df <- load_data_frame(db_path)
-  
-  df<- df %>%group_by(model_name, target) %>%  filter(log_likelyhood != -1000)
+  level_order <- c("RW_without", "CK_without", "RW_CK_without", "trans", "TRANS_D",  "TRANS_DCK", "RW",  "CK",  "RW_CK",  "TRANS_DK0", "TRANS_DCK0")
+  df$model_name <-factor(df$model_name, level_order)
+  df <- df %>% filter(model_name != "trans")
+  df<- df %>% group_by(model_name, target) %>%  filter(log_likelyhood != -1000)
   df<- df %>%group_by(model_name, target) %>%  filter(log_likelyhood == min(log_likelyhood))
+  View(df)  
   bar_plot_likelyhood_technique_model(df,graph_path)
   bar_plot_bic_technique_model(df, graph_path)
   
@@ -566,10 +577,82 @@ main <- function(){
 
 
 
+####################################
+load_confusion_matrix <-function(path){
+  df = read.csv(file=path,header=TRUE,sep=";")
+  level_order <- c("Menu", "Hotkey", "Learning")
+  df$user_strategy <- factor(df$user_strategy, c("Learning", "Hotkey", "Menu"))
+  df$pred_strategy <- factor(df$pred_strategy, c("Menu", "Hotkey", "Learning"))
+  return (df)
+}
+
+###################################
+study_confusion_matrix <- function(path, graph_path, user, type){
+  df = load_confusion_matrix(path)
+  
+  df$value = 0
+  if ( type == "n" ){
+    df$value = df$n
+  }else if( type == "percent" ){
+    df <- df %>% filter(df$total_user != 0)
+    df$value = df$n * 100 / df$total_user
+  }else if( type == "likelyhood" ){
+    df <- df %>% filter(df$total_user != 0)
+    df$value = df$likelyhood * 100.
+  }
+  
+  if(user == TRUE){
+    df <- df %>% group_by(model, user, user_strategy, pred_strategy) %>% summarize(value = mean( value ))
+  }else{
+    df <- df %>% group_by(model, user_strategy, pred_strategy) %>% summarize( value = mean( value ) )
+  }
+
+  g <- plot_confusion_matrix(df)
+  save_plot_confusion_matrix( graph_path, g, user, type)
+  
+}
+
+
+
+####################################
+plot_confusion_matrix <-function(df){
+  View(df)
+  g <- ggplot( data = df, aes(pred_strategy, user_strategy) ) 
+  g <- g + geom_tile( aes(fill=value), colour = "white" )
+  g <- g + geom_text(aes(label = sprintf("%1.0f", value)), vjust = 1) 
+  g <- g + scale_fill_gradient(low = "white", high = "steelblue" )
+  if ("user" %in% colnames(df) ){
+    g <- g + facet_wrap(model~user, ncol= length( unique(df$user)) )
+  }else{
+    g <- g + facet_wrap(~model)
+  }
+  plot(g)
+  return(g)
+}
+
+####################################
+save_plot_confusion_matrix <-function(graph_path, g, user, type){
+  s = "_"
+  if (user == TRUE){
+    s = "user_"
+  }
+  filename <- paste(graph_path, toString(user), sep="")
+  filename <- paste(filename, type, sep="_")
+  filename <- paste(filename, ".pdf", sep="")
+  ggsave( filename ) 
+}
+
+
 
 #######################################
 #          Main                       #
 #######################################
 df = main()
+#path = "/Users/bailly/GARDEN/transition_model/meta_analysis/model_fit_confusion_matrix.csv"
+#graph_path = "/Users/bailly/GARDEN/transition_model/graphs/confusion_matrix/confusion_matrix"
+
+#df = study_confusion_matrix(path, graph_path, TRUE, "likelyhood")
+#df = study_confusion_matrix(path, graph_path, FALSE, "likelyhood")
+
 
 

@@ -31,7 +31,7 @@ if __name__=="__main__":
     env = Environment("./parameters/environment.csv")
     env.value['n_strategy'] = 3
     simulator = Simulator(env)
-    model_vec_long = [TransD(env, 'TRANS_D'), Trans(env, 'trans'), Alpha_Beta_Model(env, 'RW_IG_CTRL'), Alpha_Beta_Model(env, 'RW_IGM'), Alpha_Beta_Model(env, 'RW_D'), Random_Model(env), Win_Stay_Loose_Shift_Model(env), Alpha_Beta_Model(env, 'IG'), Alpha_Beta_Model(env, 'RW_IG'), Alpha_Beta_Model(env, 'RW_CK'), Alpha_Beta_Model(env, 'CK'), Alpha_Beta_Model(env, 'RW'), Rescorla_Wagner_Model(env)]
+    model_vec_long = [TransD(env, 'TRANS_DCK'), Trans(env, 'trans'), Alpha_Beta_Model(env, 'RW_IG_CTRL'), Alpha_Beta_Model(env, 'RW_IGM'), Alpha_Beta_Model(env, 'RW_D'), Random_Model(env), Win_Stay_Loose_Shift_Model(env), Alpha_Beta_Model(env, 'IG'), Alpha_Beta_Model(env, 'RW_IG'), Alpha_Beta_Model(env, 'RW_CK'), Alpha_Beta_Model(env, 'CK'), Alpha_Beta_Model(env, 'RW'), Rescorla_Wagner_Model(env)]
     #index_model = sys.args[1] if len(sys.args) == 2 else 0
 
     print("-- model ", args.model)

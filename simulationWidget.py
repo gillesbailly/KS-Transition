@@ -99,18 +99,21 @@ class SimulatorUI(QTabWidget):
         summary_view.setMinimumHeight(300)
         nb_sims = len( sims )
         nb_blocks = 12
-        nb_trial = 60
-        count_hotkey = np.zeros( nb_blocks+1 )
+        #nb_trial = 60
+        count_hotkey = np.zeros( nb_blocks )
 
         for history in sims :
             action_vec = history.action 
             success_vec = history.success
-            for i in range(0, len(action_vec) ) :
-                if action_vec[i].strategy == Strategy.HOTKEY and success_vec[i] == True :
-                    block_id = round( float(i) / float(nb_trial) )
-                    count_hotkey[block_id] += 1
-        count_hotkey = count_hotkey * 100. / (float(len( sims ) * float(nb_trial) ) )
+            nb_trial = len(action_vec)
+            for i in range(0,  nb_trial ) :
 
+                if action_vec[i].strategy == Strategy.HOTKEY and success_vec[i] == True :
+                    block_id = int( float(i) / float(nb_trial) )
+                    count_hotkey[block_id] += 1
+        #count_hotkey = count_hotkey * 100. / (float(len( sims ) * float(nb_trial) ) )
+        count_hotkey = 
+        A revoir
         series = QLineSeries()
         for i in range(0, len(count_hotkey)) :
             series.append( QPointF(i, count_hotkey[i] ) )
@@ -118,12 +121,12 @@ class SimulatorUI(QTabWidget):
             
         chart.createDefaultAxes()
         chart.axisY().setRange(0, 100)
-        chart.axisY().setTitleText(" Percentage of Correct Hotkeys")
+        chart.axisY().setTitleText(" Percentage of Correct Hotkeys per block")
         
         chart.axisX().setRange(0, nb_blocks)
         chart.axisX().setTitleText('Block id (60 trials)')
         chart.axisX().setTickType(QValueAxis.TicksFixed)
-        chart.axisX().setTickCount(13)
+        chart.axisX().setTickCount(nb_blocks)
         chart.axisX().setLabelFormat("%i")
         
 

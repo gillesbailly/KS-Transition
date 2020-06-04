@@ -1,8 +1,38 @@
 import sys
 import csv
 import numpy as np
+import pandas as pd
 from util import *
 
+
+##########################################
+#                                        #
+#             Experiment                 #
+#                                        #
+##########################################
+class TransitionAnnotation(object):
+    def __init__(self, path, max_trial_id = 750) :
+        self.max_trial = max_trial_id
+        self.df = pd.read_csv( path, sep=',')
+
+
+    def get_range( self, user_id, cmd_name, column_names) :
+        res = self.df.loc[  (self.df['subject'] == user_id)  & (self.df['item'] == cmd_name), column_names ]
+        return res.to_numpy()[0]
+        
+
+    def trial_range(self, user_id, cmd_name) :
+        res = self.get_range( user_id, cmd_name, ['transition_start_trial', 'transition_end_trial'] )
+        res = np.where(res==-1, self.max_trial, res) 
+        return res
+        
+
+    def occurence_range(self, user_id, cmd_name) :
+        return self.get_range( user_id, cmd_name, ['transition_start', 'transition_end'] )
+
+# if __name__=="__main__":
+#     annotation = TransitionAnnotation('./experiment/transition_annotation.csv', 750)
+#     print(annotation.trial_range(1, 'Strawberry'), annotation.occurence_range(1, 'Strawberry') )
 
 
 
@@ -16,6 +46,8 @@ class Experiment(object):
 
     ####################
     def __init__(self, path, n_strategy, raw_data = True, _filter=""):
+        self.annotation = TransitionAnnotation('./experiment/transition_annotation.csv', 750)
+
         self.count_pure_hotkey = 0
         self.count_pure_menu = 0
         self.count_hotkey_menu = 0
@@ -23,7 +55,7 @@ class Experiment(object):
         self.count_menu_unknown = 0
         self.count_unknown = 0
         if raw_data : 
-            self.data = self.load_raw_data(path, _filter)
+            self.data = self.load_raw_data(path, _filter) #best one
         else :
             self.data = self.load(path, n_strategy, _filter)
         
@@ -205,13 +237,18 @@ class Experiment(object):
                         if time > 0 :
                             history.block.append( int(row[2]) )
                             history.block_trial.append( int(row[3]) )
-                    
+                            cmd_name = row[6]
                             if row[6] not in history.command_name:
-                                history.command_name.append( row[6] )
+                                history.command_name.append( cmd_name )
                                 history.command_frequency.append( int( row[30] ) )
-                                history.start_transition.append( int( float(row[0]) - float( row[33] ) ) ) 
+                                trans_range = self.annotation.trial_range(user_id, cmd_name )
+                                history.start_transition.append( trans_range[0] )
+                                history.stop_transition.append( trans_range[1] ) 
                                 history.commands.append( len(history.command_name) - 1 )
                             cmd = history.command_name.index(row[6])
+
+                           
+
                             history.cmd.append( cmd )
                     
                             history.encounter = int( float(row[31]) )

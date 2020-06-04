@@ -131,12 +131,12 @@ class Alpha_Beta_Model_Abstract(Model):
             
         for s in self.available_strategies:
             value_0[ s ] = 0
-            if ( s == default_strategy ) and ( name in self.v0 ) 
-            value_0[ s ] = self.v0[ name ]
+            if ( s == default_strategy ) and ( name in self.v0 ) :
+                value_0[ s ] = self.v0[ name ]
         return value_0
 
     #########################
-    def custom_reset_memory(self):
+    def custom_reset_memory(self, available_strategies):
         pass 
 
     #########################
@@ -148,5 +148,5 @@ class Alpha_Beta_Model_Abstract(Model):
         self.memory = Alpha_Beta_Model_Abstract.Memory(self.env, value_names )
         for name in value_names :
             self.memory.set_initial_value( self.env, name, self.value_0(available_strategies, name) )
-        self.custom_reset_memory()
+        self.custom_reset_memory(available_strategies)
 

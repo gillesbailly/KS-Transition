@@ -13,13 +13,14 @@ class TransD(Alpha_Beta_Model_Abstract):
     
     def __init__(self, env, name):
         super().__init__(env, name)
-        self.max_knowledge = 0.99
+        self.max_knowledge = 1.0
      
 
     ########################## 
     def knowledge(self, cmd ) :
         return self.memory.hotkey_knowledge[ cmd ]   
   
+
     ########################## 
     def has_knowledge( self ) :
         return True   
@@ -50,6 +51,16 @@ class TransD(Alpha_Beta_Model_Abstract):
         #elif step.action.strategy == Strategy.HOTKEY and step.success :
         #    memory.hotkey_knowledge[ step.cmd ] += kl * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
     
+        ################
+        #   update CK  #
+        ################
+        if 'CK' in self.params.value : 
+            for s in self.available_strategies:
+                a_ck = Action(step.cmd, s).to_string()
+                a_t_k = 1. if step.action.strategy == s else 0.
+                alpha_ck = 1
+                memory.value[ 'CK' ][ a_ck ] +=  alpha_ck * (a_t_k -  memory.value[ 'CK' ][ a_ck ] )
+
 
     ##########################
     def default_strategy(self) :
@@ -70,9 +81,11 @@ class TransD(Alpha_Beta_Model_Abstract):
             return p
 
         value_vec = self.goal_values_recursive(cmd, self.memory, horizon,[])
-        reward_vec = 20 - value_vec
-        #print (self.available_strategies, value_vec, soft_max( self.params.value['B'], reward_vec))
-        return soft_max( self.params.value['B'], reward_vec)
+        reward_vec = 20 - value_vec #TODO What is this 20 (but I guess it is useless)
+        #Q_values = reward_vec 
+        W = self.params.value['W_CK'] if 'W_CK' in self.params.value else 0
+        Q_values = (1.- W) * reward_vec + W * self.values( 'CK', cmd, -1 )
+        return soft_max( self.params.value['B'], Q_values)
 
     def success(self,action):
         res = [True, False]
@@ -149,9 +162,16 @@ class TransD(Alpha_Beta_Model_Abstract):
 
 
     #########################
-    def custom_reset_memory(self):
-        for cmd in self.env.commands:
+    def custom_reset_memory(self, available_strategies):
+        if 'K0' in self.params.value: 
+            for cmd in self.env.commands:
                 self.memory.hotkey_knowledge[ cmd ] = self.params.value['K0']
+        
+        if 'CK' in self.params.value :
+            name = 'CK'
+            self.memory.value[ name ] = dict()
+            self.memory.set_initial_value( self.env, name, self.value_0(available_strategies, name) )
+
 
 
         
