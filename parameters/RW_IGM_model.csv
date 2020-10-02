@@ -1,1 +1,0 @@
-parameter;id;value;min;max;step;commentALPHA_RW;alpha;0.3;0.0;0.7;0.05;learning rateBETA_RW;beta;6;0;14;0.5;Inverse temperature that controls the level of stochasticityV0_RW;v0;0.3;0.3;0.3;0.3; initial value for the RW value of the default methodIG_MENU;alpha_IG;0.05;0;0.4;0.01;learning rate of the HOTKEY Value when LEARNING strategy is used 
