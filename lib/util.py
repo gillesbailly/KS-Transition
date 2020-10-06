@@ -5,13 +5,20 @@ import math
 from builtins import object
 
 
+
+#######################
+def encode_cmd_s( cmd, s ) :
+    return 3 * cmd + s
+
+
+########################
 def values_long_format(actions, values):
     res = [-1,-1,-1]
     for i in range( 0, len(actions)):
         res[ actions[i].strategy ] = values[i]
     return res
 
-
+#########################
 def zipfian(s, N):
     res = np.zeros(N)
     denum = 0
@@ -254,166 +261,19 @@ class User_Data( object ):
         info["Command"]          = str( self.cmd[ trial_id ] )
         info["Frequence" ]       = str( self.command_info.frequency[ cmd_index ] )
         info["Name"]             = self.command_info.name[ cmd_index ]
+        info["Transition start"] = str( self.command_info.start_transition[ cmd_index ] )
+        info["Transition stop"]  = str( self.command_info.stop_transition[ cmd_index ] )
         info["Time"]             = str( self.output.time[ trial_id ] )
         info["Success"]          = str( self.output.success[ trial_id ] )
         info["Strategy"]         = str( self.output.action[ trial_id ].strategy )
         info["Executed command"] = str( self.output.action[ trial_id ].cmd )
+        info["block"]            = str( self.other.block[ trial_id ] )
+        info["block trial"]      = str( self.other.block_trial[ trial_id ] )
+        info["encounter"]        = str( self.other.encounter[ trial_id ] )
+        info["method id"]        = str( self.other.method_id[ trial_id ] )
+        info["method name"]      = str( self.other.method_name[ trial_id ] )
         return info
         
-        
-
-
-# ###########################
-# #   HISTORY
-# #   commands: the list of ids of the different commands of the application
-# ###########################
-# class History(object):
-#     def __init__(self):
-#         self.commands = []                          # list of command ids
-#         self.command_sequence = []                  # sequence of commands
-#         self.command_name = []                      # names of the commands
-#         self.command_frequency = []                 # frequency of the commands
-#         self.model_name = "None"                    # name of the used model
-#         self.params = "Empty"                       # parameters of the used model
-#         self.episode_id = 0                         # episode id (useless)
-        
-#         self.cmd = []                               # selected commands (== command_sequence)
-#         self.action = []                            # predicted action (e.g. Menu, KS, optionally, ML)
-#         self.prob_vec = []                          # probability that the user chooses each action. this is a vec of three values
-#         self.rw_vec = []                            # rw q_values
-#         self.ck_vec = []                            # ck values
-#         self.ctrl_vec =[]
-#         self.knowledge = []
-#         self.time = []                              # predicted time
-#         self.success = []                           # predicted success
-
-#     ##################################
-#     def has_simulation_data(self):
-#         return len(self.action) > 0
-
-
-#     ##################################
-#     def has_user_data(self):
-#         return False
-
-
-#     ##################################
-#     def set_commands(self, cmd_ids, cmd_seq, cmd_name, cmd_frequency):
-#         self.commands = cmd_ids
-#         self.command_sequence = cmd_seq
-#         self.command_name = cmd_name
-#         self.command_frequency = cmd_frequency
-
-
-#     ##################################
-#     def set_model(self, name, params):
-#         self.model_name = name
-#         self.model_params = params
-
-
-#     ##################################
-#     def update_history_short(self, action, prob_vec, time, success):
-#         self.action.append( action )
-#         self.prob_vec.append( prob_vec )
-#         self.time.append(time)
-#         self.success.append(success)
-
-#     ##################################
-#     def update_history_long(self, cmd, action, prob_vec, t, success):
-#         if cmd >= 0 :
-#             self.cmd.append(cmd)
-#         self.action.append( action )
-#         self.prob_vec.append( prob_vec )
-#         self.time.append(t)
-#         self.success.append(success)
-
-
-#     ##################################
-#     def add_selection(self, cmd, method, time, success):
-#         self.cmd.append(cmd)
-#         self.action.append( Action(cmd, method) )
-#         self.time.append(time)
-#         self.success.append(success)
-
-
-
-# ###########################
-# #
-# #   USER_HISTORY
-# #   
-
-# ###########################
-
-
-# ###########################
-# class User_History(History):
-#     def __init__(self):
-#         super().__init__()
-#         self.technique_name = ""
-#         self.technique_id = -1
-
-#         self.method_name = dict()
-#         self.ub_name = dict()
-#         self.user_id = 0
-
-#         self.block = []
-#         self.block_trial = []
-#         self.encounter = []
-#         self.method_id =[]
-#         self.ub_id = []
-#         self.user_action = []
-#         self.user_time = []
-#         self.user_success = []
-#         self.user_extra_info = []
-#         self.start_transition = []
-#         self.stop_transition = []
-
-#         self.user_action_prob = []
-#         self.log_likelihood = 0
-#         self.hotkey_count = -1
-#         self.fd = None
-        
-        
-#     ##################################
-#     def has_user_data(self):
-#         return len(self.user_action) > 0
-
-
-#     ##################################
-#     def get_hotkey_count(self, re_estimate = False):
-#         if self.hotkey_count == -1 or re_estimate:
-#             self.hotkey_count = 0
-#             for a in self.user_action:
-#                 if a.strategy == Strategy.HOTKEY:
-#                     self.hotkey_count += 1
-#         return self.hotkey_count
-
-
-#     ##################################
-#     def set_info(self, user_id, technique_id, technique_name):
-#         self.user_id = user_id
-#         self.technique_id = technique_id
-#         self.technique_name = technique_name
-
-
-#     ##################################
-#     def print_general(self):
-#         print('--------------------------------')
-#         print('User: ', self.user_id)
-#         print( "Commands: ", self.commands, self.command_name, self.command_frequency)
-#         print( "Technique: ", self.technique_id, self.technique_name )
-#         print( "Methods: ", self.method_name)
-#         print( "Ub : ", self.ub_name)
-#         print('--------------------------------')
-
-
-#     def print(self):
-#         for i in range( 0, len(self.cmd)):
-#             print(i, self.cmd[i], self.user_action[i], self.method_id[i], self.ub_id[i], self.user_time[i], self.user_errors[i])
-
-
-
-
 
 
 

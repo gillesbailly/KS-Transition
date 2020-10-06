@@ -8,6 +8,7 @@ import time as TIME
 from datetime import datetime
 from scipy.optimize import *
 
+from parameters_export import *
 from data_loader import *
 from util import *
 from alpha_beta_model import *
@@ -111,8 +112,10 @@ class Model_Fitting( object ):
         self.debug = debug
         self.debug_var = 0
         
+        
     ######################################
     def optimize( self ):
+        timestamp = TIME.strftime("%Y-%m-%d-%H-%M-%S", TIME.gmtime() )
         cp = cProfile.Profile()
         cp.enable()
     
@@ -121,7 +124,7 @@ class Model_Fitting( object ):
             
 
             for i , user_data in enumerate( self.user_data_vec ):
-                model_result = self.init_model_result( model, self.user_data_vec, self.debug )
+                model_result = Model_Result.create( model, self.user_data_vec, self.debug )
                 start = TIME.time()
                 available_strategies = strategies_from_technique( user_data.technique_name )
                 
@@ -140,12 +143,13 @@ class Model_Fitting( object ):
                 res = differential_evolution(self.to_minimize, bounds = free_param_bnds_vec, args = (free_param_name_vec, self.method, available_strategies ) )
             
                 end = TIME.time()
-                print("optmize the model: ", model.name, "on user: ", user_data.id, "in ",  end - start)
+                print("optmize the model: ", model.name, "on user: ", user_data.id, "in ",  end - start,"s")
                 print( res )
 
-                parameters = Parameters( model.default_parameters_path() )
+                parameters = Parameters( model.name, model.default_parameters_path() )
                 for name, value in zip( free_param_name_vec, res.x ):
                     parameters[ name ].value = value
+                self.backup_parameters( parameters, timestamp )
 
                 model_result.log_likelihood[ i ] = - res.fun
                 model_result.time[ i ]           = end - start
@@ -156,6 +160,12 @@ class Model_Fitting( object ):
         cp.print_stats()
         return result_vec
 
+
+    ######################################
+    def backup_parameters( self, parameters, timestamp ):
+        path = "./backup/" + timestamp + "/"
+        filename = parameters.name + "_model.csv"
+        Parameters_Export.write( parameters, path, filename )
 
 
     ######################################

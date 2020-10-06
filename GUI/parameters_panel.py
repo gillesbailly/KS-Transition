@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QSignalMapper, Qt
+from PyQt5.QtCore import QSignalMapper, Qt, QObject, pyqtSignal
 
 from model_interface import *
 from gui_util import *
@@ -11,6 +11,7 @@ from gui_util import *
 #                                    #
 ######################################
 class Parameters_Group_Panel( Serie2DGallery ):
+    reload = pyqtSignal()
 
     ###############################
     def __init__(self):
@@ -26,7 +27,10 @@ class Parameters_Group_Panel( Serie2DGallery ):
             parameters_panel = Parameters_Panel( parameters )
             self.l.addWidget( parameters_panel, i, 0)
         self.l.setRowStretch(0,1)
-        self.l.addWidget( self.save_parameters_panel() ) 
+        self.l.addWidget( self.save_parameters_panel() )
+        self.reload_button = QPushButton( "Reload" )
+        self.l.addWidget( self.reload_button )
+        self.reload_button.clicked.connect( self.reload )
 
 
     ##############################
@@ -47,6 +51,7 @@ class Parameters_Group_Panel( Serie2DGallery ):
 
 
 
+
     ##############################
     def save_settings( self ):
         print( "save settings" )
@@ -54,6 +59,48 @@ class Parameters_Group_Panel( Serie2DGallery ):
 
         #self.l.addItem( QSpacerItem(10,10, QSizePolicy.Expanding ), self.l.rowCount() + 1, 0)
         #self.l.setColumnStretch(0, 10)
+
+
+######################################
+#                                    #
+#           PARAM WIDGET             #
+#                                    #
+######################################
+class Param_Widget( QObject ):
+    changed = pyqtSignal()
+
+    ########################
+    def __init__( self, param ):
+        super(QObject, self).__init__()
+        self.param = param
+        self.freedom_vec = ["Fixed", "USER FREE", "TECHNIQUE FREE", "EXPERIMENT_FREE"]
+        self.name  = QLabel( param.name )
+        self.value = LineEdit( str( param.value ) )
+        self.value.editingFinished.connect( self.view_changed )
+        #value_edit.setPalette( QPalette.Shadow )
+        s = '[' + str( param.min ) + ', ' + str(param.max) + ']'
+        self.min_max = LineEdit( s )
+        self.min_max.editingFinished.connect( self.view_changed )
+        self.freedom = QComboBox()
+        self.freedom.addItems( self.freedom_vec )
+        self.freedom.setCurrentIndex( param.freedom )
+        self.freedom.currentIndexChanged.connect( self.view_changed )
+
+
+    ########################
+    def update_view( self ):
+        self.value.setText( self.param.value )
+        s = '[' + str( self.param.min ) + ', ' + str(self.param.max) + ']'
+        self.min_max.setText( s )
+        self.freedom.setCurrentIndex( param.freedom )
+
+    ########################
+    def view_changed( self ):
+        print( self.name.text(), "view changed" )
+        value = self.value.text()
+        self.param.value = float( value ) if '.' in value else int( value )
+        self.param.freedom = self.freedom.currentIndex() 
+        self.changed.emit()
 
 
 ######################################
@@ -71,7 +118,7 @@ class Parameters_Panel( QWidget ):
         self.l.setHorizontalSpacing( 1 )
         self.l.setVerticalSpacing( 1 )
         self.setLayout( self.l )
-        freedom_vec = ["Fixed", "USER FREE", "TECHNIQUE FREE", "EXPERIMENT_FREE"]
+        self.param_widget_vec = []
         #category_vec = ["Name", "Value", "Range", "Freedom"]
         #for i, category in enumerate( category_vec ):
         #    category_button = QPushButton( category )
@@ -79,19 +126,14 @@ class Parameters_Panel( QWidget ):
         #    self.l.addWidget(category_button, 0, i)
         self.l.addWidget( QLabel( '----' + parameters.name + '----' ), 0, 0, 1, 4, Qt.AlignHCenter)
         for i, param in enumerate( parameters.values() ) :
-            name_label  = QLabel( param.name )
-            value_edit = LineEdit( str( param.value ) )
-            #value_edit.setPalette( QPalette.Shadow )
-            s = '[' + str( param.min ) + ', ' + str(param.max) + ']'
-            min_max_edit   = LineEdit( s )
-            freedom_chooser = QComboBox()
-            freedom_chooser.addItems( freedom_vec )
-            freedom_chooser.setCurrentIndex( param.freedom )
+            param_widget = Param_Widget( param )
+            param_widget.changed.connect( self.update_data )
+            self.param_widget_vec.append( param_widget )
 
-            self.l.addWidget( name_label     , i+1, 0 )
-            self.l.addWidget( value_edit     , i+1, 1 )
-            self.l.addWidget( min_max_edit   , i+1, 2 )
-            self.l.addWidget( freedom_chooser, i+1, 3 )
+            self.l.addWidget( param_widget.name   , i+1, 0 )
+            self.l.addWidget( param_widget.value  , i+1, 1 )
+            self.l.addWidget( param_widget.min_max, i+1, 2 )
+            self.l.addWidget( param_widget.freedom, i+1, 3 )
             self.l.setRowStretch(0,1)
         self.show()
 
@@ -103,6 +145,14 @@ class Parameters_Panel( QWidget ):
             w.hide()
             #w.setVisible( not w.isVisible() )
     
+    def update_data( self ):
+        print( "update parameters" )
+
+    ###############################
+    def update_view( self ):
+        for param_widget in self.param_widget_vec:
+            param_widget.update_view()
+
 
 ######################################
 #                                    #
@@ -151,6 +201,7 @@ class Model_Result_Panel( Serie2DGallery ):
         self.setLayout( self.l )
         self.model_row = dict()
         self.user_col = dict()
+        self.w = dict()
 
     def set_group( self, model_result_vec ):
         self.l.addWidget(QLabel(""),0,0)
@@ -166,10 +217,15 @@ class Model_Result_Panel( Serie2DGallery ):
                 self.l.addWidget( QLabel( "<b>" + name + "</b>" ), row, 0 )
             
             for user_id, likelihood in zip( model_result.user_id, model_result.log_likelihood) :
-                likelihood_label = QLabel( str( round( likelihood, 2 ) ) )
                 if not user_id in self.user_col :
                     self.l.addWidget(QLabel( str(user_id) ), 0, user_id + 1 )
-                self.l.addWidget( likelihood_label, row, user_id+1 )
+                key = row * 100 + user_id
+                if not key in self.w:
+                    likelihood_label = QLabel( str( round( likelihood, 2 ) ) )
+                    self.w[ key ] = likelihood_label
+                    self.l.addWidget( likelihood_label, row, user_id+1 )
+                else:
+                    self.w[ key ].setText( str( round( likelihood, 2 ) ) )
 
 
             

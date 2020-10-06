@@ -191,7 +191,7 @@ class Model(object):
 
     ###########################
     def set_available_strategies( self, strategies ):
-        self.available_strategies = copy.copy( strategies )
+        self.available_strategies = strategies.copy()
 
     ###########################
     def get_actions_from( self, cmd_id ):
@@ -246,22 +246,24 @@ class Model(object):
 
     ###########################
     def time_strategy(self, strategy, success, default_strategy = Strategy.MENU) :
-        t = 0
-        if strategy == Strategy.MENU :
-            t = self.env.value['menu_time']
+        pass
 
-        elif strategy == Strategy.LEARNING:
-            t = self.env.value['menu_time'] + self.env.value['learning_cost']
+        # t = 0
+        # if strategy == Strategy.MENU :
+        #     t = self.env.value['menu_time']
 
-        elif strategy == Strategy.HOTKEY:
-            t = self.env.value['hotkey_time']
+        # elif strategy == Strategy.LEARNING:
+        #     t = self.env.value['menu_time'] + self.env.value['learning_cost']
 
-        if success == False:
-            t += self.env.value['menu_time'] + self.env.value['error_cost']
-            if default_strategy  == Strategy.LEARNING : 
-                t += self.env.value['learning_cost'] 
+        # elif strategy == Strategy.HOTKEY:
+        #     t = self.env.value['hotkey_time']
+
+        # if success == False:
+        #     t += self.env.value['menu_time'] + self.env.value['error_cost']
+        #     if default_strategy  == Strategy.LEARNING : 
+        #         t += self.env.value['learning_cost'] 
             
-        return t
+        # return t
 
     ###########################
     def success(self, action):

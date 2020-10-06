@@ -4,8 +4,7 @@ from model_interface import *
 import copy
 
 
-def encode_cmd_s( cmd, s ) :
-    return 3 * cmd + s
+
 
 # def decode_cmd_s( self, id) :
 #     cmd = int( id / 3)
@@ -54,14 +53,14 @@ class Alpha_Beta_Model_Abstract(Model):
 
 
     ##########################
-    def has_RW_values(self) :
-        return 'RW' in self.alpha.keys()
+    # def has_RW_values(self) :
+    #     return 'RW' in self.alpha.keys()
 
-    def has_CK_values(self) :
-        return 'CK' in self.alpha.keys()
+    # def has_CK_values(self) :
+    #     return 'CK' in self.alpha.keys()
 
-    def has_CTRL_values(self) :
-        return 'CTRL' in self.alpha.keys()
+    # def has_CTRL_values(self) :
+    #     return 'CTRL' in self.alpha.keys()
 
 
     ##########################
@@ -75,16 +74,6 @@ class Alpha_Beta_Model_Abstract(Model):
             if 'V0' in key_vec[ 0 ] :
                 self.v0[ key_vec[ 1 ] ]    = self.params[key].value
 
-
-    # ##########################
-    # def alpha_from_name(self, name):
-    #     return self.alpha[ self.value_names.index(name) ]
-
-    # ##########################
-    # def beta_from_name(self, name):
-    #     return self.beta[ self.value_names.index(name) ]
-
-
     ##########################
     def values(self, value_name, cmd, date):
         #print("values: ", self.available_strategies )
@@ -95,18 +84,6 @@ class Alpha_Beta_Model_Abstract(Model):
             #s = self.available_strategies[i]
             value_vec[ i ] = mem_value[ encode_cmd_s( cmd, s )]
         return value_vec
-
-
-
-        # action_vec = self.get_actions_from( cmd )
-        # value_vec = np.empty( len(action_vec) )
-
-
-        # for i in range( 0, len(action_vec) ):
-        #     s = action_vec[i].to_string()
-        #     value_vec[i] = self.memory.value[ value_name ][ s ]
-
-        # return value_vec
 
 
     ##########################

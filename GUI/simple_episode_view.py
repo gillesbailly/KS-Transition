@@ -134,6 +134,19 @@ class EpisodeData():
 
         self.load_user_output( user_data, cmd )
 
+    ##############################
+    def show_group( self, name, b ) :
+        if name in self.group :
+            g = self.group[ name ]
+            g.menu.setVisible( b )
+            g.hotkey.setVisible( b )
+            g.learning.setVisible( b )
+
+    ##############################
+    def show_individual( self, name, b ) :
+        if name in self.individual :
+            self.individual[ name ].setVisible( b )
+
 
     ##############################
     def add_user_series_to_chart(self, chart):
@@ -232,6 +245,24 @@ class EpisodeView(QChartView):
         self.trial_id = -1
         self.data = None
 
+    ###########################
+    def show_strategy_probs( self, name, b ):
+        self.data.show_group( name, b )
+
+    ###########################
+    def show_action_probs( self, name, b ):
+        self.data.show_individual( name, b )
+
+    ###########################
+    def show_user_data( self , b):
+        self.data.show_group( "empirical", b )
+        self.data.show_group( "empirical_error", b )
+        self.data.outlier_1.setVisible( b )
+        self.data.outlier_2.setVisible( b )
+        #self.data.show_group( "outlier_1", b )
+        #self.data.show_group( "outlier_2", b )
+
+
 
     ###########################    
     def set_user_data(self, user_data, cmd):   
@@ -251,9 +282,11 @@ class EpisodeView(QChartView):
     ############################
     def set_model_data( self, model_name, user_input, model_output, model_prob ):
         if model_name in self.data.group or model_name in self.data.individual :
-            print( "The model", model_name, "is already displayed" )
-            return 
-
+            group = self.data.group[ model_name ]
+            group.remove_to_chart( self.chart() )
+            self.chart().removeSeries( self.data.individual[ model_name ] )
+            #print( "The model", model_name, "is already displayed" )
+            
         self.data.load_model_output( model_name, user_input, model_output, model_prob, self.cmd )
         self.data.add_model_series_to_chart( model_name, self.chart() )
         #self.chart().createDefaultAxes()
@@ -261,11 +294,7 @@ class EpisodeView(QChartView):
         title += "\t " + model_name
         self.set_chart_decoration( title ) 
 
-    ############################
-    def show_strategies_probs( self, b):
-        for key in self.data.group :
-            if not (key == "empirical" or key == "empirical_error" ):
-                group[ key ]
+    
 
 
     ############################

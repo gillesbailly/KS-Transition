@@ -10,47 +10,70 @@ from filter import *
 class Filter_Panel(QWidget) :
 
     #################################
-    def __init__(self, filter):
-        super(QWidget,self).__init__()
-        self.filter = filter
-        self.l = QGridLayout()
+    def __init__( self, filter ):
+        super(QWidget,self).__init__( )
+        self.dialog = None
+        self.f = filter
+        self.l = QGridLayout( self )
         self.setLayout( self.l )
         self.technique_checkbox_dict = dict()
         self.user_checkbox_dict = dict()
         self.l.addWidget( QLabel("Input: ") )
-        self.input_label = QLabel()
-        self.l.addWidget( self.input_label, 0, 1,1,2 )
-        self.output_label = QLabel()
+        self.input_label = QLabel( self )
+        self.input_label.setWordWrap( True )
+        self.l.addWidget( self.input_label, 0, 1,1,3 )
+        self.output_label = QLabel( self )
         self.output_label.setText("Empty")
+        self.output_label.setWordWrap( True )
         self.available_user_id = []
 
-
-
-        for i, name in enumerate( self.filter.all_technique_vec ) :
-            technique_checkbox = QCheckBox( name )
+        for i, name in enumerate( self.f.all_technique_vec ) :
+            technique_checkbox = QCheckBox( name, self )
             technique_checkbox.setCheckState( Qt.Checked )
             technique_checkbox.stateChanged.connect( self.activate_technique )
             self.technique_checkbox_dict[ i ] = technique_checkbox
             self.l.addWidget( technique_checkbox, 1, i )
 
-        print( self.filter.all_user_vec )
-        for i, name in enumerate( self.filter.all_user_vec ) :
-            user_checkbox = QCheckBox( "User " + str(name) )
+        print( self.f.all_user_vec )
+        for i, name in enumerate( self.f.all_user_vec ) :
+            user_checkbox = QCheckBox( "User " + str(name), self )
             user_checkbox.setCheckState( Qt.Checked )
             user_checkbox.stateChanged.connect( self.activate_user )
             self.user_checkbox_dict[ name ] = user_checkbox
             self.l.addWidget( user_checkbox, i/3 +2 , name%3 )
 
         self.l.addWidget(QLabel("Output: "), self.l.rowCount() + 1, 0 )
-        self.l.addWidget(self.output_label, self.l.rowCount() + 1, 1, 1, 2)
+        self.l.addWidget(self.output_label, self.l.rowCount() + 1, 1, 1, 3)
 
+        self.update_view()
         self.show()
+
+
+    ################################
+    def update_view( self ):
+        self.input_label.setText( ", ".join( [ str(i) for i in self.f.all_user_vec ] ) )
+
+        for user in self.user_checkbox_dict :
+            if user in self.f.users:
+                 self.user_checkbox_dict[ user ].setCheckState( Qt.Checked )
+            else:
+                self.user_checkbox_dict[ user ].setCheckState( Qt.Unchecked )              
+        
+        for technique_id in self.technique_checkbox_dict :
+            technique = self.f.all_technique_vec[ technique_id ]
+            if technique in self.f.techniques:
+                self.technique_checkbox_dict[ technique_id ].setCheckState( Qt.Checked )
+            else:
+                self.technique_checkbox_dict[ technique_id ].setCheckState( Qt.Unchecked )
+        self.preview_output()
+
 
     ################################
     def apply( self ):
+
         technique_vec = []
         user_vec      = []
-        
+        #print( "apply:  ", list( self.technique_checkbox_dict.keys() ) )
         for w in self.technique_checkbox_dict.values() :
             if w.checkState() == Qt.Checked :
                 technique_vec.append( w.text() )
@@ -61,41 +84,23 @@ class Filter_Panel(QWidget) :
                 user_vec.append( key )
         print("technique_vec: ", technique_vec )
         print("user_vec: ", user_vec )
-        self.filter.techniques = technique_vec
-        self.filter.users     = user_vec
-
-
-    ################################
-    def set_user_data( self, user_data_vec ):
-        self.available_user_id = []
-        
-
-        for user_data in user_data_vec:
-            self.available_user_id.append( user_data.id )
-        #self.available_user_id = [i for i in range(0,6) ]
-
-        self.input_label.setText( ", ".join( str( self.available_user_id ) ) )
-
-        for key in self.user_checkbox_dict :
-                if not key in self.available_user_id : 
-                    self.user_checkbox_dict[ key ].setEnabled ( False )
-
-        self.preview_output()
+        self.f.techniques = technique_vec
+        self.f.users     = user_vec
 
 
     ################################
     def activate_technique( self ):
+        print("activate technique ")
         for key_technique in self.technique_checkbox_dict :
             state = self.technique_checkbox_dict[ key_technique ].checkState() == Qt.Checked
-    
+            
             for key_user in self.user_checkbox_dict :
                 if key_user%3 == key_technique :
                     self.user_checkbox_dict[ key_user ].setEnabled( state )
-                if not key_user in self.available_user_id :
+                if not key_user in self.f.all_user_vec :
                     self.user_checkbox_dict[ key_user ].setEnabled ( False )
 
         self.preview_output()
-
 
 
     ################################

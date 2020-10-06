@@ -43,7 +43,7 @@ class HotkeyCoach_Loader( Experiment_Loader_Interface ):
 
 
     ######################
-    def experiment( self, path ) :
+    def load( self, path ) :
         if not path:
             raise("The path for", self.name,  " is not valid: ", path)
             return []
@@ -83,7 +83,7 @@ class HotkeyCoach_Loader( Experiment_Loader_Interface ):
                                 cmd = user_data.command_info.name.index( cmd_name )
                                 user_data.cmd.append( cmd )
                         
-                                user_data.other.encounter = int( float(row[31]) )
+                                user_data.other.encounter.append( int( float(row[31]) ) )
 
                                 method_id = int( row[12] )
                                 user_data.other.method_id.append( method_id )
