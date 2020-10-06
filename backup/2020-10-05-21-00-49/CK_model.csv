@@ -1,0 +1,3 @@
+name;value;min;max;step;freedom;comment
+ALPHA_CK;0.4;0.0;1;0.05;1;learning rate
+BETA_CK;3;0;14;0.5;1;Inverse temperature that controls the level of stochasticity
