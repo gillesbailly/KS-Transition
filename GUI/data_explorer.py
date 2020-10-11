@@ -103,6 +103,16 @@ class Empirical_Panel ( QTabWidget ) :
 
 
     ##################################
+
+
+    ##################################
+    def show_relevant_tab( self, category_vec ):
+        for i in self.count():
+            name = self.tabText( i )
+            self.setTabVisible( i , name in category_vec )
+
+
+    ##################################
     def ensure_view_visible( self, technique, user_id, cmd ) :
         index = 0
         gallery = None
@@ -267,13 +277,25 @@ class Empirical_Panel ( QTabWidget ) :
                 self.gallery[ c ].add_view( view, row_id, col_id )
         self.show()
 
+
+    ##################################
+    def get_exact_trial(self, user_data, cmd, trial_id):
+        shift_vec = [ 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8, 8, -9, 9, -10, 10 ]
+        for shift in shift_vec:
+            if user_data.cmd[ trial_id + shift ] == cmd:
+                return trial_id+shift
+        print("get exact trial did not work", trial_id, cmd)
+        return trial_id
+        
+
         
     ##################################
-    def set_info(self, user_id, cmd, trial_id ) :
+    def set_info(self, user_id, cmd, _trial_id ) :
         #self.text_edit.setPlainText( "user: " + str(user_id) + "\t cmd:" + str(cmd) + "\t trial:" + str(trial_id) + "->" + "\n" +extra_infos + "\n" + self.text_edit.toPlainText()   )
         info = None
         for user in self.data_vec :
             if user.id == user_id:
+                trial_id = self.get_exact_trial( user, cmd, _trial_id )
                 info = user.trial_info( trial_id )
         self.trial_info.set_info( info )
         #self.view_selected.emit( extra_infos )

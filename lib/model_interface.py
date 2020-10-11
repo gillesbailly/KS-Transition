@@ -47,17 +47,6 @@ class Parameters(dict):
                 else:
                     header = False
 
-    # #######################
-    # def merge_with(self, params):
-    #     self
-    #     self.value.update( params.value )
-    #     self.range.update( params.range )
-    #     self.step.update( params.step )
-    #     self.comment.update( params.comment )
-        
-    # def get_info( self, name ):
-    #     return [self.value[name], self.range[name][0], self.range[name][1], self.step[name], self.comment[name] ]
-
     #########################
     def values_str( self ):
         res = ''
@@ -71,67 +60,6 @@ class Parameters(dict):
         return res
 
 
-    # #####################
-    # def update(self):
-    #     pass
-
-##########################################
-#                                        #
-#             Environment (context)      #
-#                                        #
-##########################################
-# class Environment(Parameters):
-#     def __init__(self, path):
-#         super().__init__(path)
-#         self.commands = []
-
-
-        #self.action_list = self.create_action_list()
-        #self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
-        
-        #self.commands = self.create_command_list( self.value['n_commands'] )
-        #self.action_list = self.create_action_list()
-        #self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
-        
-
-    ###################
-    # create the list of commands in the application
-    # def create_command_list(self, nb):
-    #     l = np.zeros( nb, dtype=int )
-    #     for i in range(nb):
-    #         l[i] = int(i)
-    #     return l
-    
-    # ###################
-    # def create_action_list(self):
-    #     res =[]
-    #     for cmd in self.commands:
-    #         res.append( Action(cmd, Strategy.MENU) )
-    #         res.append( Action(cmd, Strategy.HOTKEY) )
-    #         if self.value['n_strategy'] == 3:
-    #             res.append( Action(cmd, Strategy.LEARNING) )
-    #     return res
-
-
-   
-
-
-    # ###################
-    # def update_from_empirical_data( self, command_ids, command_seq, n_strategy ):
-    #     self.value['n_commands'] = len(command_ids)
-    #     self.value['n_strategy'] = n_strategy
-    #     self.commands = command_ids
-    #     self.cmd_seq = command_seq
-    #     self.create_action_list()
-
-
-    # ##################
-    # def update(self):
-    #     self.commands = self.create_command_list( self.value['n_commands'] )
-    #     self.cmd_seq = np.random.choice( self.commands, self.value['n_selection'], p = zipfian( self.value['s_zipfian'] , len(self.commands) ))
-
-
-
 
 
 ##########################################
@@ -142,8 +70,7 @@ class Parameters(dict):
 class Model(object):
 
     ######################################
-    def __init__( self, name, env ):
-        self.env = env
+    def __init__( self, name ):
         self.name = name
         self.description = 'Model description is empty'
         #path = './parameters/'
@@ -216,6 +143,11 @@ class Model(object):
         probs   = self.action_probs( cmd, date )
         return self.choice( actions, probs ), probs
          
+# should return an action and the prob for each action
+    def select_strategy( self, cmd, date =0):
+        probs   = self.action_probs( cmd, date )
+        return self.choice( self.available_strategies, probs ), probs
+
 
     ###########################
     def prob_from_action( self, a, date=0 ):
@@ -245,7 +177,7 @@ class Model(object):
         return 0
 
     ###########################
-    def time_strategy(self, strategy, success, default_strategy = Strategy.MENU) :
+    def strategy_time( self, strategy, success, default_strategy = Strategy.MENU ) :
         pass
 
         # t = 0
@@ -272,27 +204,26 @@ class Model(object):
 
     ###########################
     def time(self, action, success):
-        return self.time_strategy(action.strategy, success)
+        return self.strategy_time(action.strategy, success)
 
     ###########################
-    def has_RW_values( self ):
-        return False
+    def meta_info_1( self, cmd ):
+        return 0
 
     ###########################
-    def has_CK_values( self ):
-        return False
+    def meta_info_2( self, cmd ):
+        return 0
+
 
     ###########################
-    def has_CTRL_values( self ):
-        return False
+    def generate_step(self, cmd_id, action, date = 0):
+        result = StepResult()
+        result.cmd = cmd_id
+        result.action = Action( action.cmd, action.strategy )
+        result.success = self.success(action)
+        result.time = self.time(action, result.success)
+        return result
 
-    ###########################
-    def has_knowledge( self ) :
-        return False
-
-    ###########################
-    def generate_step( self, cmd_id, date, action ):
-        raise ValueError(" generate_step: method to implement ")
     
     ############################
     def update_model(self, step_result):

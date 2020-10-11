@@ -72,17 +72,6 @@ def extended_soft_max(beta_vec, value_vec):
     return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
-# #######################
-# def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
-#     res = []
-#     denum = 0
-#     for (v1, v2) in zip( vec_1, vec_2 ):
-#         denum += np.exp( beta_1 * v1 + beta_2 * v2 )
-
-#     for (v1, v2) in zip( vec_1, vec_2 ) :
-#         res.append( float( np.exp(beta_1 * v1 + beta_2 * v2 ) ) / float(denum) )
-
-#     return res
 
 
 
@@ -92,43 +81,61 @@ def extended_soft_max(beta_vec, value_vec):
 class Command(object):
     
     def __init__(self, id=0, name="None", hotkey ="hk"):
-        self.id = id
-        self.name = name
+        self.id     = id
+        self.name   = name
         self.hotkey = hotkey
 
 
 ###########################
-#   STEP RESULT
+#       STEP RESULT       #
 ###########################
 class StepResult(object):
 
     def __init__(self, cmd = -1, action = None, time = -1, success = -1, info_gain = -1):
-        self.cmd = cmd
-        self.action = action
-        self.time = time
+        self.cmd     = cmd
+        self.action  = action
+        self.time    = time
         self.success = success
-        self.information_gain = -1
 
 
-class FittingData(object):
-    def __init__(self, model, user_id, technique_id, log_likelyhood, N, hotkey_count = -1):
-        self.model_name = model.name
-        self.model_params = model.get_param_value_str()
-        self.n_BIC_params = model.count_BIC_params()
-        self.user_id = user_id
-        self.technique_id = technique_id
-        self.log_likelyhood = round(log_likelyhood,2)
-        self.hotkey_count = hotkey_count
-        self.N = N
+# ###########################
+# #   FITTINGData
+# ###########################
+# class FittingData(object):
+#     def __init__(self, model, user_id, technique_id, log_likelyhood, N, hotkey_count = -1):
+#         self.model_name = model.name
+#         self.model_params = model.get_param_value_str()
+#         self.n_BIC_params = model.count_BIC_params()
+#         self.user_id = user_id
+#         self.technique_id = technique_id
+#         self.log_likelyhood = round(log_likelyhood,2)
+#         self.hotkey_count = hotkey_count
+#         self.N = N
 
-    def bic(self) :
-        return round(- 2 * self.log_likelyhood + self.n_BIC_params * math.log(self.N) )
+#     def bic(self) :
+#         return round(- 2 * self.log_likelyhood + self.n_BIC_params * math.log(self.N) )
 
 
 
 ###########################
 #                         #
-#       MODEL HANDLE      #
+#    SIMULATION RESULT    #
+#                         #
+###########################
+class Simulation_Result( object ):
+    def __init__( self, name = "" ):
+        self.name           = name
+        self.user_id        = -1
+        self.technique_name = ""
+        self.input          = None
+        self.output         = None
+        self.prob           = None
+        self.whole_time     = 0
+
+
+###########################
+#                         #
+#       MODEL RESULT      #
 #                         #
 ###########################
 class Model_Result( object ):
@@ -165,14 +172,25 @@ class Model_Output( object ):
 
     ##################################
     def __init__( self, n = 0 ):
-        self.menu      = [0] * n
-        self.hotkey    = [0] * n
-        self.learning  = [0] * n
+        self.menu      = [ 0 ] * n
+        self.hotkey    = [ 0 ] * n
+        self.learning  = [ 0 ] * n
 
     ##################################
     def n( self ) :
         return len( self.action )
 
+
+###########################
+#                         #
+#  MODEL OUTPUT DEBUG     #
+#                         #
+###########################
+class Model_Output_Debug( Model_Output ):
+    def __init__( self, n = 0 ):
+        super().__init__( n )
+        self.meta_info_1 = [ 0 ] * n
+        self.meta_info_2 = [ 0 ] * n
 
 ###########################
 #                         #
@@ -183,9 +201,9 @@ class User_Output( object ):
 
     ##################################
     def __init__( self, n = 0 ):
-        self.time    = [] * n
-        self.success = [] * n
-        self.action  = [] * n
+        self.time    = [0] * n
+        self.success = [False] * n
+        self.action  = [None] * n
 
     def n( self ) :
         return len( self.action )
@@ -280,7 +298,7 @@ class User_Data( object ):
 
 ###########################
 #                         #
-#        Strategy         #
+#        FREEDOM          #
 #                         #
 ###########################
 class Freedom(object):
@@ -308,7 +326,7 @@ class Strategy_Filter(Strategy):
 #          ACTION         #
 #                         #
 ###########################
-class Action(object):
+class Action():
 #    def __init__(self, bin_number):
 #        self.bin_number = bin_number
 
@@ -316,51 +334,51 @@ class Action(object):
         self.cmd = cmd
         self.strategy = strategy
 
-    def command(self):
-        return self.cmd
+    # def command(self):
+    #     return self.cmd
 
-    def __eq__(self, other): 
-        if not isinstance(other, Action):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-        return self.cmd == other.cmd and self.strategy == other.strategy
+    # def __eq__(self, other): 
+    #     if not isinstance(other, Action):
+    #         # don't attempt to compare against unrelated types
+    #         return NotImplemented
+    #     return self.cmd == other.cmd and self.strategy == other.strategy
 
-    def copy(self):
-        return Action(self.cmd, self.strategy)
+    # def copy(self):
+    #     return Action(self.cmd, self.strategy)
 
-    def print_action(self, short_print=False):
-        if short_print:
-            print("a: ", self.to_string(short_print))
-        else:
-            print("action: ", self.to_string())
+    # def print_action(self, short_print=False):
+    #     if short_print:
+    #         print("a: ", self.to_string(short_print))
+    #     else:
+    #         print("action: ", self.to_string())
 
-    def __repr__(self):
-        return self.to_string()
+    # def __repr__(self):
+    #     return self.to_string()
 
-    def method_str(self):
-        m = "menu"
-        if self.strategy == Strategy.HOTKEY:
-            m = "hotkey"
-        return m
+    # def method_str(self):
+    #     m = "menu"
+    #     if self.strategy == Strategy.HOTKEY:
+    #         m = "hotkey"
+    #     return m
 
-    def strategy_str(self):
-        s = "menu"
-        if self.strategy == Strategy.HOTKEY:
-            s = "hotkey"
-        elif self.strategy == Strategy.LEARNING:
-            s = "learning"
-        return s
+    # def strategy_str(self):
+    #     s = "menu"
+    #     if self.strategy == Strategy.HOTKEY:
+    #         s = "hotkey"
+    #     elif self.strategy == Strategy.LEARNING:
+    #         s = "learning"
+    #     return s
 
-    def to_string(self, short_print=False):
-        s = "MENU"
-        if self.strategy == Strategy.HOTKEY:
-            s = "HOTKEY"
-        elif self.strategy == Strategy.LEARNING:
-            s = "LEARNING"
-        if short_print:
-            return str(self.cmd) + s[0]
-        else:
-            return str(self.cmd) + '_' + s
+    # def to_string(self, short_print=False):
+    #     s = "MENU"
+    #     if self.strategy == Strategy.HOTKEY:
+    #         s = "HOTKEY"
+    #     elif self.strategy == Strategy.LEARNING:
+    #         s = "LEARNING"
+    #     if short_print:
+    #         return str(self.cmd) + s[0]
+    #     else:
+    #         return str(self.cmd) + '_' + s
 
 
 

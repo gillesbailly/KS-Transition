@@ -10,8 +10,8 @@ import math
 class Alpha_Beta_Model(Alpha_Beta_Model_Abstract):
 
     ###########################
-    def __init__(self, env, name):
-        super().__init__(env, name)
+    def __init__( self, name ):
+        super().__init__( name )
         self.min_time = 0.4
         
     # ###########################

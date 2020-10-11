@@ -1,4 +1,5 @@
 import sys
+import os
 import csv
 import numpy as np
 
@@ -24,8 +25,8 @@ class User_Data_Loader( Experiment_Loader_Interface ):
 
     ######################
     def load( self, path ) :
-        if not path:
-            raise("The path for", self.name,  " is not valid: ", path)
+        if not os.path.exists( path ):
+            print("The path for", self.name,  " is not valid: ", path)
             return []
         res = []
         try : 
@@ -58,7 +59,7 @@ class User_Data_Loader( Experiment_Loader_Interface ):
                             user_data.output.time.append( float( row[ 7 ] ) )
                             user_data.output.success.append( int( row[ 8 ] ) )
                             user_data.output.action.append( Action( cmd, int( row[ 9 ] ) ) )
-                            user_data.other.block.append( int( row[10] ) )
+                            user_data.other.block.append( int( row[10] ) * 60 )
                             user_data.other.block_trial.append( int( row[11] ) )
                             user_data.other.encounter.append( int( row[12] ) )
                             user_data.other.method_id.append( int( row[13] ) )

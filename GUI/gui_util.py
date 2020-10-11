@@ -72,3 +72,9 @@ class Serie2DGallery(QScrollArea):
     ###############################
     def select_command(self,c):
         print("select command ", c)
+
+
+
+
+
+        

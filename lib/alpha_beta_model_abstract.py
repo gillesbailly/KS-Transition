@@ -43,8 +43,8 @@ class Alpha_Beta_Model_Abstract(Model):
 
     # e.g. value_names = ['RW', 'CK', 'G']
     # e.g. initial_value_default_method = {'RW': 0.5; 'CK': 1; 'G':0} 
-    def __init__(self, env, name):
-        super().__init__(name, env)
+    def __init__( self, name ):
+        super().__init__( name )
         self.description = "alpha_beta_model"
         self.memory = None
         self.v0 = dict()
@@ -98,15 +98,6 @@ class Alpha_Beta_Model_Abstract(Model):
         return extended_soft_max( beta_vec, value_vec )
 
 
-    ###########################
-    def generate_step(self, cmd_id, date, action):
-        result = StepResult()
-        result.cmd = cmd_id
-        result.action = action.copy()
-        result.success = self.success(action) 
-        result.time = self.time(action, result.success)
-        return result
-
 
     ##########################
     def update_model(self, step, _memory = 0):
@@ -137,8 +128,16 @@ class Alpha_Beta_Model_Abstract(Model):
     
     #########################
     def custom_reset_params(self) :
-        pass
-    
+        self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
+        self.error_cost     = self.params[ 'ERROR_COST' ].value
+        
+    ###########################
+    def time(self, action, success):
+        t = self.s_time[ action.strategy ]
+        if success == False :
+            t += self.s_time[ self.default_strategy() ] + self.error_cost 
+        return t
+
     #########################
     def reset(self, command_ids, available_strategies):
         #print(" reset abstract: ", available_strategies)

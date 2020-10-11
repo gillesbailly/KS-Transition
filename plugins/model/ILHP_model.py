@@ -39,9 +39,7 @@ class ILHP_Model( Model ):
         self.horizon        = int( self.params[ 'HORIZON' ].value ) if 'HORIZON'        in self.params else 1
         self.beta           = self.params[ 'BETA' ].value
         self.discount       = self.params[ 'DISCOUNT' ].value
-        self.menu_time      = self.params[ 'MENU_TIME' ].value
-        self.hotkey_time    = self.params[ 'HOTKEY_TIME' ].value
-        self.learning_cost  = self.params[ 'LEARNING_COST' ].value
+        self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
         self.error_cost     = self.params[ 'ERROR_COST' ].value
         
         
@@ -58,7 +56,7 @@ class ILHP_Model( Model ):
     def update_model(self, step, _memory = None):
         memory = self.memory if _memory == None else _memory
 
-        action = Action(step.cmd, step.action.strategy)
+        #action = Action(step.cmd, step.action.strategy)
 
         # Decay
         for cmd in self.command_ids:
@@ -66,9 +64,9 @@ class ILHP_Model( Model ):
 
         # Implicit / Explicit Learning
         if step.action.strategy == Strategy.MENU : #or step.success == False :
-            memory.hotkey_knowledge[ step.cmd ]  += self.alpha_implicit * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
+            memory.hotkey_knowledge[ step.cmd ] += self.alpha_implicit * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
         else :
-             memory.hotkey_knowledge[ step.cmd ] += self.alpha_explicit * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
+            memory.hotkey_knowledge[ step.cmd ] += self.alpha_explicit * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
         
         # Perseveration (similar to Choice Kernel CK )
         if self.perseveration >= 0 : 
@@ -128,18 +126,9 @@ class ILHP_Model( Model ):
 
     ###########################
     def time(self, action, success):
-        strategy = action.strategy
-        t = 0
-        if strategy == Strategy.MENU :
-            t = self.menu_time
-        elif strategy == Strategy.LEARNING:
-            t = self.menu_time + self.learning_cost
-        elif strategy == Strategy.HOTKEY:
-            t = self.hotkey_time
-        if success == False:
-            t += self.menu_time + self.error_cost
-            if self.default_strategy()  == Strategy.LEARNING : 
-                t += self.learning_cost
+        t = self.s_time[ action.strategy ]
+        if success == False :
+            t += self.s_time[ self.default_strategy() ] + self.error_cost 
         return t
 
     #########################
@@ -153,17 +142,18 @@ class ILHP_Model( Model ):
         
 
     ##########################
-    def relevant_strategies(self, horizon, history) :
-        s_vec = self.available_strategies.copy()
+    # we assume that we have eihter 3 strategies (menu, hotkey, learning) 
+    # for Traditional and Audio or 2 strategies (Learning and hotkey) for Disable
+    def relevant_strategies(self, horizon, history) :  
         if len(history) == 0 :
-            return s_vec
-
-        if horizon <= 1 and Strategy.LEARNING in self.available_strategies :
-            if not Strategy.LEARNING == self.default_strategy() :
-                s_vec.remove( Strategy.LEARNING )
+            return self.available_strategies.copy()
         
         if history[-1] == Strategy.HOTKEY : #once you choose HOTKEY -> use use HOTKEY
-            s_vec = [Strategy.HOTKEY]
+            return [Strategy.HOTKEY]
+        
+        s_vec = self.available_strategies.copy()
+        if horizon <= 1 and not Strategy.LEARNING == self.default_strategy() :
+                s_vec.remove( Strategy.LEARNING )
         
         if history[-1] == Strategy.LEARNING and Strategy.MENU in self.available_strategies:
             s_vec.remove( Strategy.MENU )
@@ -223,7 +213,13 @@ class ILHP_Model( Model ):
 
         return gv_all if horizon == self.horizon else np.amin(gv_all)
 
+    ###########################
+    def meta_info_1( self, cmd ):
+        return self.memory.hotkey_knowledge[ cmd ]
 
+    ###########################
+    def meta_info_2( self, cmd ):
+        return 0
 
     #########################
     def reset( self, command_ids, available_strategies ):

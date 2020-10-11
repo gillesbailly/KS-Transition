@@ -42,7 +42,7 @@ class Fit_Output_Debug( Fit_Output ):
     ######################################
     def __init__( self, sequence_length) :
         super().__init__( sequence_length )
-        self.output = Model_Output( sequence_length )
+        self.output = Model_Output_Debug( sequence_length )
 
         
 ##########################################
@@ -80,13 +80,14 @@ class Individual_Model_Fitting( object ):
         i = 0
         for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
             res.prob[ i ] = self.model.prob_from_action( action )
-
             prob_vec = self.model.action_probs( cmd )
             a_vec = self.model.get_actions_from( cmd )
             probs = values_long_format(a_vec, prob_vec)
             res.output.menu[ i ]     = probs[ Strategy.MENU ]
             res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
             res.output.learning[ i ] = probs[ Strategy.LEARNING ]
+            res.output.meta_info_1[ i ] = self.model.meta_info_1( cmd )
+            res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
 
             user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
             self.model.update_model( user_step )

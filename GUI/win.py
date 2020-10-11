@@ -43,27 +43,18 @@ class Win ( QMainWindow ) :
         self.model_fit_user_data_vec = []
         
         self.goodness_of_fit_vec     = []
-        self.explorer_panel         = self.add_explorer_panel()
+        self.explorer_panel          = self.add_explorer_panel()
         self.model_fit               = self.add_model_fitting_component()
+        self.add_model_simulation_component()
         self.view_menu = self.menuBar().addMenu( "Views" )
         self.filters = dict()
         self.docks = dict()
         self.explorer_filter_panel = None
         self.parameters_panel = Parameters_Group_Panel()
         self.parameters_panel.reload.connect( self.model_fitting_apply )
-        #self.parameters_panel.set_group( [ model.get_params() for model in self.model_vec ]  ) #REMOVE
         self.model_results_panel = Model_Result_Panel()
-        #model_result1 = Model_Result.create( "RW", [1,2,3,4,7] )
-        #model_result1.log_likelihood = [-1,-1,-3,-10,-9]
-        #model_result2 = Model_Result.create( "CK", [1,2,3,6,7] )
-        #model_result2.log_likelihood = [-1,-1,-3,-10,-9]
-        #self.model_results_panel.set_group( [ model_result1, model_result2 ] )
         self.create_dock_widgets()
         self.tmp_panel = None
-        #self.parameters_panel = Parameters_Comparison_Panel( ["User 3", "User 5" ], parameters_vec)
-        #self.parameters_panel.set_group( parameters_vec )
-        #self.parameters_panel.show()
-
         self.setCentralWidget( self.explorer_panel )
         self.show()
 
@@ -172,33 +163,14 @@ class Win ( QMainWindow ) :
             name_str = '-'.join( name )
             act = config_menu.addAction( name_str )
             act.triggered.connect( lambda : self.set_config( i ) )
-        #     act.triggered.connect( self.signal_mapper.map )
-        #     self.signal_mapper.setMapping( act, i );
-        # self.signal_mapper.mapped['int'].connect( self.set_config )
-
-
-        # empirical_act = explorer_menu.addAction( "Show User Data" )
-        # empirical_act.setCheckable( True )
-        # empirical_act.setChecked( True )
-        # empirical_act.setShortcut( QKeySequence( "Ctrl+E" ) )
-        # empirical_act.toggled.connect( self.show_user_data )
+        
         self.create_toggle_action( explorer_menu, "Show User Data", True, self.show_user_data, "Ctrl+E")
         self.create_toggle_action( explorer_menu, "Show Stratgies Probabilities", True, self.show_strategy_probs, "Ctrl+D")
         self.create_toggle_action( explorer_menu, "Show Action Probabilities", True, self.show_action_probs, "Ctrl+C")
+        self.create_toggle_action( explorer_menu, "Show Option 1", True, self.show_option_1, "Ctrl+R")
+        self.create_toggle_action( explorer_menu, "Show Option 2", True, self.show_option_2, "Ctrl+F")
 
 
-
-
-        # strategies_act = explorer_menu.addAction( "Show Strategies probabilities" )
-        # strategies_act.setCheckable( True )
-        # strategies_act.setChecked( True )
-        # strategies_act.toggled.connect( self.show_strategy_probs )
-
-        
-        # action_act = explorer_menu.addAction( "Show Action probabilities" )
-        # action_act.setCheckable( True )
-        # action_act.setChecked( True )
-        # action_act.toggled.connect( self.show_action_probs )
 
         config_tool_bar = self.addToolBar( "Configuration ")
         config_tool_bar.addAction( config_menu.menuAction() )
@@ -227,12 +199,28 @@ class Win ( QMainWindow ) :
     def show_action_probs( self, checked ):
         for view in self.explorer_panel.view_vec.values() :
             for model in self.model_vec :
-                view.show_action_probs( model.name, checked )  
+                view.show_individual( model.name, checked )  
 
     #########################
     def show_user_data( self, checked ):
         for view in self.explorer_panel.view_vec.values() :
-                view.show_user_data( checked )  
+                view.show_user_data( checked )
+
+    #########################
+    def show_option_1( self, checked ):
+       
+        for view in self.explorer_panel.view_vec.values() :
+            for model in self.model_vec :
+                name = model.name + "_meta_info"
+                view.show_individual( name, checked ) 
+
+    #########################
+    def show_option_2( self, checked ):
+
+        for view in self.explorer_panel.view_vec.values() :
+            for model in self.model_vec :
+                name = model.name + "_meta_info"
+                view.show_individual( name, checked ) 
 
 
 
@@ -276,7 +264,7 @@ class Win ( QMainWindow ) :
         fitting_filter = self.get_filter( "Model Fitting")
         res = self.exec_filter( fitting_filter )
         if res == 1 :
-            data_vec = fitting_filter.filter( self.user_data_vec  )
+            data_vec = fitting_filter.filter( self.user_data_vec  ) #I think it is useless
             print( "model fit user data vec: ", len( data_vec ) )
             self.model_fitting_apply()
             #if fitting_filter.display_checkbox.checkState() == Qt.Checked :
@@ -340,6 +328,68 @@ class Win ( QMainWindow ) :
         self.update_views_with_model_fitting( view_vec , goodness_of_fit )
 
 
+
+#####################################################################################################
+###############################################    SIMULATIONS  #####################################
+#####################################################################################################
+
+    #########################
+    def add_model_simulation_component( self ) :
+        self.add_model_simulation_menu()
+
+    #########################
+    def add_model_simulation_menu( self ):
+        simulation_menu = self.menuBar().addMenu( "Model Simulation" )
+        act_select           = simulation_menu.addAction( "Select...", self.model_simulation_select )
+        act_select_and_apply = simulation_menu.addAction( "Select and Simulate...", self.model_simulation_select_and_apply )
+        act_apply            = simulation_menu.addAction( "Simulate", self.model_simulation_apply )
+        act_display          = simulation_menu.addAction( "Display", self.model_simulation_display )
+
+
+    #########################
+    def model_simulation_select( self ):
+        m_filter = self.get_filter( "Model Simulation")
+        self.exec_filter( m_filter )
+    
+
+    #########################
+    def model_simulation_select_and_apply( self ):
+        m_filter = self.get_filter( "Model Simulation")
+        res = self.exec_filter( m_filter )
+        if res == 1 :
+            m_filter.filter( self.user_data_vec  )
+            print( " model simulation: select and apply " )
+            self.model_simulation_apply()          
+
+
+    #########################
+    def model_simulation_apply( self ):
+        print( "model simulation: apply" )
+        m_filter = self.get_filter( "Model Simulation")
+        data_vec = m_filter.filter( self.user_data_vec  )
+        start = TIME.time()
+        self.goodness_of_fit_vec = self.model_simulation_long( data_vec, self.model_vec )
+        print("Model fitting: get goodness of fit of ", len(self.model_vec), "models on", len(data_vec), " users in", round(TIME.time() - start,2), "s" )
+        self.model_simulation_display()
+        
+
+     #########################
+    def model_simulation_long( self, user_data_vec, model_vec ):
+        print( "model simulation long" )
+
+
+  
+   #########################
+    def model_simulation_display( self ):
+        print("model simulation: display")
+        
+
+
+
+#####################################################################################################
+###############################################    OTHER        #####################################
+#####################################################################################################
+
     ########################
     def user_data_input( self, user_id ):
         for user_data in self.user_data_vec :
@@ -356,6 +406,7 @@ class Win ( QMainWindow ) :
             model_prob   = goodness_of_fit.prob[ i ]
             model_name   = goodness_of_fit.name
             view.set_model_data( model_name, user_input, model_output, model_prob)
+            view.set_meta_info(  model_name, user_input, model_output.meta_info_1 )
 
 
     #########################
@@ -389,7 +440,7 @@ class Win ( QMainWindow ) :
     #########################
     def load_user_data( self ):
         loader = User_Data_Loader()
-        path = './tmp/user_data.csv'
+        path = './data/user_data.csv'
         self.load_data( loader, path )
 
 
@@ -409,6 +460,7 @@ class Win ( QMainWindow ) :
     def set_config( self, id ) :
         print( "config", id )
         self.user_data_panel.update_configuration( id )
+
 
 
 #####################################
@@ -453,23 +505,19 @@ def build_interface():
     qApp.setPalette(dark_palette)
 
 
-
-
-    
     win = Win()
     win.show()
     #win.load_hotkeycoach_data()
     win.load_user_data()
-    win.set_models( [ ILHP_Model( None, "ILHP" ) ] )
-    #win.set_models( [ Alpha_Beta_Model( None, 'RW' ), Alpha_Beta_Model( None, 'CK' ) ] )
-    #win.export_parameters()
+    filter_name = "Explorer"
+    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 4 )
 
+    #win.set_models( [ ILHP_Model( None, "ILHP" ) ] )
+    win.set_models( [ Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ) ] )
     filter_name = "Model Fitting"
-    win.filters[ filter_name ] = Filter(filter_name, user_min = 1, user_max = 1, techniques=["audio"] )
-    #win.model_fitting_optimize() 
-
+    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 4 )
     win.update_explorer_panel()
-    win.model_fitting_apply()
+    # win.model_fitting_apply()
     
 
     # my_filter = Filter(user_min = 0, user_max = 1, techniques=["traditional", "audio"] ) 
@@ -498,5 +546,23 @@ def build_interface():
 
     #win.show()
     #window.select_command( args.command )
+
+
+# This is a big fix for PyQt5 on macOS
+    # When running a PyQt5 application that is not bundled into a
+    # macOS app bundle; the main menu will not be clickable until you
+    # switch to another application then switch back.
+    # Thus to fix this we execute a quick applescript from the file
+    # cmd.scpt which automates the keystroke "Cmd+Tab" twice to swap
+    # applications then immediately swap back and set Focus to the main window.
+    # if "darwin" in sys.platform:
+    #     import please
+    #     sourcepath = os.path.dirname(please.__file__)
+    #     cmdpath = os.path.join(sourcepath, 'cmd.scpt')
+    #     cmd = """osascript {0}""".format(cmdpath)
+    #     os.system(cmd)
+    #     # os.system(cmd)
+    #     mw.viewer.setFocus()
+
 
     sys.exit(app.exec_())

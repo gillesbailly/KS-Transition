@@ -14,24 +14,24 @@ max_y = 10
 ##########################################
 def create_scatter_series(name, marker_size, marker_shape, brush):
     series = QScatterSeries()
-    series.setUseOpenGL(True)
+    #series.setUseOpenGL(True)
     series.setName(name)
     series.setBrush(brush)
     series.setMarkerSize(marker_size)
     series.setMarkerShape(marker_shape)
     series.setPen(Qt.transparent)
-    series.setOpacity(0.7)
+    #series.setOpacity(0.7)
     return series
 
 def create_line_series(name, color, size=1):
     series = QLineSeries()
-    series.setUseOpenGL(True)
+    #series.setUseOpenGL(True)
     series.setName(name)
     pen = series.pen()
     pen.setWidth(size);
     pen.setColor(color);
     series.setPen(pen);
-    series.setOpacity(0.7)
+    #series.setOpacity(0.7)
     return series
 
 def my_scatter_symbol(c):
@@ -57,7 +57,7 @@ class Group():
     def __init__(self, cmd, name, _type, size, default_color=Qt.white):
         self.cmd = cmd
         self.default_color = default_color
-        alpha_color = 100
+        alpha_color = 255
         hotkey_color   = QColor(100,250,100, alpha_color)
         menu_color     = QColor(50,150,255, alpha_color)
         learning_color = QColor(250,50,100, alpha_color)
@@ -114,13 +114,13 @@ class Group():
 class EpisodeData():
 
     def __init__(self, user_data, cmd ):
-        self.error_color = QColor(255,250,150,50)
+        self.error_color = QColor(255,250,150,255)
         self.group = dict()
         self.individual = dict()
         
         #user
-        self.group[ "empirical" ]         = Group( cmd, "empirical", "scatter", 10 )
-        self.group[ "empirical_error" ]   = Group( cmd, "empirical_error", "scatter", 18, self.error_color )
+        self.group[ "empirical" ]         = Group( cmd, "empirical", "scatter", 5 )
+        self.group[ "empirical_error" ]   = Group( cmd, "empirical_error", "scatter", 9, self.error_color )
         self.outlier_1 = None
         self.outlier_2 = None
 
@@ -171,14 +171,26 @@ class EpisodeData():
         chart.addSeries( self.block_id )
 
     ##############################
+    def add_individual_to_chart( self, name, chart ):
+        chart.addSeries( self.individual[ name ] )
+
+    ##############################
+    def load_meta_info( self, name, user_input, meta_info, cmd ):
+        line = create_line_series( name,  Qt.white, 2)
+        for i, (user_cmd, info)  in enumerate( zip( user_input, meta_info )  ):
+            if cmd == user_cmd :
+                line.append( i, info * 10. )
+        self.individual[ name ] = line 
+
+    ##############################
     def load_model_output( self, model_name, user_input, model_output, model_prob, cmd ):
-        self.group[ model_name ] = Group(cmd, model_name, "line", 2 )
+        self.group[ model_name ] = Group(cmd, model_name, "line", 1 )
         for i in range(0, len( user_input ) ):
             if cmd == user_input[ i ] :
                 self.group[ model_name ].add_items( i,  [ model_output.menu[ i ]*10., model_output.hotkey[ i ]*10, model_output.learning[ i ]*10. ] )
         
  
-        line = create_line_series( model_name,  Qt.white, 4)
+        line = create_line_series( model_name,  Qt.white, 2)
         for i, (user_cmd, prob)  in enumerate( zip( user_input, model_prob )  ):
             if cmd == user_cmd :
                 line.append( i, prob * 10. )
@@ -186,9 +198,9 @@ class EpisodeData():
 
     ##############################
     def load_user_output(self, user_data, cmd):
-        self.block_id  = create_scatter_series( "Block"    ,  7, QScatterSeries.MarkerShapeCircle, Qt.white)
-        self.outlier_1 = create_scatter_series( "outlier_1", 18, QScatterSeries.MarkerShapeCircle, self.error_color)
-        self.outlier_2 = create_scatter_series( "outlier_2", 18, QScatterSeries.MarkerShapeCircle, self.error_color)
+        self.block_id  = create_scatter_series( "Block"    ,  4, QScatterSeries.MarkerShapeCircle, Qt.white)
+        self.outlier_1 = create_scatter_series( "outlier_1", 9, QScatterSeries.MarkerShapeCircle, self.error_color)
+        self.outlier_2 = create_scatter_series( "outlier_2", 9, QScatterSeries.MarkerShapeCircle, self.error_color)
         
         action_vec  =  user_data.output.action
         time_vec    =  user_data.output.time
@@ -227,11 +239,11 @@ class EpisodeData():
 #                                        #
 ##########################################
 class EpisodeView(QChartView):
-    view_selected = pyqtSignal(int, int, int) #user id, cmd, trial_id
-    cursor_moved = pyqtSignal(int, int)
+    view_selected = pyqtSignal( int, int, int ) #user id, cmd, trial_id
+    cursor_moved = pyqtSignal( int, int )
+
     def __init__(self):
         super().__init__()
-
         self.setChart( QChart() )
         self.chart().setTheme( QChart.ChartThemeDark )
         self.setRenderHint(QPainter.Antialiasing)
@@ -242,6 +254,7 @@ class EpisodeView(QChartView):
 
         self.cmd      = -1
         self.user_id  = -1
+        self.technique_name = ""
         self.trial_id = -1
         self.data = None
 
@@ -249,8 +262,9 @@ class EpisodeView(QChartView):
     def show_strategy_probs( self, name, b ):
         self.data.show_group( name, b )
 
+
     ###########################
-    def show_action_probs( self, name, b ):
+    def show_individual( self, name, b ):
         self.data.show_individual( name, b )
 
     ###########################
@@ -263,18 +277,18 @@ class EpisodeView(QChartView):
         #self.data.show_group( "outlier_2", b )
 
 
-
     ###########################    
     def set_user_data(self, user_data, cmd):   
         self.chart().removeAllSeries()
         self.cmd     = cmd
         self.user_id = user_data.id
+        self.technique_name = user_data.technique_name
 
         self.data = EpisodeData( user_data, cmd )
         self.data.add_user_series_to_chart( self.chart() )
         self.data.add_other_series_to_chart( self.chart() )
         self.add_transition_region( self.x_start_transition( user_data, cmd ), self.x_stop_transition( user_data, cmd ) )
-        title = "User: " + str( self.user_id) + " - Cmd: " + str( cmd ) + " - technique: " + user_data.technique_name
+        title = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
         
         self.add_cursor_line()
         self.set_chart_decoration( title )
@@ -290,12 +304,18 @@ class EpisodeView(QChartView):
         self.data.load_model_output( model_name, user_input, model_output, model_prob, self.cmd )
         self.data.add_model_series_to_chart( model_name, self.chart() )
         #self.chart().createDefaultAxes()
-        title = self.chart().title()
-        title += "\t " + model_name
+        title = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
         self.set_chart_decoration( title ) 
 
-    
-
+    ############################   
+    def set_meta_info( self, model_name, user_input, meta_info ):
+        name = model_name +"_meta_info"
+        if name in self.data.individual :
+            self.chart().removeSeries( self.data.individual[ name ] )
+            
+        self.data.load_meta_info( name, user_input, meta_info, self.cmd )
+        self.data.add_individual_to_chart( name, self.chart() )
+        self.set_chart_decoration( self.chart().title() ) 
 
     ############################
     def set_chart_decoration( self, title_str ) :
