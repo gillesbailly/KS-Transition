@@ -1,7 +1,7 @@
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QPalette, QPageLayout, QColor, QLinearGradient
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 
 
 ##################################
@@ -36,6 +36,82 @@ def deleteLayoutContent( cur_lay ):
                 widget.deleteLater()
             else:
                 parent.deleteLayout( item.layout() )
+
+
+
+
+######################################
+#                                    #
+#           SUB WINDOW               #
+#                                    #
+######################################
+class Sub_Win( QMdiSubWindow ):
+    
+    ####################
+    def __init__( self, name ):
+        super( QMdiSubWindow, self ).__init__()
+        self.resize( 800, 300 )
+        self.container = Serie2DGallery()
+        self.setWidget( self.container )
+        self.setWindowTitle( name )
+
+    ####################
+    def add_view( self, view, x, y ):
+        self.container.add_view( view, x, y )
+
+
+######################################
+#                                    #
+#      MDI AREA                      #
+#                                    #
+######################################
+class Area( QScrollArea):
+
+    view_moved = pyqtSignal( int, int, int ) #trial infos
+
+    #########################
+    def __init__( self ):
+        super( QScrollArea, self ).__init__()
+        self.setWidgetResizable( True )
+        
+        self.container = QMdiArea()
+        #self.container.resize(2000,2000)
+        self.container.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded);
+        self.container.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded);
+        self.wins = dict()
+        self.setWidget( self.container )
+        self.container.show()
+
+
+    #########################
+    def window( self, name):
+        if not name in self.wins:
+            win = Sub_Win( name )
+            self.container.addSubWindow( win )
+            self.wins[ name ] = win
+        return self.wins[ name ] 
+
+    #########################
+    def add_view( self, view, model_name, user_id, cmd ):
+        win = self.window( model_name )
+        win.add_view( view, user_id, cmd )
+        win.container.horizontalScrollBar().valueChanged.connect( self.view_horizontal_moved )
+        win.container.verticalScrollBar().valueChanged.connect( self.view_vertical_moved )
+        win.show()
+
+    #########################
+    def view_horizontal_moved( self, value ):
+        #print( "view horizontal moved", value)
+        self.view_moved.emit( value, 0, 0 )
+
+
+    #########################
+    def view_vertical_moved( self, value ):
+        #print( "view vertical moved", value)
+        self.view_moved.emit( 0, value, 1 )
+
+
+
 
 
 ######################################
@@ -77,4 +153,3 @@ class Serie2DGallery(QScrollArea):
 
 
 
-        

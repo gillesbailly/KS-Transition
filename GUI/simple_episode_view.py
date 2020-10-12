@@ -256,6 +256,7 @@ class EpisodeView(QChartView):
         self.user_id  = -1
         self.technique_name = ""
         self.trial_id = -1
+        self.model_name = "None"
         self.data = None
 
     ###########################
@@ -295,6 +296,7 @@ class EpisodeView(QChartView):
 
     ############################
     def set_model_data( self, model_name, user_input, model_output, model_prob ):
+        self.model_name = model_name
         if model_name in self.data.group or model_name in self.data.individual :
             group = self.data.group[ model_name ]
             group.remove_to_chart( self.chart() )

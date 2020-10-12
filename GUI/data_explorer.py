@@ -7,7 +7,7 @@ import itertools
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QPalette, QPageLayout
 from PyQt5.QtPrintSupport import *
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import QCoreApplication, QPoint
 import numpy as np
 
 from gui_util import *
@@ -92,9 +92,12 @@ class Empirical_Panel ( QTabWidget ) :
         #print( self.categories() )
         #exit(0)
         for category in self.categories() :
-            self.gallery[ category ] = Serie2DGallery()
-            self.addTab(self.gallery[ category ], category )
-            self.gallery[ category ].show()
+            #self.gallery[ category ] = Serie2DGallery()
+            area = Area()
+            self.gallery[ category ] = area
+            self.addTab( area, category )
+            area.show()
+            area.view_moved.connect( self.align_views )
 
         self.view_vec = dict()
         self.trial_info = Trial_Info( )
@@ -103,7 +106,17 @@ class Empirical_Panel ( QTabWidget ) :
 
 
     ##################################
+    def maximize_sub_window( self ):
+        for category in self.categories():
+            mdi_area = self.gallery[ category ].container
+            position = QPoint( 0, 0 )
+            for win in mdi_area.subWindowList():
+                win.move( position )
+                position.setY(position.y() + win.height() )
 
+
+        #for category in self.categories():
+            #self.gallery[ category ].container.tileSubWindows()
 
     ##################################
     def show_relevant_tab( self, category_vec ):
@@ -230,8 +243,8 @@ class Empirical_Panel ( QTabWidget ) :
 
 
     #####################################
-    def key( self, technique, user_id, cmd ) :
-        return technique + "," + str(user_id) + "," + str(cmd) 
+    def key( self, technique, user_id, cmd, model ="None" ) :
+        return technique + "," + str(user_id) + "," + str(cmd) + "," + model 
 
 
     #####################################
@@ -244,15 +257,49 @@ class Empirical_Panel ( QTabWidget ) :
                 c = self.category( d, cmd )
                 row_id = self.row( d, cmd )
                 col_id = self.column( d, cmd )
-                key = self.key(d.technique_name, d.id, cmd )
+                key = self.key(d.technique_name, d.id, cmd, "User" )
 
                 view = EpisodeView( )
                 view.set_user_data( d, cmd )
                 view.view_selected.connect( self.set_info )
-                self.gallery[ c ].add_view( view, row_id, col_id )
+                self.gallery[ c ].add_view( view, "User", row_id, col_id )
 
                 self.view_vec[ key ] = view 
                 QCoreApplication.processEvents()
+
+
+    ##################################
+    def data_from_id( self, data_vec, user_id ):
+        for data in data_vec:
+            if data.id == user_id:
+                return data
+
+    ##################################
+    def set_model_fitting_sequences( self, goodness_of_fit_vec, data_vec ):
+        for goodness_of_fit in goodness_of_fit_vec:
+            model_name = goodness_of_fit.name + " fitting"
+            for i, user_id in enumerate( goodness_of_fit.user_id) :
+                d = self.data_from_id( data_vec, user_id )
+                for cmd in d.command_info.id:
+                    c = self.category( d, cmd )
+                    row_id = self.row( d, cmd )
+                    col_id = self.column( d, cmd )
+                    key = self.key(d.technique_name, d.id, cmd, model_name )
+                    view = None
+                    if key in self.view_vec:
+                        view = self.view_vec[ key ]
+                    else:
+                        view = EpisodeView( )
+                        view.set_user_data( d, cmd )
+                        self.view_vec[ key ] = view
+                        view.view_selected.connect( self.set_info )
+                        self.gallery[ c ].add_view( view, model_name, row_id, col_id )
+                    model_output = goodness_of_fit.output[ i ]
+                    model_prob   = goodness_of_fit.prob[ i ]
+                    view.set_model_data( model_name, d.cmd, model_output, model_prob)
+                    view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
+                    QCoreApplication.processEvents()
+                    self.maximize_sub_window()
 
 
     ##################################
@@ -263,20 +310,43 @@ class Empirical_Panel ( QTabWidget ) :
         self.clear() #TODO THIS DOES NOT REALLY REMOVE ELEMENTS.....
 
         for category in self.categories() :
-            self.gallery[ category ] = Serie2DGallery()
-            self.addTab(self.gallery[ category ], category )
-            self.gallery[ category ].show()
+            area = Area()
+            self.gallery[ category ] = area
+            area.view_moved.connect( self.align_views )
+            self.addTab( area, category )
+            area.show()
 
-        for d in self.data_vec :
-            for cmd in d.command_info.id :           
-                c = self.category( d, cmd )
-                row_id = self.row( d, cmd )
-                col_id = self.column( d, cmd )
-                key = self.key( d.technique_name, d.id, cmd )
-                view = self.view_vec[ key ]
-                self.gallery[ c ].add_view( view, row_id, col_id )
+
+        for view in self.view_vec.values():
+            cmd            = view.cmd
+            user_id        = view.user_id
+            d = self.data_from_id( self.data_vec, user_id )
+
+            c = self.category( d, cmd )
+            row_id = self.row( d, cmd )
+            col_id = self.column( d, cmd )
+            self.gallery[ c ].add_view( view, view.model_name, row_id, col_id )
+
+        # for d in self.data_vec :
+        #     for cmd in d.command_info.id :           
+        #         c = self.category( d, cmd )
+        #         row_id = self.row( d, cmd )
+        #         col_id = self.column( d, cmd )
+        #         key = self.key( d.technique_name, d.id, cmd )
+        #         view = self.view_vec[ key ]
+        #         self.gallery[ c ].add_view( view, row_id, col_id )
         self.show()
 
+    ##################################
+    def align_views( self, h_value, v_value, _type ):
+        for category in self.categories():
+            mdi_area = self.gallery[ category ].container
+            for win in mdi_area.subWindowList():
+                if _type == 1:
+                    win.container.verticalScrollBar().setValue( v_value )
+                else:
+                    win.container.horizontalScrollBar().setValue( h_value )
+                    
 
     ##################################
     def get_exact_trial(self, user_data, cmd, trial_id):

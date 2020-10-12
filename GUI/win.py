@@ -41,7 +41,6 @@ class Win ( QMainWindow ) :
         self.user_data_vec           = []
         self.explorer_user_data_vec  = []
         self.model_fit_user_data_vec = []
-        
         self.goodness_of_fit_vec     = []
         self.explorer_panel          = self.add_explorer_panel()
         self.model_fit               = self.add_model_fitting_component()
@@ -156,7 +155,6 @@ class Win ( QMainWindow ) :
         select_act  = explorer_menu.addAction( "Select..." , self.explorer_select )
         display_act = explorer_menu.addAction( "Display" , self.update_explorer_panel )
 
-
         config_menu = explorer_menu.addMenu( "Organizatation" )
         #self.signal_mapper = QSignalMapper()
         for i, name in enumerate( configuration_vec ) :
@@ -170,14 +168,11 @@ class Win ( QMainWindow ) :
         self.create_toggle_action( explorer_menu, "Show Option 1", True, self.show_option_1, "Ctrl+R")
         self.create_toggle_action( explorer_menu, "Show Option 2", True, self.show_option_2, "Ctrl+F")
 
-
-
         config_tool_bar = self.addToolBar( "Configuration ")
         config_tool_bar.addAction( config_menu.menuAction() )
 
     #########################
     def explorer_select( self ):
-
         explorer_filter = self.get_filter( "Explorer" )
         self.exec_filter( explorer_filter )
         #explorer_filter.set_user_data( self.user_data_vec  )
@@ -204,7 +199,8 @@ class Win ( QMainWindow ) :
     #########################
     def show_user_data( self, checked ):
         for view in self.explorer_panel.view_vec.values() :
-                view.show_user_data( checked )
+                if not view.model_name == "None":
+                    view.show_user_data( checked )
 
     #########################
     def show_option_1( self, checked ):
@@ -231,9 +227,12 @@ class Win ( QMainWindow ) :
         return explorer_panel
 
 
+
 #####################################################################################################
 ###############################################  MODEL FITTING ######################################
 #####################################################################################################
+
+
 
     #########################
     def add_model_fitting_menu( self ):
@@ -313,25 +312,38 @@ class Win ( QMainWindow ) :
    #########################
     def model_fitting_display( self ):
         print("model fitting: display")
-        if len(self.goodness_of_fit_vec) < 1 :
+        if len( self.goodness_of_fit_vec ) < 1 :
             print("No model fitting has been recently performed... Action \"Diplay\" is ignored ")
             return 0
         
         self.model_results_panel.set_group( self.goodness_of_fit_vec )
+        self.explorer_panel.set_model_fitting_sequences( self.goodness_of_fit_vec, self.user_data_vec )
 
-        goodness_of_fit = self.goodness_of_fit_vec[ 0 ]  #TODO #BUG
+        #goodness_of_fit = self.goodness_of_fit_vec[ 0 ]  #TODO #BUG
 
-        view_vec = []
-        for view in self.explorer_panel.view_vec.values() :
-            if view.user_id in goodness_of_fit.user_id:
-                view_vec.append( view )
-        self.update_views_with_model_fitting( view_vec , goodness_of_fit )
+        #view_vec = []
+        #for view in self.explorer_panel.view_vec.values() :
+        #    if view.user_id in goodness_of_fit.user_id:
+        #        view_vec.append( view )
+        #self.update_views_with_model_fitting( view_vec , goodness_of_fit )
 
+    ########################
+    def update_views_with_model_fitting( self, view_vec, goodness_of_fit ): 
+        for view in view_vec :
+            i = goodness_of_fit.user_id.index( view.user_id )
+            user_input = self.user_data_input( view.user_id )
+            model_output = goodness_of_fit.output[ i ]
+            model_prob   = goodness_of_fit.prob[ i ]
+            model_name   = goodness_of_fit.name
+            view.set_model_data( model_name, user_input, model_output, model_prob)
+            view.set_meta_info(  model_name, user_input, model_output.meta_info_1 )
 
 
 #####################################################################################################
 ###############################################    SIMULATIONS  #####################################
 #####################################################################################################
+
+
 
     #########################
     def add_model_simulation_component( self ) :
@@ -397,18 +409,7 @@ class Win ( QMainWindow ) :
                 return user_data.cmd
         return []
 
-    ########################
-    def update_views_with_model_fitting( self, view_vec, goodness_of_fit ): 
-        for view in view_vec :
-            i = goodness_of_fit.user_id.index( view.user_id )
-            user_input = self.user_data_input( view.user_id )
-            model_output = goodness_of_fit.output[ i ]
-            model_prob   = goodness_of_fit.prob[ i ]
-            model_name   = goodness_of_fit.name
-            view.set_model_data( model_name, user_input, model_output, model_prob)
-            view.set_meta_info(  model_name, user_input, model_output.meta_info_1 )
-
-
+    
     #########################
     def export_user_data( self ):
         folder = "./tmp/"
@@ -459,7 +460,7 @@ class Win ( QMainWindow ) :
     #########################
     def set_config( self, id ) :
         print( "config", id )
-        self.user_data_panel.update_configuration( id )
+        self.explorer_panel.update_configuration( id )
 
 
 
@@ -517,7 +518,8 @@ def build_interface():
     filter_name = "Model Fitting"
     win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 4 )
     win.update_explorer_panel()
-    # win.model_fitting_apply()
+    win.model_fitting_apply()
+    win.model_fitting_display()
     
 
     # my_filter = Filter(user_min = 0, user_max = 1, techniques=["traditional", "audio"] ) 
