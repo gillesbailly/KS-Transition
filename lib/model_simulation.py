@@ -40,6 +40,10 @@ class Simulation( object ):
 
 
     ######################################
+    # Output: [ User_Output, Model_Output, time(int) ]
+    # User_Output = { time (vector<int>), success (vector<boolean>), action (vector<Action>) }
+    # Model_Output = {menu, hotkey, learning (vectors <float> : probability to select the strategy menu, hotkey, learning) } 
+    ######################################
     def run( self ):
         agent_output = User_Output( len( self.user_input ) )         # Multi sequence : Time, Success, Action
         model_output = Model_Output( len( self.user_input ) )
@@ -90,7 +94,7 @@ class Simulation( object ):
 
 ##########################################
 #                                        #
-#             MODEL FITTING              #
+#             MODEL SIMULATION           #
 #                                        #
 ##########################################
 class Model_Simulation( object ):
@@ -112,6 +116,11 @@ class Model_Simulation( object ):
         Parameters_Export.write( parameters, path, filename )
 
 
+    ######################################
+    #
+    # Output: vector< Simulation_Result >
+    # Simulation_Result {name (string), user_id (int), input (list<int>  of command ids), output ( list<Output> ), prob ( list<Model_Output> ), time (float) }
+    #
     ######################################
     def run( self ):
         result = []                               # Type Model_Result

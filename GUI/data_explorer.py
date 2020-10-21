@@ -36,14 +36,14 @@ class Trial_Info(QScrollArea) :
 
     ##################################
     def set_info(self, infos) :
-        #print( infos )
+        print( infos )
         self.container = QWidget()
         self.l = QGridLayout()
         self.container.setLayout( self.l )
         self.setWidget( self.container )
         self.container.show()
         for i, key in enumerate( infos.keys() ) :
-            #print(i, key)
+            print(i, key, infos[key] )
             name_label = QLabel( key )
             value_text = Trial_Info.strategy( infos[key] ) if key == "Strategy" else infos[ key ]
             value_label = LineEdit( value_text )
@@ -243,7 +243,7 @@ class Empirical_Panel ( QTabWidget ) :
 
 
     #####################################
-    def key( self, technique, user_id, cmd, model ="None" ) :
+    def key( self, technique, user_id, cmd, model ="User" ) :
         return technique + "," + str(user_id) + "," + str(cmd) + "," + model 
 
 
@@ -262,6 +262,7 @@ class Empirical_Panel ( QTabWidget ) :
                 view = EpisodeView( )
                 view.set_user_data( d, cmd )
                 view.view_selected.connect( self.set_info )
+                view.cursor_moved.connect( self.update_cursor )
                 self.gallery[ c ].add_view( view, "User", row_id, col_id )
 
                 self.view_vec[ key ] = view 
@@ -293,6 +294,7 @@ class Empirical_Panel ( QTabWidget ) :
                         view.set_user_data( d, cmd )
                         self.view_vec[ key ] = view
                         view.view_selected.connect( self.set_info )
+                        view.cursor_moved.connect( self.update_cursor )
                         self.gallery[ c ].add_view( view, model_name, row_id, col_id )
                     model_output = goodness_of_fit.output[ i ]
                     model_prob   = goodness_of_fit.prob[ i ]
@@ -303,9 +305,40 @@ class Empirical_Panel ( QTabWidget ) :
 
 
     ##################################
-    def update_configuration( self, id ) :
-        self.configuration_id = id
-        print("Update configuration: ", self.configuration() )
+    def set_model_simulation_sequences( self, simulation_result_vec, data_vec ):
+        for simulation_result in simulation_result_vec:
+            model_name = simulation_result.name + ": Simulation"
+            user_id    = simulation_result.user_id
+            d = self.data_from_id( data_vec, user_id )
+            for cmd in d.command_info.id :
+                c      = self.category( d, cmd )
+                row_id = self.row( d, cmd )
+                col_id = self.column( d, cmd )
+                key    = self.key(d.technique_name, d.id, cmd, model_name )
+                view   = None
+                if key in self.view_vec:
+                    view = self.view_vec[ key ]
+                else:
+                    view = EpisodeView( )
+                    view.set_agent_data( simulation_result.input, simulation_result.output, user_id, simulation_result.technique_name, cmd )
+                    self.view_vec[ key ] = view
+                    view.view_selected.connect( self.set_info )
+                    view.cursor_moved.connect( self.update_cursor )
+                self.gallery[ c ].add_view( view, model_name, row_id, col_id )
+                input = simulation_result.input 
+                model_output = simulation_result.prob
+                #prob   = simulation_result.prob
+                view.set_model_data( model_name, input, model_output, [] )
+                #view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
+                QCoreApplication.processEvents()
+                self.maximize_sub_window()
+
+
+
+    ##################################
+    def update_configuration( self, _id ) :
+        self.configuration_id = _id
+        print("Update configuration: ", self.configuration(), self.configuration_vec[ _id ] )
         self.gallery.clear()
         self.clear() #TODO THIS DOES NOT REALLY REMOVE ELEMENTS.....
 
@@ -327,14 +360,7 @@ class Empirical_Panel ( QTabWidget ) :
             col_id = self.column( d, cmd )
             self.gallery[ c ].add_view( view, view.model_name, row_id, col_id )
 
-        # for d in self.data_vec :
-        #     for cmd in d.command_info.id :           
-        #         c = self.category( d, cmd )
-        #         row_id = self.row( d, cmd )
-        #         col_id = self.column( d, cmd )
-        #         key = self.key( d.technique_name, d.id, cmd )
-        #         view = self.view_vec[ key ]
-        #         self.gallery[ c ].add_view( view, row_id, col_id )
+        self.maximize_sub_window()
         self.show()
 
     ##################################
@@ -357,7 +383,9 @@ class Empirical_Panel ( QTabWidget ) :
         print("get exact trial did not work", trial_id, cmd)
         return trial_id
         
-
+    def update_cursor( self, x ):
+        for view in self.view_vec.values() :
+            view.update_cursor( x )
         
     ##################################
     def set_info(self, user_id, cmd, _trial_id ) :

@@ -185,55 +185,6 @@ class Parameters_Comparison_Panel( QWidget ):
         self.show()
 
 
-######################################
-#                                    #
-#        FITTING RESULT PANEL        #
-#                                    #
-######################################
-class Model_Result_Panel( Serie2DGallery ):
-    
-    ################################
-    def __init__( self ):
-        super().__init__()
-        self.setMinimumWidth(250)
-        self.l.setHorizontalSpacing( 1 )
-        self.l.setVerticalSpacing( 1 )
-        self.setLayout( self.l )
-        self.model_row = dict()
-        self.user_col = dict()
-        self.w = dict()
-
-    def set_group( self, model_result_vec ):
-        self.l.addWidget(QLabel(""),0,0)
-        for model_result in model_result_vec :
-            name = model_result.name
-            row = 0
-
-            if name in self.model_row:
-               row = self.model_row[ name ]
-            else: 
-                row = self.l.rowCount()
-                self.model_row[ model_result.name ] = row
-                self.l.addWidget( QLabel( "<b>" + name + "</b>" ), row, 0 )
-            
-            for user_id, likelihood in zip( model_result.user_id, model_result.log_likelihood) :
-                if not user_id in self.user_col :
-                    self.l.addWidget(QLabel( str(user_id) ), 0, user_id + 1 )
-                key = row * 100 + user_id
-                if not key in self.w:
-                    likelihood_label = QLabel( str( round( likelihood, 2 ) ) )
-                    self.w[ key ] = likelihood_label
-                    self.l.addWidget( likelihood_label, row, user_id+1 )
-                else:
-                    self.w[ key ].setText( str( round( likelihood, 2 ) ) )
-
-
-            
-        self.show()
-
-
-
-
 
 
 

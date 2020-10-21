@@ -24,8 +24,8 @@ class ILHP_Model( Model ):
                     self.perseveration_value[ encode_cmd_s(cmd, s) ] = value_0[ s ]
 
     ###############################
-    def __init__( self, env, name ):
-        super().__init__(name, env)
+    def __init__( self, name ):
+        super().__init__( name )
         self.max_knowledge = 1.0
         self.command_ids = []
         
@@ -153,10 +153,10 @@ class ILHP_Model( Model ):
         
         s_vec = self.available_strategies.copy()
         if horizon <= 1 and not Strategy.LEARNING == self.default_strategy() :
-                s_vec.remove( Strategy.LEARNING )
+                s_vec = np.setdiff1d( s_vec, Strategy.LEARNING )
         
         if history[-1] == Strategy.LEARNING and Strategy.MENU in self.available_strategies:
-            s_vec.remove( Strategy.MENU )
+            s_vec = np.setdiff1d( s_vec, Strategy.MENU )
 
         return s_vec
 

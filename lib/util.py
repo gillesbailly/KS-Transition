@@ -1,9 +1,18 @@
 import sys
 import random
 import numpy as np
+import pandas as pd
 import math
 from builtins import object
 
+#########################
+def bootstrap_ci( population, size=0.75, n_replicates=1000 ):
+    n = int( len(population) * size )
+    replicates = np.zeros( (n_replicates, n) )
+    for i in range( n_replicates ):
+        replicates[i,:] = np.random.choice(population, size= n, replace = True)
+    mean_replicates = np.mean( replicates, axis=1 )
+    return np.percentile( mean_replicates, [2.5, 97.5] )
 
 
 #######################
@@ -13,7 +22,7 @@ def encode_cmd_s( cmd, s ) :
 
 ########################
 def values_long_format(actions, values):
-    res = [-1,-1,-1]
+    res = np.array( [-1,-1,-1] )
     for i in range( 0, len(actions)):
         res[ actions[i].strategy ] = values[i]
     return res
@@ -43,9 +52,9 @@ def log_likelihood( prob_vec ):
 ###################################
 def strategies_from_technique( technique_name ):
     if technique_name == "disable":
-        return [Strategy.HOTKEY, Strategy.LEARNING]
+        return np.array( [Strategy.HOTKEY, Strategy.LEARNING], dtype=int )
     else:
-        return[Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING]
+        return np.array( [Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING], dtype=int )
 
 # ########################
 # def soft_max_vec(beta, vec):
@@ -72,8 +81,65 @@ def extended_soft_max(beta_vec, value_vec):
     return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
+############################
+def user_data_vec_to_data_frame( user_data_vec ):
+    df = pd.DataFrame()
+    for user_data in user_data_vec:
+        df_user = user_data_to_data_frame( user_data )
+        if  df.empty:
+            print("df is empty")
+            df = df_user
+        else:
+            df = pd.concat( [df, df_user] )
+    return df
 
 
+
+############################
+def user_data_to_data_frame( user_data ):
+    df = pd.DataFrame({    'model'          : 'Observations',
+                           'user_id'        : user_data.id,
+                           'technique_name' : user_data.technique_name,
+                           'block_id'       : user_data.other.block,
+                           'cmd_input'      : user_data.cmd,
+                           'time'           : user_data.output.time,
+                           'success'        : user_data.output.success,
+                           'strategy'       : np.array( [a.strategy for a in user_data.output.action] ),
+                           'cmd_output'     : np.array( [a.cmd for a in user_data.output.action] ) })
+    return df
+
+###########################
+def get_user_data_block( user_id, user_data_vec ):
+        for user_data in user_data_vec :
+            if user_data.id == user_id :
+                return user_data.other.block
+        return []
+
+############################
+def simulation_vec_to_data_frame( model_simulation_vec, user_data_vec ):
+    df = pd.DataFrame()
+    for model_simulation in model_simulation_vec:
+        block = get_user_data_block( model_simulation.user_id, user_data_vec )
+        df_model = simulation_to_data_frame( model_simulation, block )
+        if  df.empty:
+            print("df is empty")
+            df = df_model
+        else:
+            df = pd.concat( [df, df_model] )
+    return df
+
+############################
+def simulation_to_data_frame( model_simulation, block ):
+    df = pd.DataFrame({    'model'          : model_simulation.name,
+                           'user_id'        : model_simulation.user_id,
+                           'technique_name' : model_simulation.technique_name,
+                           'block_id'       : block,
+                           'cmd_input'      : model_simulation.input,
+                           'time'           : model_simulation.output.time,
+                           'success'        : model_simulation.output.success,
+                           'strategy'       : np.array( [a.strategy for a in model_simulation.output.action] ),
+                           'cmd_output'     : np.array( [a.cmd for a in model_simulation.output.action] ) })
+    return df
 
 ###########################
 #   Command
@@ -98,24 +164,6 @@ class StepResult(object):
         self.success = success
 
 
-# ###########################
-# #   FITTINGData
-# ###########################
-# class FittingData(object):
-#     def __init__(self, model, user_id, technique_id, log_likelyhood, N, hotkey_count = -1):
-#         self.model_name = model.name
-#         self.model_params = model.get_param_value_str()
-#         self.n_BIC_params = model.count_BIC_params()
-#         self.user_id = user_id
-#         self.technique_id = technique_id
-#         self.log_likelyhood = round(log_likelyhood,2)
-#         self.hotkey_count = hotkey_count
-#         self.N = N
-
-#     def bic(self) :
-#         return round(- 2 * self.log_likelyhood + self.n_BIC_params * math.log(self.N) )
-
-
 
 ###########################
 #                         #
@@ -124,13 +172,13 @@ class StepResult(object):
 ###########################
 class Simulation_Result( object ):
     def __init__( self, name = "" ):
-        self.name           = name
-        self.user_id        = -1
-        self.technique_name = ""
-        self.input          = None
-        self.output         = None
-        self.prob           = None
-        self.whole_time     = 0
+        self.name           = name     # str
+        self.user_id        = -1       # int
+        self.technique_name = ""       # str
+        self.input          = None     # list< int > cmd ids
+        self.output         = None     # User_Output        
+        self.prob           = None     # Model_Output
+        self.whole_time     = 0        # float
 
 
 ###########################
@@ -142,24 +190,30 @@ class Model_Result( object ):
 
     ############################
     def __init__( self, name = "" ):
-        self.name  = name
-        self.user_id        = []
-        self.log_likelihood = []
-        self.prob           = []
-        self.output         = []
+        self.name           = name
+        self.user_id        = np.array([], dtype=int)
+        self.log_likelihood = np.array([])
+        self.prob           = []    # proability to peform the user action
+        self.output         = []    # output: {menu, hotkey, learning } vector<float>, probability to perform the conrresponding strategy
         self.time           = []    #time of the simulation
         self.parameters     = []
-        self.whole_time = 0
+        self.whole_time     = 0
+        self.n_observations = np.array([], dtype=int)
+        self.n_parameters       = 0 
 
     ###################################
     def create( model_name, user_id_vec, debug = False) :
-        model_result         = Model_Result( model_name )
-        model_result.user_id = user_id_vec
-        model_result.time    = [ 0 ] * len( user_id_vec )
-        model_result.output  = [ None ] * len( user_id_vec) if debug else []
-        model_result.prob    = [ None ] * len( user_id_vec) if debug else []
-        model_result.parameters  = [ None ] * len( user_id_vec) 
-        model_result.log_likelihood = [ 0 ] * len( user_id_vec )
+        model_result                = Model_Result( model_name )
+        model_result.user_id        = user_id_vec
+        model_result.time           = np.zeros( len(user_id_vec ) ) 
+        model_result.output         = np.array( [ None ] * len( user_id_vec) ) if debug else []
+        model_result.prob           = np.array( [ None ] * len( user_id_vec) ) if debug else []
+        model_result.parameters     = np.array( [ None ] * len( user_id_vec) ) 
+        model_result.log_likelihood = np.zeros( len(user_id_vec ) )
+        model_result.n_observations = np.zeros( len(user_id_vec ), dtype=int )
+        model_result.n_parameters   = 0
+
+
         return model_result
 
 
@@ -172,9 +226,9 @@ class Model_Output( object ):
 
     ##################################
     def __init__( self, n = 0 ):
-        self.menu      = [ 0 ] * n
-        self.hotkey    = [ 0 ] * n
-        self.learning  = [ 0 ] * n
+        self.menu      = np.zeros( n )
+        self.hotkey    = np.zeros( n )
+        self.learning  = np.zeros( n )
 
     ##################################
     def n( self ) :
@@ -189,8 +243,8 @@ class Model_Output( object ):
 class Model_Output_Debug( Model_Output ):
     def __init__( self, n = 0 ):
         super().__init__( n )
-        self.meta_info_1 = [ 0 ] * n
-        self.meta_info_2 = [ 0 ] * n
+        self.meta_info_1 = np.zeros( n )
+        self.meta_info_2 = np.zeros( n )
 
 ###########################
 #                         #
@@ -201,9 +255,9 @@ class User_Output( object ):
 
     ##################################
     def __init__( self, n = 0 ):
-        self.time    = [0] * n
-        self.success = [False] * n
-        self.action  = [None] * n
+        self.time    = np.zeros( n )
+        self.success = np.zeros( n, dtype=bool )
+        self.action  = np.array( [ None ] * n ) 
 
     def n( self ) :
         return len( self.action )
@@ -218,11 +272,11 @@ class Command_Info( object ):
 
     ##################################
     def __init__( self ):
-        self.id               = []
-        self.name             = []
-        self.frequency        = []
-        self.start_transition = []
-        self.stop_transition  = []
+        self.id               = np.array([], dtype=int)
+        self.name             = np.array([], dtype=str)
+        self.frequency        = np.array([], dtype=int)
+        self.start_transition = np.array([], dtype=int)
+        self.stop_transition  = np.array([], dtype=int)
 
 
 
@@ -235,11 +289,11 @@ class Experiment_Other( object ):
 
     ##################################
     def __init__( self ):
-        self.block       = []
-        self.block_trial = []
-        self.encounter   = []
-        self.method_id   = []
-        self.method_name = []
+        self.block       = np.array([], dtype=int)
+        self.block_trial = np.array([], dtype=int)
+        self.encounter   = np.array([], dtype=int)
+        self.method_id   = np.array([], dtype=int)
+        self.method_name = np.array([], dtype=str)
 
 
 
@@ -257,7 +311,7 @@ class User_Data( object ):
         self.technique_name = "empty"
         self.command_info = Command_Info()
         self.output = User_Output()
-        self.cmd = []
+        self.cmd = np.array([],dtype=int)
 
         self.other = Experiment_Other()
 
@@ -273,7 +327,9 @@ class User_Data( object ):
         if trial_id <0 or trial_id > len( self.cmd ) -1 :
             return info
         
-        cmd_index = self.command_info.id.index( self.cmd[ trial_id ] )
+        #cmd_index = self.command_info.id.index( self.cmd[ trial_id ] )
+        cmd_index = np.where( self.command_info.id == self.cmd[ trial_id ] )[ 0 ][ 0 ]
+        print("cmd index ..............", cmd_index )
         info["User id"]          = str( self.id )
         info["Technique"]        = self.technique_name
         info["Command"]          = str( self.cmd[ trial_id ] )
@@ -334,51 +390,6 @@ class Action():
         self.cmd = cmd
         self.strategy = strategy
 
-    # def command(self):
-    #     return self.cmd
-
-    # def __eq__(self, other): 
-    #     if not isinstance(other, Action):
-    #         # don't attempt to compare against unrelated types
-    #         return NotImplemented
-    #     return self.cmd == other.cmd and self.strategy == other.strategy
-
-    # def copy(self):
-    #     return Action(self.cmd, self.strategy)
-
-    # def print_action(self, short_print=False):
-    #     if short_print:
-    #         print("a: ", self.to_string(short_print))
-    #     else:
-    #         print("action: ", self.to_string())
-
-    # def __repr__(self):
-    #     return self.to_string()
-
-    # def method_str(self):
-    #     m = "menu"
-    #     if self.strategy == Strategy.HOTKEY:
-    #         m = "hotkey"
-    #     return m
-
-    # def strategy_str(self):
-    #     s = "menu"
-    #     if self.strategy == Strategy.HOTKEY:
-    #         s = "hotkey"
-    #     elif self.strategy == Strategy.LEARNING:
-    #         s = "learning"
-    #     return s
-
-    # def to_string(self, short_print=False):
-    #     s = "MENU"
-    #     if self.strategy == Strategy.HOTKEY:
-    #         s = "HOTKEY"
-    #     elif self.strategy == Strategy.LEARNING:
-    #         s = "LEARNING"
-    #     if short_print:
-    #         return str(self.cmd) + s[0]
-    #     else:
-    #         return str(self.cmd) + '_' + s
 
 
 

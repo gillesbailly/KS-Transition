@@ -10,14 +10,58 @@ sys.path.append("./plugins/export/")
 sys.path.append("./plugins/model/")
 
 
-
 print(" read packages")
 import os.path
 from win import *
 
 
 
+# def bootstrap_ci(df, repetitions = 1000, alpha = 0.05, random_state=None): 
+
+    
+#     mean_diffs = []
+#     for i in range(repetitions):
+#         bootstrap_sample = df.sample(n = bootstrap_sample_size, replace = True, random_state = random_state)
+#         mean_diff = df.mean().iloc[1,0] - bootstrap_sample.mean().iloc[0,0]
+#         mean_diffs.append(mean_diff)
+# # confidence interval
+#     left = np.percentile(mean_diffs, alpha/2*100)
+#     right = np.percentile(mean_diffs, 100-alpha/2*100)
+# # point estimate
+#     point_est = df.mean().iloc[1,0] - df.groupby(classes).mean().iloc[0,0]
+#     print('Point estimate of difference between means:', round(point_est,2))
+#     print((1-alpha)*100,'%','confidence interval for the difference between means:', (round(left,2), round(right,2)))
+
+
+#########################
+def bootstrap_ci( population, size=0.75, n_replicates=1000 ):
+    n = int( len(population) * size )
+    replicates = np.zeros( (n_replicates, n) )
+    for i in range( n_replicates ):
+        replicates[i,:] = np.random.choice(population, size= n, replace = True)
+    mean_replicates = np.mean( replicates, axis=1 )
+    return np.percentile( mean_replicates, [2.5, 97.5] )
+
+
 if __name__=="__main__":
+
+    population = np.array( [1,1,1,1,1,1,2,3,4,5,6,7,8,9,50, 100,200])
+    #population = np.array( [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+    print("population: ", np.mean(population), np.percentile(population, [2.5, 97.5] ) )
+    print(" 95 percent bootstrap CI:", np.mean( population ), bootstrap_ci( population ) )
+
+#    print( "population: ", population )
+#    print( "samples : ", samples )
+    #bootstrap_ci( population, repetitions = 10)
+    # take 1k 'samples' from the larger population
+    #samples = population[:3]
+    #print( "samples: ", samples )
+
+    #print(bs.bootstrap(samples, stat_func=bs_stats.mean))
+    #print(bs.bootstrap(samples, stat_func=bs_stats.std))
+
+
+
     # original = np.array( [0,5,2,3,4,5] )
     # mycopy = np.copy( original )
     # mycopy = np.delete(mycopy, 1)
@@ -70,6 +114,25 @@ if __name__=="__main__":
     # my_vec = np.array( [1,2,3,4,5] )
     # print(my_vec)
     # print( my_vec * 5)
+    # a = np.zeros(0)
+    # b = np.zeros(0, dtype=int)
+    # c = np.empty(5)
+    # d = np.empty(5, dtype=int)
+    # e = np.array([])
+    # f = np.array([], dtype=int)
+    # print( a, b, c, d, e, f )
+    # a = np.append( a, int(3) )
+    # b = np.append( b, 3)
+    # c = np.append( c, 3)
+    # d = np.append( d, 3)
+    # e = np.append( e, 3)
+    # f = np.append( f, 3)
+    
+    # print( a, b, c, d, e, f )
+    # print(None)
+    # a = np.array([1,2,3,4,5])
+    # b = 3
+    # print( np.setdiff1d(a,b) )
     build_interface()  
 
 

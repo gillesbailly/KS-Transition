@@ -122,10 +122,12 @@ class Model_Fitting( object ):
     
         result_vec = []
         for model in self.model_vec:
-            
+            n_parameters = model.params.n( Freedom.USER_FREE )
 
             for i , user_data in enumerate( self.user_data_vec ):
                 model_result = Model_Result.create( model, self.user_data_vec, self.debug )
+                model_result.n_observations[ i ] = len( user_data.cmd )
+                model_result.n_parameters = n_parameters
                 start = TIME.time()
                 available_strategies = strategies_from_technique( user_data.technique_name )
                 
@@ -189,11 +191,11 @@ class Model_Fitting( object ):
 
             self.method.model    = model
             model_result = Model_Result.create( model.name, [ user_data.id for user_data in self.user_data_vec ], self.debug )
-
+            model_result.n_parameters = model.params.n( Freedom.USER_FREE )
             start = TIME.time()
             
             for i , user_data in enumerate( self.user_data_vec ):
-
+                model_result.n_observations[ i ] = len( user_data.cmd )
                 model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )
                 self.method.model = model
                 self.method.user_input  = user_data.cmd
@@ -215,17 +217,6 @@ class Model_Fitting( object ):
         
         return result 
 
-
-    # ###################################
-    # def init_model_result( self, model, user_data_vec, debug ) :
-    #     model_result         = Model_Result( model.name )
-    #     model_result.user_id = [ user_data.id for user_data in user_data_vec ]
-    #     model_result.time    = [ 0 ] * len( user_data_vec )
-    #     model_result.output  = [ None ] * len( user_data_vec) if debug else []
-    #     model_result.parameters  = [ None ] * len( user_data_vec) 
-    #     model_result.log_likelihood = [ 0 ] * len( user_data_vec )
-
-        return model_result
 
 
 

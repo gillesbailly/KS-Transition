@@ -46,6 +46,14 @@ class Parameters(dict):
                     self[ parameter.name ] = parameter
                 else:
                     header = False
+    #########################
+    def n( self, freedom_type = Freedom.USER_FREE ):
+        res = 0
+        for parameter in self.values():
+            if parameter.freedom == freedom_type:
+                res += 1
+        return res
+
 
     #########################
     def values_str( self ):

@@ -50,7 +50,7 @@ class Sub_Win( QMdiSubWindow ):
     ####################
     def __init__( self, name ):
         super( QMdiSubWindow, self ).__init__()
-        self.resize( 800, 300 )
+        self.resize( 750, 250 )
         self.container = Serie2DGallery()
         self.setWidget( self.container )
         self.setWindowTitle( name )
@@ -82,6 +82,11 @@ class Area( QScrollArea):
         self.setWidget( self.container )
         self.container.show()
 
+    #########################
+    def resizeEvent( self, event ):
+        for win in self.container.subWindowList():
+            win.resize( event.size().width() - 10, win.height() )
+        super().resizeEvent( event )
 
     #########################
     def window( self, name):

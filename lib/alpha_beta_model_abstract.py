@@ -80,9 +80,7 @@ class Alpha_Beta_Model_Abstract(Model):
         mem_value = self.memory.value[value_name]
         value_vec = np.zeros( len(self.available_strategies) )
         for i, s in enumerate( self.available_strategies ):
-        #for i in range(0, len(self.available_strategies) ) :
-            #s = self.available_strategies[i]
-            value_vec[ i ] = mem_value[ encode_cmd_s( cmd, s )]
+            value_vec[ i ] = mem_value[ encode_cmd_s( cmd, s ) ]
         return value_vec
 
 

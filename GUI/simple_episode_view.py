@@ -113,39 +113,34 @@ class Group():
 ##########################################
 class EpisodeData():
 
-    def __init__(self, user_data, cmd ):
+    def __init__(self, _input, _output, cmd ):
         self.error_color = QColor(255,250,150,255)
         self.group = dict()
         self.individual = dict()
         
         #user
-        self.group[ "empirical" ]         = Group( cmd, "empirical", "scatter", 5 )
-        self.group[ "empirical_error" ]   = Group( cmd, "empirical_error", "scatter", 9, self.error_color )
+        self.group[ "empirical" ]       = Group( cmd, "empirical", "scatter", 5 )
+        self.group[ "empirical_error" ] = Group( cmd, "empirical_error", "scatter", 9, self.error_color )
         self.outlier_1 = None
         self.outlier_2 = None
+        self.block_id  = None
 
-        #model
-        
-        #self.individual["user_action_prob"] = None
-        #self.individual["knowledge"]        = None        
-
-        #all
-        self.block_id = None
-
-        self.load_user_output( user_data, cmd )
+        self.load_user_output( _input, _output, cmd )
 
     ##############################
     def show_group( self, name, b ) :
-        if name in self.group :
-            g = self.group[ name ]
-            g.menu.setVisible( b )
-            g.hotkey.setVisible( b )
-            g.learning.setVisible( b )
+        for gr in self.group:
+            if name in gr :
+                g = self.group[ gr ]
+                g.menu.setVisible( b )
+                g.hotkey.setVisible( b )
+                g.learning.setVisible( b )
 
     ##############################
     def show_individual( self, name, b ) :
-        if name in self.individual :
-            self.individual[ name ].setVisible( b )
+        for gr in self.individual:
+            if name in gr :
+                self.individual[ gr ].setVisible( b )
 
 
     ##############################
@@ -189,7 +184,6 @@ class EpisodeData():
             if cmd == user_input[ i ] :
                 self.group[ model_name ].add_items( i,  [ model_output.menu[ i ]*10., model_output.hotkey[ i ]*10, model_output.learning[ i ]*10. ] )
         
- 
         line = create_line_series( model_name,  Qt.white, 2)
         for i, (user_cmd, prob)  in enumerate( zip( user_input, model_prob )  ):
             if cmd == user_cmd :
@@ -197,20 +191,20 @@ class EpisodeData():
         self.individual[ model_name ] = line        
 
     ##############################
-    def load_user_output(self, user_data, cmd):
-        self.block_id  = create_scatter_series( "Block"    ,  4, QScatterSeries.MarkerShapeCircle, Qt.white)
+    def load_user_output(self, _input, _output, cmd):
+        self.block_id  = create_scatter_series( "Block"    , 4, QScatterSeries.MarkerShapeCircle, Qt.white)
         self.outlier_1 = create_scatter_series( "outlier_1", 9, QScatterSeries.MarkerShapeCircle, self.error_color)
         self.outlier_2 = create_scatter_series( "outlier_2", 9, QScatterSeries.MarkerShapeCircle, self.error_color)
         
-        action_vec  =  user_data.output.action
-        time_vec    =  user_data.output.time
-        success_vec =  user_data.output.success
+        action_vec  =  _output.action
+        time_vec    =  _output.time
+        success_vec =  _output.success
 
         max_time = 7.5
 
         for i in range( len(action_vec) ):
             
-            if user_data.cmd[i] == cmd :
+            if _input[i] == cmd :
                 s = action_vec[i].strategy
                 time = round(time_vec[i],1)
                 time_band1 = min(time, max_time)
@@ -225,8 +219,8 @@ class EpisodeData():
                     self.outlier_2.append(i, time_band1+1 )
                 
 
-            if user_data.other.block_trial[i] == 0:
-                self.block_id.append(i,0)
+            #if user_data.other.block_trial[i] == 0:
+            #    self.block_id.append(i,0)
 
 
 
@@ -240,7 +234,7 @@ class EpisodeData():
 ##########################################
 class EpisodeView(QChartView):
     view_selected = pyqtSignal( int, int, int ) #user id, cmd, trial_id
-    cursor_moved = pyqtSignal( int, int )
+    cursor_moved = pyqtSignal( int )
 
     def __init__(self):
         super().__init__()
@@ -279,19 +273,24 @@ class EpisodeView(QChartView):
 
 
     ###########################    
-    def set_user_data(self, user_data, cmd):   
+    def set_agent_data(self, user_input, user_output, user_id, technique_name, cmd):   
         self.chart().removeAllSeries()
-        self.cmd     = cmd
-        self.user_id = user_data.id
-        self.technique_name = user_data.technique_name
-
-        self.data = EpisodeData( user_data, cmd )
+        self.cmd            = cmd
+        self.user_id        = user_id
+        self.technique_name = technique_name
+        title               = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
+        self.data           = EpisodeData( user_input, user_output, cmd )
         self.data.add_user_series_to_chart( self.chart() )
-        self.data.add_other_series_to_chart( self.chart() )
+        self.add_cursor_line()
+        #self.data.add_other_series_to_chart( self.chart() )
+        self.set_chart_decoration( title )
+
+
+    ###########################    
+    def set_user_data(self, user_data, cmd):   
+        self.set_agent_data( user_data.cmd, user_data.output, user_data.id, user_data.technique_name, cmd)
         self.add_transition_region( self.x_start_transition( user_data, cmd ), self.x_stop_transition( user_data, cmd ) )
         title = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
-        
-        self.add_cursor_line()
         self.set_chart_decoration( title )
 
     ############################
@@ -311,7 +310,7 @@ class EpisodeView(QChartView):
 
     ############################   
     def set_meta_info( self, model_name, user_input, meta_info ):
-        name = model_name +"_meta_info"
+        name = "meta_info"
         if name in self.data.individual :
             self.chart().removeSeries( self.data.individual[ name ] )
             
@@ -357,13 +356,15 @@ class EpisodeView(QChartView):
     
     ###########################  
     def x_start_transition( self, user_data, cmd ) :
-        return user_data.command_info.start_transition[ user_data.command_info.id.index( cmd ) ]
-
+        #return user_data.command_info.start_transition[ user_data.command_info.id.index( cmd ) ]
+        return user_data.command_info.start_transition[ np.where( user_data.command_info.id == cmd )[ 0 ][ 0 ] ]
     ###########################  
     def x_stop_transition( self, user_data, cmd ) :
-        return user_data.command_info.stop_transition[ user_data.command_info.id.index( cmd ) ]
+        return user_data.command_info.stop_transition[ np.where( user_data.command_info.id == cmd )[ 0 ][ 0 ] ]
 
-    
+    def update_cursor(self, x ):
+        self.cursorLine.replace( 0, x, 0 )
+        self.cursorLine.replace( 1, x, 10 )
         
 
     #caputre mouse move event to show the vertical cursor line
@@ -372,8 +373,7 @@ class EpisodeView(QChartView):
         scene_pos = self.mapToScene( e.pos() )
         chartItemPos = self.chart().mapFromScene( scene_pos )
         value = self.chart().mapToValue( chartItemPos )
-        self.cursorLine.replace(0, value.x(), 0)
-        self.cursorLine.replace(1, value.x(), 10)
+        self.cursor_moved.emit( value.x() )
         self.trial_id = int(value.x())
 
     

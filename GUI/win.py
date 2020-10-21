@@ -11,17 +11,20 @@ from PyQt5.QtGui import QPalette, QPageLayout
 from PyQt5.QtPrintSupport import *
 from PyQt5.QtCore import QCoreApplication, QSignalMapper
 
-
 from data_explorer import *
 from data_loader import *
 from simple_episode_view import *
 from model_fit import *
+from model_simulation import *
 from filter_panel import *
 from parameters_panel import *
 from user_data_loader import *
 from user_data_export import *
 from parameters_export import *
 from ILHP_model import *
+from model_fitting_visualisation import *
+from model_simulation_visualisation import *
+
 
 #####################################
 #                                   #
@@ -42,16 +45,18 @@ class Win ( QMainWindow ) :
         self.explorer_user_data_vec  = []
         self.model_fit_user_data_vec = []
         self.goodness_of_fit_vec     = []
+        self.simulation_result_vec   = []
         self.explorer_panel          = self.add_explorer_panel()
         self.model_fit               = self.add_model_fitting_component()
-        self.add_model_simulation_component()
+        self.model_simulation        = self.add_model_simulation_component()
         self.view_menu = self.menuBar().addMenu( "Views" )
         self.filters = dict()
         self.docks = dict()
         self.explorer_filter_panel = None
         self.parameters_panel = Parameters_Group_Panel()
         self.parameters_panel.reload.connect( self.model_fitting_apply )
-        self.model_results_panel = Model_Result_Panel()
+        self.model_fitting_visu = Model_Fitting_Visualisation()
+        self.model_simulation_visu = Model_Simulation_Visualisation()
         self.create_dock_widgets()
         self.tmp_panel = None
         self.setCentralWidget( self.explorer_panel )
@@ -85,7 +90,7 @@ class Win ( QMainWindow ) :
     #########################
     def create_dock_widgets( self ):
         self.add_dock_widget( "Parameters Editor", Qt.RightDockWidgetArea, self.parameters_panel )
-        self.add_dock_widget( "Fitting Results", Qt.RightDockWidgetArea, self.model_results_panel )
+        self.add_dock_widget( "Fitting Results", Qt.RightDockWidgetArea, self.model_fitting_visu )
         self.add_dock_widget( "Trial Info", Qt.RightDockWidgetArea, self.explorer_panel.trial_info )
 
 
@@ -160,7 +165,7 @@ class Win ( QMainWindow ) :
         for i, name in enumerate( configuration_vec ) :
             name_str = '-'.join( name )
             act = config_menu.addAction( name_str )
-            act.triggered.connect( lambda : self.set_config( i ) )
+            act.triggered.connect( lambda checked, x=i : self.set_config( x ) )
         
         self.create_toggle_action( explorer_menu, "Show User Data", True, self.show_user_data, "Ctrl+E")
         self.create_toggle_action( explorer_menu, "Show Stratgies Probabilities", True, self.show_strategy_probs, "Ctrl+D")
@@ -180,6 +185,8 @@ class Win ( QMainWindow ) :
 
     #########################
     def update_explorer_panel( self ):
+        #self.model_simulation_visu.update_figure( self.user_data_vec )
+        #return
         data_vec = self.get_filter( "Explorer" ).filter( self.user_data_vec )
         self.explorer_panel.set_sequences( data_vec )
         print( "display data...\t OK ")
@@ -203,16 +210,14 @@ class Win ( QMainWindow ) :
                     view.show_user_data( checked )
 
     #########################
-    def show_option_1( self, checked ):
-       
+    def show_option_1( self, checked ):    
         for view in self.explorer_panel.view_vec.values() :
             for model in self.model_vec :
-                name = model.name + "_meta_info"
+                name = "meta_info"
                 view.show_individual( name, checked ) 
 
     #########################
     def show_option_2( self, checked ):
-
         for view in self.explorer_panel.view_vec.values() :
             for model in self.model_vec :
                 name = model.name + "_meta_info"
@@ -227,12 +232,21 @@ class Win ( QMainWindow ) :
         return explorer_panel
 
 
+    #########################
+    def set_config( self, _id ) :
+        print( "config", _id )
+        self.explorer_panel.update_configuration( _id )
 
 #####################################################################################################
 ###############################################  MODEL FITTING ######################################
 #####################################################################################################
 
-
+    #########################
+    def add_model_fitting_component( self ) :
+        model_fit = Model_Fitting( debug = True)
+        model_fit.command_ids = self.command_ids
+        self.add_model_fitting_menu()
+        return model_fit
 
     #########################
     def add_model_fitting_menu( self ):
@@ -242,14 +256,6 @@ class Win ( QMainWindow ) :
         act_select_and_apply = fit_menu.addAction( "Select and Apply...", self.model_fitting_select_and_apply )
         act_apply            = fit_menu.addAction( "Apply", self.model_fitting_apply )
         act_display          = fit_menu.addAction( "Display", self.model_fitting_display )                
-
-
-    #########################
-    def add_model_fitting_component( self ) :
-        model_fit = Model_Fitting( debug = True)
-        model_fit.command_ids = self.command_ids
-        self.add_model_fitting_menu()
-        return model_fit
 
 
     #########################
@@ -309,14 +315,16 @@ class Win ( QMainWindow ) :
         return self.model_fit.optimize()
 
 
-   #########################
+    #########################
     def model_fitting_display( self ):
         print("model fitting: display")
         if len( self.goodness_of_fit_vec ) < 1 :
             print("No model fitting has been recently performed... Action \"Diplay\" is ignored ")
             return 0
         
-        self.model_results_panel.set_group( self.goodness_of_fit_vec )
+        self.model_fitting_visu.update_table( self.goodness_of_fit_vec )
+        self.model_fitting_visu.update_figure( self.goodness_of_fit_vec )
+        
         self.explorer_panel.set_model_fitting_sequences( self.goodness_of_fit_vec, self.user_data_vec )
 
         #goodness_of_fit = self.goodness_of_fit_vec[ 0 ]  #TODO #BUG
@@ -348,6 +356,9 @@ class Win ( QMainWindow ) :
     #########################
     def add_model_simulation_component( self ) :
         self.add_model_simulation_menu()
+        model_simulation = Model_Simulation( debug = False )
+        model_simulation.command_ids = self.command_ids
+        return model_simulation 
 
     #########################
     def add_model_simulation_menu( self ):
@@ -370,36 +381,45 @@ class Win ( QMainWindow ) :
         res = self.exec_filter( m_filter )
         if res == 1 :
             m_filter.filter( self.user_data_vec  )
-            print( " model simulation: select and apply " )
+            print( " Model Simulation: Select and Apply " )
             self.model_simulation_apply()          
 
 
     #########################
     def model_simulation_apply( self ):
-        print( "model simulation: apply" )
+        print( "Model Simulation: Apply" )
         m_filter = self.get_filter( "Model Simulation")
         data_vec = m_filter.filter( self.user_data_vec  )
         start = TIME.time()
-        self.goodness_of_fit_vec = self.model_simulation_long( data_vec, self.model_vec )
-        print("Model fitting: get goodness of fit of ", len(self.model_vec), "models on", len(data_vec), " users in", round(TIME.time() - start,2), "s" )
+        self.simulation_result_vec = self.model_simulation_long( data_vec, self.model_vec )
+        print("Model Simulation: get simulated data for ", len(self.simulation_result_vec), "models on", len(data_vec), " users in", round(TIME.time() - start,2), "s" )
         self.model_simulation_display()
         
 
      #########################
     def model_simulation_long( self, user_data_vec, model_vec ):
-        print( "model simulation long" )
+        self.model_simulation.user_data_vec = user_data_vec
+        self.model_simulation.model_vec = model_vec
+        return self.model_simulation.run()
 
 
   
    #########################
     def model_simulation_display( self ):
-        print("model simulation: display")
+        print("Model Simulation: Display")
+        if len( self.simulation_result_vec ) < 1 :
+            print("No model fitting has been recently performed... Action \"Diplay\" is ignored ")
+            return 0
+        self.model_simulation_visu.update_figure( self.simulation_result_vec, self.user_data_vec )
+        self.explorer_panel.set_model_simulation_sequences( self.simulation_result_vec, self.user_data_vec )
+
+        
         
 
 
 
 #####################################################################################################
-###############################################    OTHER        #####################################
+####################################        OTHER        ############################################
 #####################################################################################################
 
     ########################
@@ -457,12 +477,27 @@ class Win ( QMainWindow ) :
         self.user_data_vec           = user_data_vec
         self.model_fit_user_data_vec = user_data_vec
 
-    #########################
-    def set_config( self, id ) :
-        print( "config", id )
-        self.explorer_panel.update_configuration( id )
-
-
+    
+##################################
+def app_palette() :
+    dark_palette = QPalette()
+    dark_palette.setColor( QPalette.Window         , QColor(53, 53, 53) )
+    dark_palette.setColor( QPalette.WindowText     , Qt.white)
+    dark_palette.setColor( QPalette.Base           , QColor(25, 25, 25))
+    dark_palette.setColor( QPalette.AlternateBase  , QColor(53, 53, 53))
+    dark_palette.setColor( QPalette.ToolTipBase    , Qt.white)
+    dark_palette.setColor( QPalette.ToolTipText    , Qt.white)
+    dark_palette.setColor( QPalette.Text           , Qt.white)
+    dark_palette.setColor( QPalette.Button         , QColor(53, 53, 53))
+    dark_palette.setColor( QPalette.ButtonText     , Qt.white)
+    dark_palette.setColor( QPalette.BrightText     , Qt.red)
+    dark_palette.setColor( QPalette.Link           , QColor(42, 130, 218))
+    dark_palette.setColor( QPalette.Highlight      , QColor(42, 130, 218))
+    dark_palette.setColor( QPalette.HighlightedText, Qt.black)
+    dark_palette.setColor( QPalette.Disabled, QPalette.Text      , Qt.darkGray)
+    dark_palette.setColor( QPalette.Disabled, QPalette.ButtonText, Qt.darkGray)
+    dark_palette.setColor( QPalette.Disabled, QPalette.WindowText, Qt.darkGray)
+    return dark_palette
 
 #####################################
 #                                   #
@@ -484,42 +519,42 @@ def build_interface():
 
     app = QApplication(sys.argv)
     qApp.setStyle("Fusion")
-    dark_palette = QPalette()
-
-    dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.WindowText, Qt.white)
-    dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-    dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-    dark_palette.setColor(QPalette.Text, Qt.white)
-    dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ButtonText, Qt.white)
-    dark_palette.setColor(QPalette.BrightText, Qt.red)
-    dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
-    dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    dark_palette.setColor(QPalette.HighlightedText, Qt.black)
-    dark_palette.setColor(QPalette.Disabled, QPalette.Text, Qt.darkGray)
-    dark_palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.darkGray)
-    dark_palette.setColor(QPalette.Disabled, QPalette.WindowText, Qt.darkGray)
-    
-    qApp.setPalette(dark_palette)
+    qApp.setPalette( app_palette() )
 
 
     win = Win()
     win.show()
     #win.load_hotkeycoach_data()
     win.load_user_data()
-    filter_name = "Explorer"
-    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 4 )
+    # user_data = win.user_data_vec[ 0 ]
+    # df = pd.DataFrame()
+    # for user_data in win.user_data_vec:
+    #     df_user = user_data_to_data_frame( user_data )
+    #     if  df.empty:
+    #         print("df is empty")
+    #         df = df_user
+    #     else:
+    #         df = pd.concat( [df, df_user] )
+    #         print("df concat")
+    # print( df )
 
-    #win.set_models( [ ILHP_Model( None, "ILHP" ) ] )
-    win.set_models( [ Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ) ] )
-    filter_name = "Model Fitting"
-    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 4 )
+    filter_name = "Explorer"
+    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 9 )
+
+    win.set_models( [ Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ), Alpha_Beta_Model( "RW_CK" ) ] )
     win.update_explorer_panel()
-    win.model_fitting_apply()
-    win.model_fitting_display()
+    
+    #filter_name = "Model Fitting"
+    #win.filters[ filter_name ] = Filter( filter_name, user_min = 0, user_max = 9 )
+    #win.model_fitting_apply()
+    #win.model_fitting_display()
+
+
+    filter_name = "Model Simulation"
+    win.filters[ filter_name ] = Filter( filter_name, user_min = 0, user_max = 9 )
+    win.model_simulation_apply()
+    
+
     
 
     # my_filter = Filter(user_min = 0, user_max = 1, techniques=["traditional", "audio"] ) 
