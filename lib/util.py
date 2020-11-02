@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import math
 from builtins import object
+from dataframe_util import *
 
 #########################
 def bootstrap_ci( population, size=0.75, n_replicates=1000 ):
@@ -22,7 +23,7 @@ def encode_cmd_s( cmd, s ) :
 
 ########################
 def values_long_format(actions, values):
-    res = np.array( [-1,-1,-1] )
+    res = np.zeros(3)
     for i in range( 0, len(actions)):
         res[ actions[i].strategy ] = values[i]
     return res
@@ -46,6 +47,14 @@ def soft_max(beta, vec):
     return np.exp( vec ) / np.sum( np.exp( vec ), axis=0)
 
 
+
+########################################################################
+# Estimate the log likelihood  given a vector of probabilities         #
+# Input:                                                               #
+#    - p: an array of probabilities (to choose an action at trial t )  #
+# Ouptput:                                                             #
+#    -  a float: \sum_t ( log_2( P_t ) )                               #
+########################################################################
 def log_likelihood( prob_vec ):
     return np.sum( np.log2( prob_vec ) )
 
@@ -81,65 +90,65 @@ def extended_soft_max(beta_vec, value_vec):
     return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
-############################
-def user_data_vec_to_data_frame( user_data_vec ):
-    df = pd.DataFrame()
-    for user_data in user_data_vec:
-        df_user = user_data_to_data_frame( user_data )
-        if  df.empty:
-            print("df is empty")
-            df = df_user
-        else:
-            df = pd.concat( [df, df_user] )
-    return df
+# ############################
+# def user_data_vec_to_data_frame( user_data_vec ):
+#     df = pd.DataFrame()
+#     for user_data in user_data_vec:
+#         df_user = user_data_to_data_frame( user_data )
+#         if  df.empty:
+#             print("df is empty")
+#             df = df_user
+#         else:
+#             df = pd.concat( [df, df_user] )
+#     return df
 
 
 
-############################
-def user_data_to_data_frame( user_data ):
-    df = pd.DataFrame({    'model'          : 'Observations',
-                           'user_id'        : user_data.id,
-                           'technique_name' : user_data.technique_name,
-                           'block_id'       : user_data.other.block,
-                           'cmd_input'      : user_data.cmd,
-                           'time'           : user_data.output.time,
-                           'success'        : user_data.output.success,
-                           'strategy'       : np.array( [a.strategy for a in user_data.output.action] ),
-                           'cmd_output'     : np.array( [a.cmd for a in user_data.output.action] ) })
-    return df
+# ############################
+# def user_data_to_data_frame( user_data ):
+#     df = pd.DataFrame({    'model'          : 'Observations',
+#                            'user_id'        : user_data.id,
+#                            'technique_name' : user_data.technique_name,
+#                            'block_id'       : user_data.other.block,
+#                            'cmd_input'      : user_data.cmd,
+#                            'time'           : user_data.output.time,
+#                            'success'        : user_data.output.success,
+#                            'strategy'       : np.array( [a.strategy for a in user_data.output.action] ),
+#                            'cmd_output'     : np.array( [a.cmd for a in user_data.output.action] ) })
+#     return df
 
-###########################
-def get_user_data_block( user_id, user_data_vec ):
-        for user_data in user_data_vec :
-            if user_data.id == user_id :
-                return user_data.other.block
-        return []
+# ###########################
+# def get_user_data_block( user_id, user_data_vec ):
+#         for user_data in user_data_vec :
+#             if user_data.id == user_id :
+#                 return user_data.other.block
+#         return []
 
-############################
-def simulation_vec_to_data_frame( model_simulation_vec, user_data_vec ):
-    df = pd.DataFrame()
-    for model_simulation in model_simulation_vec:
-        block = get_user_data_block( model_simulation.user_id, user_data_vec )
-        df_model = simulation_to_data_frame( model_simulation, block )
-        if  df.empty:
-            print("df is empty")
-            df = df_model
-        else:
-            df = pd.concat( [df, df_model] )
-    return df
+# ############################
+# def simulation_vec_to_data_frame( model_simulation_vec, user_data_vec ):
+#     df = pd.DataFrame()
+#     for model_simulation in model_simulation_vec:
+#         block = get_user_data_block( model_simulation.user_id, user_data_vec )
+#         df_model = simulation_to_data_frame( model_simulation, block )
+#         if  df.empty:
+#             print("df is empty")
+#             df = df_model
+#         else:
+#             df = pd.concat( [df, df_model] )
+#     return df
 
-############################
-def simulation_to_data_frame( model_simulation, block ):
-    df = pd.DataFrame({    'model'          : model_simulation.name,
-                           'user_id'        : model_simulation.user_id,
-                           'technique_name' : model_simulation.technique_name,
-                           'block_id'       : block,
-                           'cmd_input'      : model_simulation.input,
-                           'time'           : model_simulation.output.time,
-                           'success'        : model_simulation.output.success,
-                           'strategy'       : np.array( [a.strategy for a in model_simulation.output.action] ),
-                           'cmd_output'     : np.array( [a.cmd for a in model_simulation.output.action] ) })
-    return df
+# ############################
+# def simulation_to_data_frame( model_simulation, block ):
+#     df = pd.DataFrame({    'model'          : model_simulation.name,
+#                            'user_id'        : model_simulation.user_id,
+#                            'technique_name' : model_simulation.technique_name,
+#                            'block_id'       : block,
+#                            'cmd_input'      : model_simulation.input,
+#                            'time'           : model_simulation.output.time,
+#                            'success'        : model_simulation.output.success,
+#                            'strategy'       : np.array( [a.strategy for a in model_simulation.output.action] ),
+#                            'cmd_output'     : np.array( [a.cmd for a in model_simulation.output.action] ) })
+#     return df
 
 ###########################
 #   Command
@@ -173,9 +182,10 @@ class StepResult(object):
 class Simulation_Result( object ):
     def __init__( self, name = "" ):
         self.name           = name     # str
-        self.user_id        = -1       # int
-        self.technique_name = ""       # str
-        self.input          = None     # list< int > cmd ids
+        self.user_data      = None     # User_Data
+        # self.user_id        = -1       # int
+        # self.technique_name = ""       # str
+        # self.input          = None     # list< int > cmd ids
         self.output         = None     # User_Output        
         self.prob           = None     # Model_Output
         self.whole_time     = 0        # float
@@ -199,7 +209,7 @@ class Model_Result( object ):
         self.parameters     = []
         self.whole_time     = 0
         self.n_observations = np.array([], dtype=int)
-        self.n_parameters       = 0 
+        self.n_parameters   = 0 
 
     ###################################
     def create( model_name, user_id_vec, debug = False) :

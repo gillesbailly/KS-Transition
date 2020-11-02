@@ -88,122 +88,113 @@ class Model(object):
         self.max_time = 7.0
 
 
-    ######################################
-    def default_parameters_path( self ):
-        return './parameters/' + self.name + '_model.csv'
 
-    ######################################
-    def reset( self, command_ids,  available_strategies ):
+
+    ##########################################################################
+    # Reset the models: define the list of states, actions and reset         #
+    #  the internal variables of the model                                   #
+    # Input:                                                                 #
+    #    - cmd_ids (array<int>) : lists of the ids of available commands     #
+    #                        the agent can select (i.e. list of states)      #
+    #    - strategies (array<Strategy> ): list of available strategies       #
+    #                                     (action)                           #
+    # Output: stepResult (StepResult) containing state, action and reward    #
+    ########################################################################## 
+    def reset( self, cmd_ids,  strategies ):
     	raise ValueError(" model.reset(): method to implement ")
     
-    ######################################
-    # def count_BIC_params( self ) : #TODO REMOVE FROM HERE
-    #     count = 0
-    #     for name in self.params.range.keys() :
-    #         if self.params.range[name][0] < self.params.range[name][1] : # min != max
-    #             count += 1
-    #     return count
 
-    ###########################
-    def get_params( self ):
-        return self.params
+    ##########################################################################
+    # Given a state and action, estimate the reward and return a stepResult  #
+    # Input:                                                                 #
+    #    - cmd id (int)   : the command to select (state)                    #
+    #    - action (Action): pair <cmd, strategy>                             #
+    # Output: stepResult (StepResult) containing state, action and reward    #
+    # The reward is                                                          #
+    #    - sucess (True/False) : The command is correctly selected)          #
+    #    - time (float)        : Execution Time)                             #
+    ########################################################################## 
+    def generate_step(self, cmd_id, action, date = 0):
+        result = StepResult()
+        result.cmd = cmd_id
+        result.action = Action( action.cmd, action.strategy )
+        result.success = self.success(action)
+        result.time = self.time(action, result.success)
+        return result
 
-    ###########################
-    def get_param_value_str( self ):
-        return self.params.values_str()
+    
+    ##########################################################################
+    # Update the internal variables of the model/agent                       #
+    # Input:                                                                 #
+    #    - stepResult (StepResult):                             #
+    #    - action : pair <cmd, strategy>                                     #
+    # Output: stepResult containing state, action and reward                 #
+    # The reward is                                                          #
+    #    - sucess (does the command is correctly selected)                   #
+    #    - time (execution Time)                                             #
+    ########################################################################## 
+    def update_model(self, step_result):
+            raise ValueError(" update_model: method to implement ")
 
-    ###########################
-    def set_params( self, params ):
-        self.params = params
-
-    ###########################
-    def n_strategy( self ):
-        return len( self.available_strategies )
-
-    ###########################
-    # def get_all_actions( self ):
-    #     return env.action_list
-
-    ###########################
-    def set_available_strategies( self, strategies ):
-        self.available_strategies = strategies.copy()
-
-    ###########################
-    def get_actions_from( self, cmd_id ):
-        return [ Action( cmd_id , s) for s in self.available_strategies ]
-        
-
-    ##############################
-    def choice( self, options, probs ):
-        x = np.random.rand()
-        cum = 0
-        for i,p in enumerate( probs ):
-            cum += p
-            if x < cum:
-                break
-        return options[ i ]
-
-
-    ##########################
-    # should return an action and the prob for each action
-    def select_action( self, cmd, date ):
-        actions = self.get_actions_from( cmd )
-        probs   = self.action_probs( cmd, date )
-        return self.choice( actions, probs ), probs
-         
-# should return an action and the prob for each action
+    
+ 
+    ##########################################################################
+    # Select an strategy given a state (cmd)                                 #
+    # we select a strategy rather than an action <cmd, strategy>             #
+    # to simplify the problem and performance                                #
+    # Input:                                                                 #
+    #    - cmd (int) : command to select (state)                             #
+    #                                                                        #
+    # Output: [action, probs]                                                #
+    #    - strategy (Strategt): the chose strategy                           #
+    #    - probs (array<float>): the probability for each strategy           #
+    #                            to be selected.                             #
+    #                           len( probs ) = len(self.available_strategies)#
+    ########################################################################## 
     def select_strategy( self, cmd, date =0):
         probs   = self.action_probs( cmd, date )
         return self.choice( self.available_strategies, probs ), probs
 
 
-    ###########################
-    def prob_from_action( self, a, date=0 ):
-        action_vec = self.get_actions_from( a.cmd )
-        prob = self.action_probs(a.cmd, date)
-        for i in range(0, len(action_vec)):
-            action = action_vec[i]
-            if action.cmd == a.cmd and action.strategy == a.strategy:
-                return prob[i]
-        raise ValueError("The action has not been found....", a, action_vec)
-        return -1
-
-    ###########################
+    ##########################################################################
+    # return the proabability of each strategy (action) to be chosen         #
+    # given the current command to select (state)                            #
+    # Input:                                                                 #
+    #    - cmd (int) : command to select (state)                             #
+    #                                                                        #
+    # Output:                                                                #
+    #    - probs (array<float>): the probability for each strategy           #
+    #                            to be selected.                             #
+    #                           len( probs ) = len(self.available_strategies)#
+    ########################################################################## 
     def action_probs(self, cmd, date = 0 ):
         raise ValueError(" method to implement")
 
-    ###########################
-    def initial_state(self):
-        return 0
 
-    ###########################
-    def make_next_state(self, state, action):
-        return state
-    
-    ###########################
-    def initial_belief(self):
-        return 0
 
+    ##########################################################################
+    # return the proabability of the given action to be chosen               #
+    # given the current command to select (state)                            #
+    # Input:                                                                 #
+    #    - cmd (int) : command to select (state)                             #
+    #    - action (Action): action (only the action.strategy is considered   #
+    # Output:                                                                #
+    #    - prob (float): the probability to choose this action               #
+    ########################################################################## 
+    def action_prob( self, cmd, action, date=0 ):
+        action_vec = self.get_actions_from( cmd )
+        prob = self.action_probs( cmd )
+        for i in range(0, len(action_vec)):
+            action_res = action_vec[i]
+            if action_res.cmd == action.cmd and action_res.strategy == action.strategy:
+                return prob[i]
+        raise ValueError("The action has not been found....", action, action_vec)
+        return -1
+
+  
     ###########################
     def strategy_time( self, strategy, success, default_strategy = Strategy.MENU ) :
         pass
-
-        # t = 0
-        # if strategy == Strategy.MENU :
-        #     t = self.env.value['menu_time']
-
-        # elif strategy == Strategy.LEARNING:
-        #     t = self.env.value['menu_time'] + self.env.value['learning_cost']
-
-        # elif strategy == Strategy.HOTKEY:
-        #     t = self.env.value['hotkey_time']
-
-        # if success == False:
-        #     t += self.env.value['menu_time'] + self.env.value['error_cost']
-        #     if default_strategy  == Strategy.LEARNING : 
-        #         t += self.env.value['learning_cost'] 
-            
-        # return t
 
     ###########################
     def success(self, action):
@@ -222,19 +213,52 @@ class Model(object):
     def meta_info_2( self, cmd ):
         return 0
 
+    ######################################
+    def default_parameters_path( self ):
+        return './parameters/' + self.name + '_model.csv'
 
     ###########################
-    def generate_step(self, cmd_id, action, date = 0):
-        result = StepResult()
-        result.cmd = cmd_id
-        result.action = Action( action.cmd, action.strategy )
-        result.success = self.success(action)
-        result.time = self.time(action, result.success)
-        return result
+    def get_params( self ):
+        return self.params
 
+    ###########################
+    def get_param_value_str( self ):
+        return self.params.values_str()
+
+    ###########################
+    def set_params( self, params ):
+        self.params = params
+
+    ###########################
+    def n_strategy( self ):
+        return len( self.available_strategies )
     
-    ############################
-    def update_model(self, step_result):
-            raise ValueError(" update_model: method to implement ")
+    ###########################
+    def set_available_strategies( self, strategies ):
+        self.available_strategies = strategies.copy()
+
+    ###########################
+    def get_actions_from( self, cmd_id ):
+        return [ Action( cmd_id , s) for s in self.available_strategies ]
+
+    ##############################
+    def choice( self, options, probs ):
+        x = np.random.rand()
+        cum = 0
+        for i,p in enumerate( probs ):
+            cum += p
+            if x < cum:
+                break
+        return options[ i ]
 
 
+    ##########################
+    def default_strategy(self) :
+        if not Strategy.MENU in self.available_strategies :
+            return Strategy.LEARNING
+        return Strategy.MENU
+
+    # def select_action( self, cmd, date=0 ):
+    #     actions = self.get_actions_from( cmd )
+    #     probs   = self.action_probs( cmd, date )
+    #     return self.choice( actions, probs ), probs   

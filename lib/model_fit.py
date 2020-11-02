@@ -65,7 +65,7 @@ class Individual_Model_Fitting( object ):
         res = Fit_Output( len( self.user_input ) )
         i = 0
         for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
-            res.prob[ i ] = self.model.prob_from_action( action )
+            res.prob[ i ] = self.model.action_prob( cmd, action )
             user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
             self.model.update_model( user_step )
             i = i + 1
@@ -79,7 +79,7 @@ class Individual_Model_Fitting( object ):
         res = Fit_Output_Debug( len( self.user_input ) )
         i = 0
         for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
-            res.prob[ i ] = self.model.prob_from_action( action )
+            res.prob[ i ] = self.model.action_prob( cmd, action )
             prob_vec = self.model.action_probs( cmd )
             a_vec = self.model.get_actions_from( cmd )
             probs = values_long_format(a_vec, prob_vec)
@@ -117,17 +117,17 @@ class Model_Fitting( object ):
     ######################################
     def optimize( self ):
         timestamp = TIME.strftime("%Y-%m-%d-%H-%M-%S", TIME.gmtime() )
-        cp = cProfile.Profile()
-        cp.enable()
+        #cp = cProfile.Profile()
+        #cp.enable()
     
         result_vec = []
         for model in self.model_vec:
-            n_parameters = model.params.n( Freedom.USER_FREE )
-
+            model_result = Model_Result.create( model.name, np.array( [ user_data.id for user_data in self.user_data_vec ] ), self.debug )
+            model_result.n_parameters = model.params.n( Freedom.USER_FREE )   
             for i , user_data in enumerate( self.user_data_vec ):
-                model_result = Model_Result.create( model, self.user_data_vec, self.debug )
+                #PROBABLY A BUG HERE TO UPDATE
                 model_result.n_observations[ i ] = len( user_data.cmd )
-                model_result.n_parameters = n_parameters
+                
                 start = TIME.time()
                 available_strategies = strategies_from_technique( user_data.technique_name )
                 
@@ -152,22 +152,22 @@ class Model_Fitting( object ):
                 parameters = Parameters( model.name, model.default_parameters_path() )
                 for name, value in zip( free_param_name_vec, res.x ):
                     parameters[ name ].value = value
-                self.backup_parameters( parameters, timestamp )
+                self.backup_parameters( parameters, user_data.id, timestamp )
 
                 model_result.log_likelihood[ i ] = - res.fun
                 model_result.time[ i ]           = end - start
                 model_result.parameters[ i ]     = parameters 
                 result_vec.append( model_result )
         
-        cp.disable()
-        cp.print_stats()
+        #cp.disable()
+        #cp.print_stats()
         return result_vec
 
 
     ######################################
-    def backup_parameters( self, parameters, timestamp ):
+    def backup_parameters( self, parameters, user_id, timestamp ):
         path = "./backup/" + timestamp + "/"
-        filename = parameters.name + "_model.csv"
+        filename = parameters.name + "_model_"+ str( user_id ) + ".csv"
         Parameters_Export.write( parameters, path, filename )
 
 
@@ -189,8 +189,9 @@ class Model_Fitting( object ):
         result = []                                 # Type Model_Result
         for model in self.model_vec:
 
-            self.method.model    = model
-            model_result = Model_Result.create( model.name, [ user_data.id for user_data in self.user_data_vec ], self.debug )
+            self.method.model = model
+            user_id_vec  = [ user_data.id for user_data in self.user_data_vec ]
+            model_result = Model_Result.create( model.name, np.array( user_id_vec ), self.debug )
             model_result.n_parameters = model.params.n( Freedom.USER_FREE )
             start = TIME.time()
             
@@ -203,6 +204,7 @@ class Model_Fitting( object ):
                 
                 goodness_of_fit = None
                 if self.debug :
+                    print( "------------ run debug ----------" )
                     goodness_of_fit = self.method.run_debug()
                     model_result.output[ i ] =  goodness_of_fit.output
                     model_result.prob[ i ]   =  goodness_of_fit.prob

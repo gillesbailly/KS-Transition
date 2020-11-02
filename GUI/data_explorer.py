@@ -14,7 +14,8 @@ from gui_util import *
 from data_loader import *
 from hotkeycoach_loader import *
 
-from simple_episode_view import *
+#from simple_episode_view import *
+from matplotlib_view import *
 
 ######################################
 #                                    #
@@ -189,7 +190,69 @@ class Empirical_Panel ( QTabWidget ) :
         else:
             print("EFFOR IN Category - Configuration", self.configuration()[0], "--- ", self.configuration() )
             exit(0)
+
+
+    ##################################
+    def category_bis( self, user_id, cmd, technique_name ) :
+        if self.configuration()[0] == "Technique" :
+            return technique_name
         
+        elif self.configuration()[0] == "Command" :
+            return str( cmd )
+        
+        elif self.configuration()[0] == "User" :
+            return str( user_id )
+        
+        else:
+            print("EFFOR IN Category - Configuration", self.configuration()[0], "--- ", self.configuration() )
+            exit(0)
+        
+
+    ##################################
+    def row_bis( self, user_id, cmd, technique_name ) :
+
+        if self.configuration()[1] == "Technique" :
+            return self.technique_pos_bis( user_id, cmd, technique_name )
+        
+        elif self.configuration()[1] == "Command" :
+            return self.command_pos_bis( user_id, cmd, technique_name )
+        
+        elif self.configuration()[1] == "User" :
+            return self.user_pos_bis( user_id, cmd, technique_name )
+        
+        else:
+            print("EFFOR in Row - Configuration", self.configuration()[1], "--- ", self.configuration() )
+            exit(0)
+
+
+    ##################################
+    def column_bis( self, user_id, cmd, technique_name ):
+        if self.configuration()[2] == "Technique" :
+            return self.technique_pos_bis( user_id, cmd, technique_name )
+        
+        elif self.configuration()[2] == "Command" :
+            return self.command_pos_bis( use_id, cmd, technique_name )
+        
+        elif self.configuration()[2] == "User" :
+            return self.user_pos_bis( user_id, cmd, technique_name )
+        
+        else:
+            print("EFFOR in Row - Configuration", self.configuration()[1], "--- ", self.configuration() )
+            exit(0)     
+
+    ##################################
+    def command_pos_bis(self, user_id, cmd, technique_name ) :
+        return cmd
+
+    ##################################
+    def user_pos_bis( self, user_id, cmd, technique_name ) :
+        return int( user_id / 3 )
+
+    ##################################
+    def technique_pos_bis( self, user_id, cmd, technique_name ) :
+        techniques = ["traditional", "audio", "disable"]
+        return np.where( np.array( techniques ) == technique_name )[0][0]
+
 
     ##################################
     def row( self, d, cmd ) :
@@ -224,7 +287,7 @@ class Empirical_Panel ( QTabWidget ) :
             print("EFFOR in Row - Configuration", self.configuration()[1], "--- ", self.configuration() )
             exit(0)
 
-        
+   
 
     ##################################
     def command_pos(self, d, cmd ) :
@@ -242,30 +305,55 @@ class Empirical_Panel ( QTabWidget ) :
         return np.where( np.array( techniques ) == d.technique_name )[0][0]
 
 
+
     #####################################
     def key( self, technique, user_id, cmd, model ="User" ) :
         return technique + "," + str(user_id) + "," + str(cmd) + "," + model 
 
 
-    #####################################
-    def set_sequences( self, data_vec ) :
-        self.data_vec = data_vec
-        for d in data_vec :
-            ordered_freq_index = np.argsort( d.command_info.frequency )
+    # #####################################
+    # def set_sequences( self, data_vec ) :
+    #     self.data_vec = data_vec
+    #     for d in data_vec :
+    #         ordered_freq_index = np.argsort( d.command_info.frequency )
 
-            for cmd in d.command_info.id :         
-                c = self.category( d, cmd )
-                row_id = self.row( d, cmd )
-                col_id = self.column( d, cmd )
-                key = self.key(d.technique_name, d.id, cmd, "User" )
+    #         for cmd in d.command_info.id :         
+    #             c = self.category( d, cmd )
+    #             row_id = self.row( d, cmd )
+    #             col_id = self.column( d, cmd )
+    #             key = self.key(d.technique_name, d.id, cmd, "User" )
+
+    #             view = EpisodeView( )
+    #             view.set_user_data( d, cmd )
+    #             view.view_selected.connect( self.set_info )
+    #             view.cursor_moved.connect( self.update_cursor )
+    #             self.gallery[ c ].add_view( view, "User", row_id, col_id )
+
+    #             self.view_vec[ key ] = view 
+    #             QCoreApplication.processEvents()
+
+    #####################################
+    def set_users_df( self, users_df ) :
+        user_vec = list( users_df.user_id.unique() )
+        cmd_vec  = list( users_df.cmd_input.unique() )
+        users_df[ 'bounded_time' ] = np.where( users_df['time'] > 10, 10, users_df['time'] )
+        for user_id in user_vec :
+            for cmd in cmd_vec :
+                df = users_df[ ( users_df.user_id == user_id ) & ( users_df.cmd_input == cmd ) ]
+                technique_name = list( df.technique_name.unique() )[ 0 ]
+                
+                c = self.category_bis( user_id, cmd, technique_name )
+                row_id = self.row_bis( user_id, cmd, technique_name )
+                col_id = self.column_bis( user_id, cmd, technique_name )
+                key = self.key( technique_name, user_id, cmd, "User" )
 
                 view = EpisodeView( )
-                view.set_user_data( d, cmd )
+                view.set_user_cmd_df( df, user_id, cmd, technique_name )
                 view.view_selected.connect( self.set_info )
                 view.cursor_moved.connect( self.update_cursor )
-                self.gallery[ c ].add_view( view, "User", row_id, col_id )
+                self.gallery[ c ].add_view( view.canvas, "User", row_id, col_id )
 
-                self.view_vec[ key ] = view 
+                #self.view_vec[ key ] = view.canvas 
                 QCoreApplication.processEvents()
 
 
@@ -275,37 +363,76 @@ class Empirical_Panel ( QTabWidget ) :
             if data.id == user_id:
                 return data
 
+
     ##################################
-    def set_model_fitting_sequences( self, goodness_of_fit_vec, data_vec ):
+    def set_model_fitting_df( self, goodness_of_fit_vec, users_df ):
         for goodness_of_fit in goodness_of_fit_vec:
             model_name = goodness_of_fit.name + " fitting"
+            cmd_vec = users_df.cmd_input.unique()
+            users_df[ 'bounded_time' ] = np.where( users_df['time'] > 10, 10, users_df['time'] )
             for i, user_id in enumerate( goodness_of_fit.user_id) :
-                d = self.data_from_id( data_vec, user_id )
-                for cmd in d.command_info.id:
-                    c = self.category( d, cmd )
-                    row_id = self.row( d, cmd )
-                    col_id = self.column( d, cmd )
-                    key = self.key(d.technique_name, d.id, cmd, model_name )
-                    view = None
-                    if key in self.view_vec:
-                        view = self.view_vec[ key ]
-                    else:
-                        view = EpisodeView( )
-                        view.set_user_data( d, cmd )
-                        self.view_vec[ key ] = view
-                        view.view_selected.connect( self.set_info )
-                        view.cursor_moved.connect( self.update_cursor )
-                        self.gallery[ c ].add_view( view, model_name, row_id, col_id )
-                    model_output = goodness_of_fit.output[ i ]
-                    model_prob   = goodness_of_fit.prob[ i ]
-                    view.set_model_data( model_name, d.cmd, model_output, model_prob)
-                    view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
+                user_df = users_df[ ( users_df.user_id == user_id ) ]
+                user_df = user_df.copy()
+                user_df[ 'menu_prob' ]     = goodness_of_fit.output[ i ].menu * 10
+                user_df[ 'hotkey_prob' ]   = goodness_of_fit.output[ i ].hotkey * 10
+                user_df[ 'learning_prob' ] = goodness_of_fit.output[ i ].learning * 10
+                user_df[ 'model_prob' ]    = goodness_of_fit.prob[ i ] * 10
+                user_df[ 'meta_info']      = goodness_of_fit.output[ i ].meta_info_1 
+                #print( goodness_of_fit.output[ i ].menu * 10 )
+                for cmd in cmd_vec :
+                    df = user_df[ user_df.cmd_input == cmd ]
+                    technique_name = list( df.technique_name.unique() )[ 0 ]
+                    c = self.category_bis( user_id, cmd, technique_name )
+                    row_id = self.row_bis( user_id, cmd, technique_name )
+                    col_id = self.column_bis( user_id, cmd, technique_name )
+                    key = self.key( technique_name, user_id, cmd, model_name )
+
+                    view = EpisodeView( )
+                    view.set_model_data( df, user_id, cmd, technique_name, model_name )
+                    view.view_selected.connect( self.set_info )
+                    view.cursor_moved.connect( self.update_cursor )
+                    self.gallery[ c ].add_view( view.canvas, model_name, row_id, col_id )
+                    self.view_vec[ key ] = view.canvas
+                    
                     QCoreApplication.processEvents()
                     self.maximize_sub_window()
 
+    ##################################
+    def set_model_simulation_df( self, _simulation_df ):
+        simulation_df = _simulation_df.copy()
+        model_vec = simulation_df.model.unique()
+        user_vec  = simulation_df.user_id.unique()
+        cmd_vec   = simulation_df.cmd_input.unique()
+        simulation_df[ 'bounded_time' ]  = simulation_df[ 'time' ]
+        simulation_df[ 'menu_prob' ]     = simulation_df[ 'menu_prob' ] * 10
+        simulation_df[ 'hotkey_prob' ]   = simulation_df[ 'hotkey_prob' ] * 10
+        simulation_df[ 'learning_prob' ] = simulation_df[ 'learning_prob' ] * 10
+        
+        
+        for model_name in model_vec:
+            for i, user_id in enumerate( user_vec ) :
+                for cmd in cmd_vec :
+                    df = simulation_df[ ( simulation_df.model == model_name ) & ( simulation_df.user_id == user_id ) & ( simulation_df.cmd_input == cmd ) ]
+                    technique_name = list( df.technique_name.unique() )[ 0 ]
+                    c = self.category_bis( user_id, cmd, technique_name )
+                    row_id = self.row_bis( user_id, cmd, technique_name )
+                    col_id = self.column_bis( user_id, cmd, technique_name )
+                    key = self.key( technique_name, user_id, cmd, model_name )
+
+                    view = EpisodeView( )
+                    name = model_name + ": Simulation"
+                    view.set_model_data( df, user_id, cmd, technique_name, name )
+                    #view.view_selected.connect( self.set_info )
+                    #view.cursor_moved.connect( self.update_cursor )
+                    self.gallery[ c ].add_view( view.canvas, name, row_id, col_id )
+                    self.view_vec[ key ] = view.canvas
+                    
+                    QCoreApplication.processEvents()
+                    self.maximize_sub_window()
 
     ##################################
     def set_model_simulation_sequences( self, simulation_result_vec, data_vec ):
+
         for simulation_result in simulation_result_vec:
             model_name = simulation_result.name + ": Simulation"
             user_id    = simulation_result.user_id
@@ -332,6 +459,39 @@ class Empirical_Panel ( QTabWidget ) :
                 #view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
                 QCoreApplication.processEvents()
                 self.maximize_sub_window()
+
+    # ##################################
+    # def set_model_fitting_sequences( self, goodness_of_fit_vec, data_vec ):
+    #     for goodness_of_fit in goodness_of_fit_vec:
+    #         model_name = goodness_of_fit.name + " fitting"
+    #         for i, user_id in enumerate( goodness_of_fit.user_id) :
+    #             d = self.data_from_id( data_vec, user_id )
+    #             for cmd in d.command_info.id:
+    #                 c = self.category( d, cmd )
+    #                 row_id = self.row( d, cmd )
+    #                 col_id = self.column( d, cmd )
+    #                 key = self.key(d.technique_name, d.id, cmd, model_name )
+    #                 view = None
+    #                 if key in self.view_vec:
+    #                     view = self.view_vec[ key ]
+    #                 else:
+    #                     view = EpisodeView( )
+    #                     view.set_user_data( d, cmd )
+    #                     self.view_vec[ key ] = view
+    #                     view.view_selected.connect( self.set_info )
+    #                     view.cursor_moved.connect( self.update_cursor )
+    #                     self.gallery[ c ].add_view( view, model_name, row_id, col_id )
+                    
+
+    #                 model_output = goodness_of_fit.output[ i ]
+    #                 model_prob   = goodness_of_fit.prob[ i ]
+    #                 view.set_model_data( model_name, d.cmd, model_output, model_prob)
+    #                 view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
+    #                 QCoreApplication.processEvents()
+    #                 self.maximize_sub_window()
+
+
+    
 
 
 

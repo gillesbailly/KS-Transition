@@ -68,28 +68,7 @@ class Simulation( object ):
         return agent_output, model_output, t
 
 
-    ######################################
-    def run_debug( self ):
-        start = TIME.time()
-        res = Fit_Output_Debug( len( self.user_input ) )
-        i = 0
-        for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
-            res.prob[ i ] = self.model.prob_from_action( action )
-            prob_vec = self.model.action_probs( cmd )
-            a_vec = self.model.get_actions_from( cmd )
-            probs = values_long_format(a_vec, prob_vec)
-            res.output.menu[ i ]     = probs[ Strategy.MENU ]
-            res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
-            res.output.learning[ i ] = probs[ Strategy.LEARNING ]
-            res.output.meta_info_1[ i ] = self.model.meta_info_1( cmd )
-            res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
-
-            user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
-            self.model.update_model( user_step )
-            i = i + 1
-        res.time = TIME.time() - start
-        return res
-
+   
 
 
 ##########################################
@@ -130,24 +109,28 @@ class Model_Simulation( object ):
             start = TIME.time()
             
             for i , user_data in enumerate( self.user_data_vec ):
-                simulation_result    = Simulation_Result( model.name )
-                simulation_result.user_id = user_data.id
-                simulation_result.technique_name = user_data.technique_name
-                simulation_result.input = user_data.cmd
+                simulation_result                = Simulation_Result( model.name )
+                simulation_result.user_data      = user_data
+                # simulation_result.user_id        = user_data.id
+                # simulation_result.technique_name = user_data.technique_name
+                # simulation_result.input          = user_data.cmd
+                # simulation_result.other          = user_data.other
+                # simulation_result.command_info   = user_data.command_info
 
                 model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )
-                self.method.model = model
+                self.method.model       = model
                 self.method.user_input  = user_data.cmd
-                agent_output = None
-                model_ouput  = None
-                time = 0
+                agent_output = None             # User_Output
+                model_ouput  = None             # Model_Output
+                time         = 0
                 if self.debug :
                     agent_output, model_output, time = self.method.run_debug()
                 else :
                     agent_output, model_output, time = self.method.run()
-                simulation_result.output = agent_output
-                simulation_result.prob   = model_output
-                simulation_result.time   = time
+                
+                simulation_result.output       = agent_output
+                simulation_result.prob         = model_output
+                simulation_result.time         = time
 
                 result.append( simulation_result )
                     

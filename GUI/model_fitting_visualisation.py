@@ -119,68 +119,71 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
     ############################
     def update_figure( self, model_result_vec ):
         bar_width = 0.2
-        opacity   = 0.8
+        opacity   = 1
         self.figure.clear()
         #plt.subplots_adjust(wspace=0.001, hspace=0.001, left=0.01, right=0.99, bottom=0.01, top=0.99)
         
+        model_color = dict()
+        model_color[ 'RW' ] = [153/255, 204/255, 1, 1]
+        model_color[ 'CK' ] = [1, 153/255, 1, 1]
+        model_color[ 'RW_CK' ] = [153/255, 51/255, 1, 1]
+        model_color[ 'Observations' ] = [1,1,1,1]
+        model_color[ 'random' ] = [1,1,153/255,1]
+        model_color[ 'ILHP' ] = [153/255,0,0,1]
+
+
         dependent_variable = [ '- Log Likelihood', 'BIC' ]
         for i, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot( 3, 2, i + 1 )
-            plt.title( v )
-            plt.xlabel( 'Individual' )
-            plt.ylabel( v )
+            ax.set_title( v )
+            ax.set_xlabel( 'Individual' )
+            ax.set_ylabel( v )
             #plt.title( v + ' per individual and model' )
             for i, model_result in enumerate( model_result_vec ):
-                x = np.array( model_result.user_id )
+                x = model_result.user_id
                 y = None
-                if v == 'BIC': 
-                    y = model_result.n_parameters * model_result.n_observations[ i ]- 2 * np.array( model_result.log_likelihood )
+                if v == 'BIC':
+                    print("BIC ",  model_result.n_parameters, model_result.n_observations[ i ], model_result.log_likelihood) 
+                    y = model_result.n_parameters * model_result.n_observations[ i ]- 2 * model_result.log_likelihood
                 else:    
-                    y = - np.array( model_result.log_likelihood )
-                plt.bar( x + i * bar_width - bar_width, y, bar_width, alpha=opacity, label= model_result.name )
+                    y = - model_result.log_likelihood
+                ax.bar( x + i * bar_width - bar_width, y, bar_width, alpha=opacity, color= model_color[model_result.name] , label= model_result.name )
+            if v == 'BIC': 
+                ax.legend( framealpha = 0, fontsize='x-small' )
 
+            ax.set_xticks( x )
 
-            #plt.legend( loc = 1, ncol= len( model_result_vec ), framealpha = 0, fontsize='small' )
-            plt.legend( framealpha = 0, fontsize='x-small' )
+        
 
-            
         for i, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot(3, 2, 3 + i)
-            #ax.set_facecolor('dimgray')
-            plt.xlabel( 'Model' )
-            plt.ylabel( v )
+            ax.set_xlabel( 'Model' )
+            ax.set_ylabel( v )
             #plt.title( v + ' per model' )
             x = np.array( [ mr.name for mr in model_result_vec ] )
+            color = [ model_color[ mr.name ]  for mr in model_result_vec]
             y = None
             ci = None 
             if v == 'BIC' :
-                y = model_result.n_parameters * 720 - 2 * np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
+                y  = model_result.n_parameters * 720 - 2 * np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
                 ci = np.array( [ bootstrap_ci( model_result.n_parameters * 720 - 2 * mr.log_likelihood) for mr in model_result_vec ] )
-                #ci = np.array( [ np.percentile( model_result.n_parameters * 720 - 2 * mr.log_likelihood, [2.5, 97.5] ) for mr in model_result_vec ] )
             else: 
-                y = - np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
-                #ci = np.array( [ np.percentile( - mr.log_likelihood, [2.5, 97.5] ) for mr in model_result_vec ] )
-                ci = np.array( [ bootstrap_ci( - mr.log_likelihood) for mr in model_result_vec ] )
-                #print( "mean : ", y)
-                #print( "bootstrap ci:", np.transpose( ci ) )
-                #print( "bootstrap ci - mean: ", np.transpose( ci ) - y)
+                y  = - np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
+                ci =   np.array( [ bootstrap_ci( - mr.log_likelihood) for mr in model_result_vec ] )
+                
             ci = np.transpose( ci )
             ci[0,:] = y - ci[0,:]
             ci[1,:] = ci[1,:] - y
             
-            plt.bar( x, y, bar_width, alpha=opacity )
+            ax.bar( x, y, bar_width, alpha=opacity, color = color )
             ax.errorbar(x, y, yerr= ci , fmt='', color='w', ls='none', elinewidth=1  )
-            for k, v in enumerate(y):
-                ax.text(k, v + 3, str( round(v,2) ), color='blue', fontweight='bold')
-
-        #plt.legend( loc=1, ncol= len( model_result_vec ), framealpha = 0, fontsize='small' )
-        #plt.legend( framealpha = 0,  fontsize='xx-small' )
+           
 
 
         for k, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot( 3, 2, 5+k )
-            plt.xlabel( 'Model' )
-            plt.ylabel( v )
+            ax.set_xlabel( 'Model' )
+            ax.set_ylabel( v )
             #plt.title( v + ' per model and Technique' )
 
             x_name = np.array( [ mr.name for mr in model_result_vec ] )
@@ -202,20 +205,21 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
             #print("y_mat:", y_mat)
             #print("ci_mat_low:", ci_mat_low )
             
-            plt.bar( x-bar_width, y_mat[ :, 0 ], bar_width, alpha=opacity, label = "Traditional" )
+            ax.bar( x-bar_width, y_mat[ :, 0 ], bar_width, alpha=opacity, label = "Traditional" )
             ax.errorbar(x-bar_width, y_mat[ :, 0 ], yerr= [ ci_mat_low[:,0], ci_mat_up[:,0] ], fmt='', color='w', ls='none', elinewidth=1 ) 
             
-            plt.bar( x, y_mat[ :, 1 ], bar_width, alpha=opacity, label = "Audio" )
+            ax.bar( x, y_mat[ :, 1 ], bar_width, alpha=opacity, label = "Audio" )
             ax.errorbar(x, y_mat[ :, 1 ], yerr= [ ci_mat_low[:,1] , ci_mat_up[:,1] ], fmt='', color='w', ls='none', elinewidth=1 ) 
             
-            plt.bar( x+bar_width, y_mat[ :, 2 ], bar_width, alpha=opacity, label = "Disable" )
+            ax.bar( x+bar_width, y_mat[ :, 2 ], bar_width, alpha=opacity, label = "Disable" )
             ax.errorbar(x+bar_width, y_mat[ :, 2 ], yerr= [ ci_mat_low[:,2], ci_mat_up[:,2] ], fmt='', color='w', ls='none', elinewidth=1 )
 
-            plt.legend( framealpha = 0,  fontsize='x-small' )
+            if v == 'BIC': 
+                ax.legend( framealpha = 0,  fontsize='x-small' )
             ax.set_xticks( x )
             ax.set_xticklabels( x_name )
 
-        plt.tight_layout()
+        #plt.tight_layout()
         self.canvas.draw()
         self.dialog.show()
 

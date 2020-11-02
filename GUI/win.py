@@ -13,15 +13,19 @@ from PyQt5.QtCore import QCoreApplication, QSignalMapper
 
 from data_explorer import *
 from data_loader import *
-from simple_episode_view import *
+#from simple_episode_view import *
+from matplotlib_view import *
 from model_fit import *
 from model_simulation import *
 from filter_panel import *
 from parameters_panel import *
+
 from user_data_loader import *
 from user_data_export import *
 from parameters_export import *
+from likelihood_export import *
 from ILHP_model import *
+from random_model import *
 from model_fitting_visualisation import *
 from model_simulation_visualisation import *
 
@@ -45,6 +49,7 @@ class Win ( QMainWindow ) :
         self.explorer_user_data_vec  = []
         self.model_fit_user_data_vec = []
         self.goodness_of_fit_vec     = []
+        self.optimisation_df         = None
         self.simulation_result_vec   = []
         self.explorer_panel          = self.add_explorer_panel()
         self.model_fit               = self.add_model_fitting_component()
@@ -137,6 +142,8 @@ class Win ( QMainWindow ) :
         export_menu = file_menu.addMenu( "Export" )
         act_user_data = export_menu.addAction("As User Data", self.export_user_data )
         act_parameters = export_menu.addAction("Paramerters", self.export_parameters )
+        act_parameters = export_menu.addAction("Likelihood Results", self.export_likelihood )
+
 
 
 
@@ -188,7 +195,12 @@ class Win ( QMainWindow ) :
         #self.model_simulation_visu.update_figure( self.user_data_vec )
         #return
         data_vec = self.get_filter( "Explorer" ).filter( self.user_data_vec )
-        self.explorer_panel.set_sequences( data_vec )
+
+        users_df = user_data_vec_to_data_frame( data_vec )
+
+#        self.explorer_panel.set_sequences( data_vec )
+        self.explorer_panel.set_users_df( users_df )
+
         print( "display data...\t OK ")
 
     #########################
@@ -293,6 +305,7 @@ class Win ( QMainWindow ) :
     def model_fitting_long( self, user_data_vec, model_vec ):
         self.model_fit.user_data_vec = user_data_vec
         self.model_fit.model_vec = model_vec
+        self.model_fit.debug = True
         return self.model_fit.run()
 
 
@@ -302,7 +315,10 @@ class Win ( QMainWindow ) :
         fitting_filter = self.get_filter( "Model Fitting")
         data_vec = fitting_filter.filter( self.user_data_vec  )
         start = TIME.time()
-        self.goodness_of_fit_vec  = self.model_fitting_optimize_long( data_vec, self.model_vec )
+        res  = self.model_fitting_optimize_long( data_vec, self.model_vec )
+        print( "len res: ", len(res) )
+        self.optimisation_df = model_optimisation_vec_to_data_frame( res )
+        self.export_likelihood( self.optimisation_df )
         print("Model fitting: Search Optimal parameters for ", len(self.model_vec), "models on", len(data_vec), " users in", round(TIME.time() - start,2), "s" )
         
         for goodness_of_fit in self.goodness_of_fit_vec :
@@ -325,7 +341,8 @@ class Win ( QMainWindow ) :
         self.model_fitting_visu.update_table( self.goodness_of_fit_vec )
         self.model_fitting_visu.update_figure( self.goodness_of_fit_vec )
         
-        self.explorer_panel.set_model_fitting_sequences( self.goodness_of_fit_vec, self.user_data_vec )
+        users_df = user_data_vec_to_data_frame( self.user_data_vec )
+        self.explorer_panel.set_model_fitting_df( self.goodness_of_fit_vec, users_df )
 
         #goodness_of_fit = self.goodness_of_fit_vec[ 0 ]  #TODO #BUG
 
@@ -410,8 +427,16 @@ class Win ( QMainWindow ) :
         if len( self.simulation_result_vec ) < 1 :
             print("No model fitting has been recently performed... Action \"Diplay\" is ignored ")
             return 0
-        self.model_simulation_visu.update_figure( self.simulation_result_vec, self.user_data_vec )
-        self.explorer_panel.set_model_simulation_sequences( self.simulation_result_vec, self.user_data_vec )
+
+        simulation_df = simulation_vec_to_data_frame( self.simulation_result_vec )
+        user_df       = user_data_vec_to_data_frame( self.user_data_vec )
+        # print("simulation df")
+        # print(simulation_df )
+        # print("user df")
+        # print(user_df )
+
+        self.model_simulation_visu.update_figure( simulation_df, user_df )
+        self.explorer_panel.set_model_simulation_df( simulation_df )
 
         
         
@@ -449,6 +474,12 @@ class Win ( QMainWindow ) :
             print( path, filename )
             Parameters_Export.write( parameters, path, filename )
 
+
+    ########################
+    def export_likelihood( self, optimisation_df = None ):
+            df = optimisation_df if optimisation_df is not None else self.optimisation_df
+            path = "./likelihood/"
+            Likelihood_Export.write_all( df, path )
 
     #########################
     def load_hotkeycoach_data( self ) :
@@ -537,21 +568,23 @@ def build_interface():
     #         df = pd.concat( [df, df_user] )
     #         print("df concat")
     # print( df )
-
+    user_min = 0
+    user_max = 1
     filter_name = "Explorer"
-    win.filters[ filter_name ] = Filter(filter_name, user_min = 0, user_max = 9 )
+    win.filters[ filter_name ] = Filter(filter_name, user_min = user_min, user_max = user_max )
 
-    win.set_models( [ Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ), Alpha_Beta_Model( "RW_CK" ) ] )
+    #win.set_models( [ Random_Model("random"), Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ), Alpha_Beta_Model( "RW_CK" ) ] )
+    win.set_models( [ Alpha_Beta_Model( "RW" ), Alpha_Beta_Model( "CK" ) ] )
+    
     win.update_explorer_panel()
     
     #filter_name = "Model Fitting"
-    #win.filters[ filter_name ] = Filter( filter_name, user_min = 0, user_max = 9 )
+    #win.filters[ filter_name ] = Filter( filter_name, user_min = user_min, user_max = user_max )
     #win.model_fitting_apply()
-    #win.model_fitting_display()
-
+    #win.model_fitting_optimize()
 
     filter_name = "Model Simulation"
-    win.filters[ filter_name ] = Filter( filter_name, user_min = 0, user_max = 9 )
+    win.filters[ filter_name ] = Filter( filter_name, user_min = user_min, user_max = user_max )
     win.model_simulation_apply()
     
 
