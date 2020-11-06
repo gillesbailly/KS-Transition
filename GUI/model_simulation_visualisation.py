@@ -1,15 +1,12 @@
 import numpy as np
 import pandas as pd
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QSignalMapper, Qt, QObject, pyqtSignal
-import seaborn as sns
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from gui_util import *
-from util import *
-import time as TIME
+from dataframe_util import *
 
 
 ######################################
@@ -25,15 +22,12 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
         self.setMinimumWidth( 250 )
         self.l.setHorizontalSpacing( 1 )
         self.l.setVerticalSpacing( 1 )
+        self.resize( 700, 800)
         
         #self.table = Fitting_Table()
         #self.l.addWidget( self.table, 0, 0 )
 
         
-
-
-
-
 
     ############################
     def update_figure( self, model_simulation_df, user_df ):
@@ -49,13 +43,16 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
         plt.rcParams[ 'axes.facecolor'  ] = 'dimgray'
         
         self.canvas = FigureCanvas( self.figure )
-        self.dialog = QDialog()
-        self.dialog.setWindowTitle( "Model Simulation Results" )
-        self.toolbar = NavigationToolbar(self.canvas, self.dialog)
-        dialog_layout = QVBoxLayout()
-        self.dialog.setLayout( dialog_layout )
-        dialog_layout.addWidget( self.toolbar )
-        dialog_layout.addWidget( self.canvas  )
+        self.canvas.setSizePolicy( QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding ) )
+        # self.dialog = QDialog()
+        # self.dialog.setWindowTitle( "Model Simulation Results" )
+        self.toolbar = NavigationToolbar(self.canvas, self )
+        # dialog_layout = QVBoxLayout()
+        # self.dialog.setLayout( dialog_layout )
+        # dialog_layout.addWidget( self.toolbar )
+        # dialog_layout.addWidget( self.canvas  )
+        self.l.addWidget( self.toolbar )
+        self.l.addWidget( self.canvas )
 
 
         bar_width = 0.2
@@ -66,8 +63,6 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
         n_cols = 1
         
         model_df = pd.concat( [ user_df, model_simulation_df ] )
-        print( "model_df")
-        print(model_df)
 
         model_df['success_plot'] = model_df['success'] * 100
         model_df['hotkey'] = 0
@@ -82,29 +77,19 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
         
         for i, model_name in enumerate( model_vec ) :
             
-            print('draw model:', model_name )
-            start = TIME.time()
             style_order = [model_name, 'Observations']
             df = model_df[ (model_df['model'] == model_name) | (model_df['model'] == 'Observations') ]
-            #style =[(2,2)] if model_name == "Observations" else []
-            # print("time 1: ", TIME.time() - start )
-            # start = TIME.time()
             
-            # print( "df")
-            # print(df)
-
-
             ax = self.figure.add_subplot( n_rows, n_cols, 1 + i )
             sns.lineplot( x='block_id', y="time", hue="technique_name", ci = ci, style = 'model', style_order = style_order, data=df )
-            print("time 2: ", TIME.time() - start )
-            start = TIME.time()
             
             plt.title( model_name )
             plt.ylabel( 'Time' )
             plt.xlabel( '' )
             plt.ylim( 0, 6 )
             if i == n_cols -1 :
-                ax.legend().texts[5].set_text("Predictions")
+                #ax.legend().texts[5].set_text("Predictions")
+                pass
             else:
                 ax.legend().remove()
 
@@ -133,11 +118,13 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
 
         #plt.tight_layout()
         self.canvas.draw()
-        self.dialog.show()
+        self.show()
 
 
-
-
+    ####################################
+    def update_canvas( self, res_vec, users_df ):
+        simulation_df = simulation_vec_to_data_frame( res_vec )
+        self.update_figure( simulation_df, users_df )
 
 
 

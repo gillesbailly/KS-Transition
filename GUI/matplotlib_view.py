@@ -1,5 +1,4 @@
-from PyQt5.QtGui import QPalette, QPainter, QPen, QBrush, QPolygonF, QImage, QColor, QKeySequence, QTransform, QPixmap, QPageSize
-from PyQt5.QtCore import pyqtSignal, Qt, QObject, QPointF
+from PyQt5.QtCore import pyqtSignal, Qt, QObject
 from PyQt5.QtWidgets import QSlider, QComboBox, QLabel, QWidget, QHBoxLayout
 from util import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -7,10 +6,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.lines import *
 
 import matplotlib.pyplot as plt
-import matplotlib
 import seaborn as sns
 
-import sys
 
 max_y = 10
 
@@ -47,7 +44,6 @@ class EpisodeView( QObject ):
         self.canvas.setMinimumWidth(750)
         #self.canvas.mpl_connect( 'button_press_event', self.button_press_callback )
         self.canvas.mpl_connect('button_press_event', self.on_button_press )
-        #self.setBackgroundRole( QPalette.Dark )
         self.canvas.draw()
         self.canvas.show()
         self.cmd            = -1
@@ -65,20 +61,19 @@ class EpisodeView( QObject ):
     def set_user_df( self, user_df, user_id, technique_name ):
         self.figure.clear()
         self.user_id = user_id
-        title = "User: " + str( self.user_id) + " - technique: " + self.technique_name
-        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size =1, linewidth = 0, data=user_df )
+        self.technique_name = technique_name
+        title = "User: " + str( self.user_id) + " - technique: " + technique_name
+        s_size = np.full( user_df.shape[0] , 1 )
+        s_line_width = np.full( user_df.shape[0] , 0 )
+
+        #self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size =1, linewidth = 0, data=user_df )
+        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size = s_size , linewidth = s_line_width, data=user_df )
+        
         self.ax.set_title( title )
-        self.ax.set_ylabel( 'Time' )
+        self.ax.set_ylabel( 'Time (s)' )
         self.ax.set_xlabel( 'Trial id' )
         self.ax.set_ylim( 0, 10 )
         self.ax.set_xlim( 0, 750 )
-        
-
-        # legend_elements = [Line2D([0], [0], color='b', lw=4, label='Line'),
-        #            Line2D([0], [0], marker='o', color='w', label='Scatter',
-        #                   markerfacecolor='g', markersize=15),
-        #            Patch(facecolor='orange', edgecolor='r',
-        #                  label='Color Patch')]
 
         legend_labels = ['Menu', 'Hotkey', 'Learning']
 
@@ -86,9 +81,6 @@ class EpisodeView( QObject ):
         legend_patches = [Line2D( [0], [0], marker='o', color=C, label=L ) for 
         C, L in zip(self.strategy_color.values(), legend_labels) ] 
 
-
-        #legend_patches = [matplotlib.patches.Circle(xy=[3,4], color=C, label=L, hatch='o') for 
-        #C, L in zip(self.strategy_color.values(), legend_labels) ] 
 
         plt.legend(handles=legend_patches) 
         self.canvas.draw()
@@ -100,14 +92,17 @@ class EpisodeView( QObject ):
         self.cmd = cmd
         self.technique_name = technique_name
         self.figure.clear()
+        s_size = np.full( user_df.shape[0] , 1 )
+        s_line_width = np.full( user_df.shape[0] , 0 )
+
         start_transition = np.mean( user_df.start_transition ) 
         stop_transition  = np.mean( user_df.stop_transition )
         #self.add_transition_region( self.x_start_transition( user_data, cmd ), self.x_stop_transition( user_data, cmd ) )
         title = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
         plt.fill_between( [start_transition, stop_transition ] , 0, 10, color=self.transition_color )
-        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size =0.5, linewidth = 0, data=user_df )
+        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size = s_size, linewidth = s_line_width, data=user_df )
         self.ax.set_title( title )
-        self.ax.set_ylabel( 'Time' )
+        self.ax.set_ylabel( 'Time (s)' )
         self.ax.set_xlabel( 'Trial id' )
         self.ax.set_ylim( 0, 10 )
         self.ax.set_xlim( 0, 750 )
@@ -123,12 +118,14 @@ class EpisodeView( QObject ):
         self.technique_name = technique_name
         self.model_name = model_name
         self.figure.clear()
-        
+        s_size = np.full( user_df.shape[0] , 1 )
+        s_line_width = np.full( user_df.shape[0] , 0 )
+
         #self.add_transition_region( self.x_start_transition( user_data, cmd ), self.x_stop_transition( user_data, cmd ) )
         title = "User: " + str( self.user_id) + " - Cmd: " + str( self.cmd ) + " - technique: " + self.technique_name
-        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size =0.5, linewidth = 0, data=user_df )
+        self.ax = sns.scatterplot( x='trial_id', y='bounded_time', hue="strategy", palette = self.strategy_color, size =s_size, linewidth = s_line_width, data=user_df )
         self.ax.set_title( title )
-        self.ax.set_ylabel( 'Time' )
+        self.ax.set_ylabel( 'Time (s)' )
         self.ax.set_xlabel( 'Trial id' )
         self.ax.set_ylim( 0, 10 )
         self.ax.set_xlim( 0, 750 )

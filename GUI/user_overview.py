@@ -1,26 +1,9 @@
-
-
-import sys
-sys.path.append("./GUI/")
-sys.path.append("./lib/")
-sys.path.append("./plugins/")
-sys.path.append("./plugins/loader/")
-sys.path.append("./plugins/export/")
-sys.path.append("./plugins/model/")
-
-import os
 import numpy as np
-from datetime import datetime
-import argparse
-import itertools
-from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea
 from PyQt5.QtCore import QCoreApplication
 
-from gui_util import *
-from data_loader import *
-from user_data_loader import *
-from matplotlib_view import *
-from filter import *
+from matplotlib_view import EpisodeView
+
 ######################################
 #                                    #
 #          TRIAL INFO                #
@@ -68,21 +51,5 @@ class User_Overview(QScrollArea) :
         self.show()
 
    
-    
-if __name__=="__main__":
-    path = './data/user_data.csv'
-    loader = User_Data_Loader()
-    users_data = loader.load( path )
-    print( "data of ", len( users_data ), "participants loaded" )
 
-    my_filter = Filter(user_min= 1, user_max = 5, techniques=["traditional", "audio"] )
-    filtered_users_data = my_filter.filter( users_data )
-    users_df = user_data_vec_to_data_frame( filtered_users_data )
-    app = QApplication(sys.argv)
-    
-    overview = User_Overview()
-    overview.set_users_df( users_df )
-    overview.show()
-
-    sys.exit(app.exec_())
 

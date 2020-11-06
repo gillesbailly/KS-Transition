@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QSignalMapper, Qt, QObject, pyqtSignal
+from PyQt5.QtCore import Qt, QObject, pyqtSignal
 
 from model_interface import *
 from gui_util import *

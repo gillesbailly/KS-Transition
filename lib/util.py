@@ -1,24 +1,84 @@
-import sys
+
 import random
 import numpy as np
 import pandas as pd
 import math
-from builtins import object
-from dataframe_util import *
 
-#########################
-def bootstrap_ci( population, size=0.75, n_replicates=1000 ):
-    n = int( len(population) * size )
-    replicates = np.zeros( (n_replicates, n) )
-    for i in range( n_replicates ):
-        replicates[i,:] = np.random.choice(population, size= n, replace = True)
-    mean_replicates = np.mean( replicates, axis=1 )
-    return np.percentile( mean_replicates, [2.5, 97.5] )
+###########################
+#                         #
+#        Strategy         #
+#                         #
+###########################
+class Strategy(object):
+    MENU     = 0
+    HOTKEY   = 1
+    LEARNING = 2
 
 
-#######################
-def encode_cmd_s( cmd, s ) :
-    return 3 * cmd + s
+###########################
+#                         #
+#          ACTION         #
+#                         #
+###########################
+class Action():
+    def __init__(self, cmd, strategy):
+        self.cmd = cmd
+        self.strategy = strategy
+
+
+###########################
+#                         #
+#       STEP RESULT       #
+#                         #
+###########################
+class StepResult(object):
+
+    def __init__(self, cmd = -1, action = None, time = -1, success = -1, info_gain = -1):
+        self.cmd     = cmd          #int command id
+        self.action  = action       # Action
+        self.time    = time         # execution time (float )
+        self.success = success      # correct / false execution (True/False). Use True
+
+###########################
+#                         #
+#        USER OUTPUT      #
+#                         #
+###########################
+class User_Output( object ):
+
+    def __init__( self, n = 0 ):
+        self.time    = np.zeros( n )
+        self.success = np.zeros( n, dtype=bool )
+        self.action  = np.array( [ None ] * n ) 
+
+    def n( self ) :
+        return len( self.action )
+
+
+########################################################################
+# Estimate the log likelihood  given a vector of probabilities         #
+# Input:                                                               #
+#    - p: an array of probabilities (to choose an action at trial t )  #
+# Ouptput:                                                             #
+#    -  a float: \sum_t ( log_2( P_t ) )                               #
+########################################################################
+def log_likelihood( prob_vec ):
+    return 1 # TODO 3.2
+
+
+########################################################################
+# Estimate the BIC Score                                               #
+# Input:                                                               #
+#    - n_observations: number of observations to predict               #
+#    - k_parameters  : number of parameters of the model               #
+#    - likelihood    : likelihood                                      #
+# Ouptput:                                                             #
+#    -  n * k - 2 likelihood                                           #
+########################################################################
+def bic_score( n_observations, k_parameters, likelihood ):
+    return 1 # TODO 3.2
+
+
 
 
 ########################
@@ -41,22 +101,10 @@ def zipfian(s, N):
     return res
 
 
-########################
-def soft_max(beta, vec):
-    vec = vec * beta
-    return np.exp( vec ) / np.sum( np.exp( vec ), axis=0)
 
 
 
-########################################################################
-# Estimate the log likelihood  given a vector of probabilities         #
-# Input:                                                               #
-#    - p: an array of probabilities (to choose an action at trial t )  #
-# Ouptput:                                                             #
-#    -  a float: \sum_t ( log_2( P_t ) )                               #
-########################################################################
-def log_likelihood( prob_vec ):
-    return np.sum( np.log2( prob_vec ) )
+
 
 ###################################
 def strategies_from_technique( technique_name ):
@@ -83,6 +131,7 @@ def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
     vec_2 = vec_2 * beta_2     
     return np.exp( vec_1 + vec_2 ) / np.sum( np.exp( vec_1 + vec_2 ), axis=0)
 
+
 def extended_soft_max(beta_vec, value_vec):
     vec = np.zeros( len(value_vec[0]) )
     for i in range(0, len(value_vec)):
@@ -90,65 +139,7 @@ def extended_soft_max(beta_vec, value_vec):
     return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
-# ############################
-# def user_data_vec_to_data_frame( user_data_vec ):
-#     df = pd.DataFrame()
-#     for user_data in user_data_vec:
-#         df_user = user_data_to_data_frame( user_data )
-#         if  df.empty:
-#             print("df is empty")
-#             df = df_user
-#         else:
-#             df = pd.concat( [df, df_user] )
-#     return df
 
-
-
-# ############################
-# def user_data_to_data_frame( user_data ):
-#     df = pd.DataFrame({    'model'          : 'Observations',
-#                            'user_id'        : user_data.id,
-#                            'technique_name' : user_data.technique_name,
-#                            'block_id'       : user_data.other.block,
-#                            'cmd_input'      : user_data.cmd,
-#                            'time'           : user_data.output.time,
-#                            'success'        : user_data.output.success,
-#                            'strategy'       : np.array( [a.strategy for a in user_data.output.action] ),
-#                            'cmd_output'     : np.array( [a.cmd for a in user_data.output.action] ) })
-#     return df
-
-# ###########################
-# def get_user_data_block( user_id, user_data_vec ):
-#         for user_data in user_data_vec :
-#             if user_data.id == user_id :
-#                 return user_data.other.block
-#         return []
-
-# ############################
-# def simulation_vec_to_data_frame( model_simulation_vec, user_data_vec ):
-#     df = pd.DataFrame()
-#     for model_simulation in model_simulation_vec:
-#         block = get_user_data_block( model_simulation.user_id, user_data_vec )
-#         df_model = simulation_to_data_frame( model_simulation, block )
-#         if  df.empty:
-#             print("df is empty")
-#             df = df_model
-#         else:
-#             df = pd.concat( [df, df_model] )
-#     return df
-
-# ############################
-# def simulation_to_data_frame( model_simulation, block ):
-#     df = pd.DataFrame({    'model'          : model_simulation.name,
-#                            'user_id'        : model_simulation.user_id,
-#                            'technique_name' : model_simulation.technique_name,
-#                            'block_id'       : block,
-#                            'cmd_input'      : model_simulation.input,
-#                            'time'           : model_simulation.output.time,
-#                            'success'        : model_simulation.output.success,
-#                            'strategy'       : np.array( [a.strategy for a in model_simulation.output.action] ),
-#                            'cmd_output'     : np.array( [a.cmd for a in model_simulation.output.action] ) })
-#     return df
 
 ###########################
 #   Command
@@ -161,16 +152,7 @@ class Command(object):
         self.hotkey = hotkey
 
 
-###########################
-#       STEP RESULT       #
-###########################
-class StepResult(object):
 
-    def __init__(self, cmd = -1, action = None, time = -1, success = -1, info_gain = -1):
-        self.cmd     = cmd
-        self.action  = action
-        self.time    = time
-        self.success = success
 
 
 
@@ -183,9 +165,6 @@ class Simulation_Result( object ):
     def __init__( self, name = "" ):
         self.name           = name     # str
         self.user_data      = None     # User_Data
-        # self.user_id        = -1       # int
-        # self.technique_name = ""       # str
-        # self.input          = None     # list< int > cmd ids
         self.output         = None     # User_Output        
         self.prob           = None     # Model_Output
         self.whole_time     = 0        # float
@@ -201,8 +180,9 @@ class Model_Result( object ):
     ############################
     def __init__( self, name = "" ):
         self.name           = name
-        self.user_id        = np.array([], dtype=int)
-        self.log_likelihood = np.array([])
+        self.user_id        = np.array( [], dtype=int)
+        self.technique      = np.array( [] )
+        self.log_likelihood = np.array( [] )
         self.prob           = []    # proability to peform the user action
         self.output         = []    # output: {menu, hotkey, learning } vector<float>, probability to perform the conrresponding strategy
         self.time           = []    #time of the simulation
@@ -215,6 +195,7 @@ class Model_Result( object ):
     def create( model_name, user_id_vec, debug = False) :
         model_result                = Model_Result( model_name )
         model_result.user_id        = user_id_vec
+        model_result.technique      = np.array( [ None ] * len( user_id_vec) ) if debug else []
         model_result.time           = np.zeros( len(user_id_vec ) ) 
         model_result.output         = np.array( [ None ] * len( user_id_vec) ) if debug else []
         model_result.prob           = np.array( [ None ] * len( user_id_vec) ) if debug else []
@@ -256,21 +237,7 @@ class Model_Output_Debug( Model_Output ):
         self.meta_info_1 = np.zeros( n )
         self.meta_info_2 = np.zeros( n )
 
-###########################
-#                         #
-#        USER OUTPUT      #
-#                         #
-###########################
-class User_Output( object ):
 
-    ##################################
-    def __init__( self, n = 0 ):
-        self.time    = np.zeros( n )
-        self.success = np.zeros( n, dtype=bool )
-        self.action  = np.array( [ None ] * n ) 
-
-    def n( self ) :
-        return len( self.action )
 
 
 ###########################
@@ -373,33 +340,11 @@ class Freedom(object):
     TECHNIQUE_FREE = 2
     EXPERIMENT_FREE = 3
 
-###########################
-#                         #
-#        Strategy         #
-#                         #
-###########################
-class Strategy(object):
-    MENU = 0
-    HOTKEY = 1
-    LEARNING = 2
+
 
 class Strategy_Filter(Strategy):
     NONE = -1
     ALL = 10
-
-###########################
-#                         #
-#          ACTION         #
-#                         #
-###########################
-class Action():
-#    def __init__(self, bin_number):
-#        self.bin_number = bin_number
-
-    def __init__(self, cmd, strategy):
-        self.cmd = cmd
-        self.strategy = strategy
-
 
 
 

@@ -1,20 +1,10 @@
-import sys
-import os
 import numpy as np
-from datetime import datetime
-import argparse
 import itertools
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPalette, QPageLayout
-from PyQt5.QtPrintSupport import *
+from PyQt5.QtGui import QPalette
 from PyQt5.QtCore import QCoreApplication, QPoint
-import numpy as np
 
 from gui_util import *
-from data_loader import *
-from hotkeycoach_loader import *
-
-#from simple_episode_view import *
 from matplotlib_view import *
 
 ######################################
@@ -27,10 +17,7 @@ class Trial_Info(QScrollArea) :
     ##################################
     def __init__(self ):
         super( QScrollArea, self ).__init__()
-        
-        #self.setBackgroundRole(QPalette.Shadow);
         self.setWidgetResizable( True )
-        
         self.resize( 250, 350 )
         self.setMinimumWidth(250)
         
@@ -82,8 +69,10 @@ class Empirical_Panel ( QTabWidget ) :
     def __init__(self):
         super( QTabWidget, self ).__init__()
         self.move(20,20)
-        self.resize(1000, 800)
-        config_element = ["Technique", "User", "Command"]
+        self.resize(750, 750)
+        self.subwin_height = 250
+        self.subwin_width  = 750
+        config_element   = ["Technique", "User", "Command"]
         self.configuration_vec = list(itertools.permutations( config_element ) )
         self.configuration_id = 1
         print( "Configuration:", self.configuration() )
@@ -103,7 +92,7 @@ class Empirical_Panel ( QTabWidget ) :
         self.view_vec = dict()
         self.trial_info = Trial_Info( )
       
-        self.show()
+        #self.show()
 
 
     ##################################
@@ -310,28 +299,6 @@ class Empirical_Panel ( QTabWidget ) :
     def key( self, technique, user_id, cmd, model ="User" ) :
         return technique + "," + str(user_id) + "," + str(cmd) + "," + model 
 
-
-    # #####################################
-    # def set_sequences( self, data_vec ) :
-    #     self.data_vec = data_vec
-    #     for d in data_vec :
-    #         ordered_freq_index = np.argsort( d.command_info.frequency )
-
-    #         for cmd in d.command_info.id :         
-    #             c = self.category( d, cmd )
-    #             row_id = self.row( d, cmd )
-    #             col_id = self.column( d, cmd )
-    #             key = self.key(d.technique_name, d.id, cmd, "User" )
-
-    #             view = EpisodeView( )
-    #             view.set_user_data( d, cmd )
-    #             view.view_selected.connect( self.set_info )
-    #             view.cursor_moved.connect( self.update_cursor )
-    #             self.gallery[ c ].add_view( view, "User", row_id, col_id )
-
-    #             self.view_vec[ key ] = view 
-    #             QCoreApplication.processEvents()
-
     #####################################
     def set_users_df( self, users_df ) :
         user_vec = list( users_df.user_id.unique() )
@@ -351,7 +318,7 @@ class Empirical_Panel ( QTabWidget ) :
                 view.set_user_cmd_df( df, user_id, cmd, technique_name )
                 view.view_selected.connect( self.set_info )
                 view.cursor_moved.connect( self.update_cursor )
-                self.gallery[ c ].add_view( view.canvas, "User", row_id, col_id )
+                self.gallery[ c ].add_view( view.canvas, "User", row_id, col_id, self.subwin_width, self.subwin_height )
 
                 #self.view_vec[ key ] = view.canvas 
                 QCoreApplication.processEvents()
@@ -366,11 +333,19 @@ class Empirical_Panel ( QTabWidget ) :
 
     ##################################
     def set_model_fitting_df( self, goodness_of_fit_vec, users_df ):
+        first_visu = True
+        user_id_df = users_df.user_id.unique()
+
+        #print( "trace 1", users_df )
         for goodness_of_fit in goodness_of_fit_vec:
             model_name = goodness_of_fit.name + " fitting"
             cmd_vec = users_df.cmd_input.unique()
             users_df[ 'bounded_time' ] = np.where( users_df['time'] > 10, 10, users_df['time'] )
-            for i, user_id in enumerate( goodness_of_fit.user_id) :
+            
+            user_id_fit = goodness_of_fit.user_id
+            user_id_vec = np.intersect1d( user_id_df, user_id_fit )
+
+            for i, user_id in enumerate( user_id_vec ) :
                 user_df = users_df[ ( users_df.user_id == user_id ) ]
                 user_df = user_df.copy()
                 user_df[ 'menu_prob' ]     = goodness_of_fit.output[ i ].menu * 10
@@ -378,20 +353,27 @@ class Empirical_Panel ( QTabWidget ) :
                 user_df[ 'learning_prob' ] = goodness_of_fit.output[ i ].learning * 10
                 user_df[ 'model_prob' ]    = goodness_of_fit.prob[ i ] * 10
                 user_df[ 'meta_info']      = goodness_of_fit.output[ i ].meta_info_1 
-                #print( goodness_of_fit.output[ i ].menu * 10 )
+
                 for cmd in cmd_vec :
+                    
+
                     df = user_df[ user_df.cmd_input == cmd ]
                     technique_name = list( df.technique_name.unique() )[ 0 ]
                     c = self.category_bis( user_id, cmd, technique_name )
                     row_id = self.row_bis( user_id, cmd, technique_name )
                     col_id = self.column_bis( user_id, cmd, technique_name )
                     key = self.key( technique_name, user_id, cmd, model_name )
-
+                    if first_visu : #bug to solve
+                        view = EpisodeView( )
+                        view.set_model_data( df, user_id, cmd, technique_name, model_name )
+                        view.canvas.show()
+                        view.canvas.hide()
+                        first_visu = False
                     view = EpisodeView( )
                     view.set_model_data( df, user_id, cmd, technique_name, model_name )
                     view.view_selected.connect( self.set_info )
                     view.cursor_moved.connect( self.update_cursor )
-                    self.gallery[ c ].add_view( view.canvas, model_name, row_id, col_id )
+                    self.gallery[ c ].add_view( view.canvas, model_name, row_id, col_id, self.subwin_width, self.subwin_height )
                     self.view_vec[ key ] = view.canvas
                     
                     QCoreApplication.processEvents()
@@ -424,7 +406,7 @@ class Empirical_Panel ( QTabWidget ) :
                     view.set_model_data( df, user_id, cmd, technique_name, name )
                     #view.view_selected.connect( self.set_info )
                     #view.cursor_moved.connect( self.update_cursor )
-                    self.gallery[ c ].add_view( view.canvas, name, row_id, col_id )
+                    self.gallery[ c ].add_view( view.canvas, name, row_id, col_id, self.subwin_width, self.subwin_height )
                     self.view_vec[ key ] = view.canvas
                     
                     QCoreApplication.processEvents()
@@ -451,7 +433,7 @@ class Empirical_Panel ( QTabWidget ) :
                     self.view_vec[ key ] = view
                     view.view_selected.connect( self.set_info )
                     view.cursor_moved.connect( self.update_cursor )
-                self.gallery[ c ].add_view( view, model_name, row_id, col_id )
+                self.gallery[ c ].add_view( view, model_name, row_id, col_id, self.subwin_width, self.subwin_height )
                 input = simulation_result.input 
                 model_output = simulation_result.prob
                 #prob   = simulation_result.prob
@@ -460,40 +442,7 @@ class Empirical_Panel ( QTabWidget ) :
                 QCoreApplication.processEvents()
                 self.maximize_sub_window()
 
-    # ##################################
-    # def set_model_fitting_sequences( self, goodness_of_fit_vec, data_vec ):
-    #     for goodness_of_fit in goodness_of_fit_vec:
-    #         model_name = goodness_of_fit.name + " fitting"
-    #         for i, user_id in enumerate( goodness_of_fit.user_id) :
-    #             d = self.data_from_id( data_vec, user_id )
-    #             for cmd in d.command_info.id:
-    #                 c = self.category( d, cmd )
-    #                 row_id = self.row( d, cmd )
-    #                 col_id = self.column( d, cmd )
-    #                 key = self.key(d.technique_name, d.id, cmd, model_name )
-    #                 view = None
-    #                 if key in self.view_vec:
-    #                     view = self.view_vec[ key ]
-    #                 else:
-    #                     view = EpisodeView( )
-    #                     view.set_user_data( d, cmd )
-    #                     self.view_vec[ key ] = view
-    #                     view.view_selected.connect( self.set_info )
-    #                     view.cursor_moved.connect( self.update_cursor )
-    #                     self.gallery[ c ].add_view( view, model_name, row_id, col_id )
-                    
-
-    #                 model_output = goodness_of_fit.output[ i ]
-    #                 model_prob   = goodness_of_fit.prob[ i ]
-    #                 view.set_model_data( model_name, d.cmd, model_output, model_prob)
-    #                 view.set_meta_info(  model_name, d.cmd, model_output.meta_info_1 )
-    #                 QCoreApplication.processEvents()
-    #                 self.maximize_sub_window()
-
-
     
-
-
 
     ##################################
     def update_configuration( self, _id ) :
@@ -560,121 +509,76 @@ class Empirical_Panel ( QTabWidget ) :
         print( "user: " + str(user_id) + "\t cmd:" + str(cmd) + "\t trial:" + str(trial_id) + "\n"   )
 
 
-    def print_all( self, graph_path ) :
-        technique_vec = ["traditional", "audio", "disable"]
-        res = 750
-        if not graph_path[-1]  == '/': 
-            graph_path = graph_path + '/'
-        if not os.path.isdir( graph_path ) :
-            os.mkdir( graph_path )
+    # def print_all( self, graph_path ) :
+    #     technique_vec = ["traditional", "audio", "disable"]
+    #     res = 750
+    #     if not graph_path[-1]  == '/': 
+    #         graph_path = graph_path + '/'
+    #     if not os.path.isdir( graph_path ) :
+    #         os.mkdir( graph_path )
 
 
-        now = datetime.now()
-        now_str = now.strftime("%Y_%m_%d__%H_%M_%S")
-        graph_path += now_str + '/'
-        if not os.path.isdir( graph_path ) :
-            os.mkdir( graph_path )
+    #     now = datetime.now()
+    #     now_str = now.strftime("%Y_%m_%d__%H_%M_%S")
+    #     graph_path += now_str + '/'
+    #     if not os.path.isdir( graph_path ) :
+    #         os.mkdir( graph_path )
 
 
-        for t in technique_vec :
-            printer = QPrinter()
-            printer.setOutputFormat( QPrinter.PdfFormat )
-            printer.setPageOrientation(QPageLayout.Landscape)
-            printer.setOutputFileName(graph_path + t + '_gallery.pdf')
-            #logicalDPIX = printer.logicalDpiX()
-            #PointsPerInch = 200.0
-            painter = QPainter()
-            if not painter.begin(printer):
-                print("failed to open file, is it writable?");
+    #     for t in technique_vec :
+    #         printer = QPrinter()
+    #         printer.setOutputFormat( QPrinter.PdfFormat )
+    #         printer.setPageOrientation(QPageLayout.Landscape)
+    #         printer.setOutputFileName(graph_path + t + '_gallery.pdf')
+    #         #logicalDPIX = printer.logicalDpiX()
+    #         #PointsPerInch = 200.0
+    #         painter = QPainter()
+    #         if not painter.begin(printer):
+    #             print("failed to open file, is it writable?");
         
-            pix = QPixmap( self.gallery[t].container.grab() )
-            print(t + "pix to print: ", pix.width(), pix.height() )
-            painter.drawPixmap(0,0, 750,pix.height() * 750. / pix.width(), pix)        
-            painter.end()
+    #         pix = QPixmap( self.gallery[t].container.grab() )
+    #         print(t + "pix to print: ", pix.width(), pix.height() )
+    #         painter.drawPixmap(0,0, 750,pix.height() * 750. / pix.width(), pix)        
+    #         painter.end()
 
 
-    def print_unit(self, graph_path) :
-        res = 750
+    # def print_unit(self, graph_path) :
+    #     res = 750
 
-        if not graph_path[-1]  == '/': 
-            graph_path = graph_path + '/'
-        if not os.path.isdir( graph_path ) :
-            os.mkdir( graph_path )
+    #     if not graph_path[-1]  == '/': 
+    #         graph_path = graph_path + '/'
+    #     if not os.path.isdir( graph_path ) :
+    #         os.mkdir( graph_path )
 
-        now = datetime.now()
-        now_str = now.strftime("%Y_%m_%d__%H_%M_%S") 
-        graph_path += now_str + '/'
-        if not os.path.isdir( graph_path ) :
-            os.mkdir( graph_path )
-
-
-        technique_vec = ["traditional", "audio", "disable"]
-        for technique in technique_vec :
-            if not os.path.isdir( graph_path + technique + '/' ) :
-                os.mkdir( graph_path + technique + '/' )
+    #     now = datetime.now()
+    #     now_str = now.strftime("%Y_%m_%d__%H_%M_%S") 
+    #     graph_path += now_str + '/'
+    #     if not os.path.isdir( graph_path ) :
+    #         os.mkdir( graph_path )
 
 
-        for key in self.view_vec :
-            technique = key.split(',')[0]
-            user_id = key.split(',')[1]
-            cmd = key.split(',')[2]
-            view = self.view_vec[ key ]
-            #print(technique, str(view.d.user_id), str(view.cmd))
-            path = graph_path + technique + '/technique_' + technique + '_user_'+ user_id + '_cmd_' + cmd + '.pdf'
-            #print(path)
-            printer = QPrinter()
-            printer.setOutputFormat( QPrinter.PdfFormat )
-            printer.setPageOrientation(QPageLayout.Landscape)
-            printer.setOutputFileName(path)
-            painter = QPainter()
-            if not painter.begin(printer):
-                print("failed to open file, is it writable?");
-            pix = QPixmap( view.grab() )
-            painter.drawPixmap(0,0, res,pix.height() * res / pix.width(), pix)        
-            painter.end()
+    #     technique_vec = ["traditional", "audio", "disable"]
+    #     for technique in technique_vec :
+    #         if not os.path.isdir( graph_path + technique + '/' ) :
+    #             os.mkdir( graph_path + technique + '/' )
 
 
-#####################################
-#                                   #
-#              MAIN                 #
-#                                   #
-#####################################
-if __name__=="__main__":
-    path = './experiment/hotkeys_formatted_dirty.csv'
-    parser = argparse.ArgumentParser()
-    parser.add_argument( "-p", "--path", help="path of the empirical data" )
-    
-    args = parser.parse_args()
-    if args.path != None :
-        path = args.path
-    print("sequences path: ", path)
-    loader = HotkeyCoach_Loader()
-    users_data = loader.experiment( path )
-    print( "data of ", len( users_data ), "participants loaded" )
-
-    my_filter = Filter(user_max = 3, techniques=["traditional", "audio"] )
-    filtered_users_data = my_filter.filter( users_data )
-    print( "data of ",  len( filtered_users_data ), "users once filtered" )
-
-    app = QApplication(sys.argv)
-    
-    panel = Empirical_Panel()
-    
-
-    panel.set_sequences( filtered_users_data )
-    #panel.print_all('./tmp_graphs')
-    #panel.print_unit('./tmp_graphs')
-    #panel.ensure_view_visible("audio", 4, 2)
-    #panel.update_configuration(4)
-    panel.ensure_view_visible("traditional", 3, 2)
-
-    
-
-
-
-
-    #win.show()
-    #window.select_command( args.command )
-
-    sys.exit(app.exec_())
+    #     for key in self.view_vec :
+    #         technique = key.split(',')[0]
+    #         user_id = key.split(',')[1]
+    #         cmd = key.split(',')[2]
+    #         view = self.view_vec[ key ]
+    #         #print(technique, str(view.d.user_id), str(view.cmd))
+    #         path = graph_path + technique + '/technique_' + technique + '_user_'+ user_id + '_cmd_' + cmd + '.pdf'
+    #         #print(path)
+    #         printer = QPrinter()
+    #         printer.setOutputFormat( QPrinter.PdfFormat )
+    #         printer.setPageOrientation(QPageLayout.Landscape)
+    #         printer.setOutputFileName(path)
+    #         painter = QPainter()
+    #         if not painter.begin(printer):
+    #             print("failed to open file, is it writable?");
+    #         pix = QPixmap( view.grab() )
+    #         painter.drawPixmap(0,0, res,pix.height() * res / pix.width(), pix)        
+    #         painter.end()
 

@@ -1,20 +1,10 @@
-import sys
-import os
 import numpy as np
-import cProfile
-import argparse
-import itertools
 import time as TIME
-from datetime import datetime
+import pandas as pd
 from scipy.optimize import *
 
 from parameters_export import *
-from data_loader import *
 from util import *
-from alpha_beta_model import *
-
-
-
 
 
 ##########################################
@@ -28,9 +18,6 @@ class Fit_Output( object ):
     def __init__( self, sequence_length) :
         self.prob = np.zeros( sequence_length )
         self.time = 0
-
-
-#log_likelyhood += log2(user_action_prob)
 
 ##########################################
 #                                        #
@@ -80,14 +67,14 @@ class Individual_Model_Fitting( object ):
         i = 0
         for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
             res.prob[ i ] = self.model.action_prob( cmd, action )
-            prob_vec = self.model.action_probs( cmd )
+            prob_vec      = self.model.action_probs( cmd )
             a_vec = self.model.get_actions_from( cmd )
             probs = values_long_format(a_vec, prob_vec)
-            res.output.menu[ i ]     = probs[ Strategy.MENU ]
-            res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
-            res.output.learning[ i ] = probs[ Strategy.LEARNING ]
-            res.output.meta_info_1[ i ] = self.model.meta_info_1( cmd )
-            res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
+            # res.output.menu[ i ]     = probs[ Strategy.MENU ]
+            # res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
+            # res.output.learning[ i ] = probs[ Strategy.LEARNING ]
+            # res.output.meta_info_1[ i ] = self.model.meta_info_1( cmd )
+            # res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
 
             user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
             self.model.update_model( user_step )
@@ -106,28 +93,28 @@ class Model_Fitting( object ):
 
     ######################################
     def __init__( self, debug = False ):
-        self.command_ids = []                       # Type int
-        self.model_vec    = []                      # Type Model_Interface
-        self.user_data_vec = []                     # Type User_Data
-        self.method = Individual_Model_Fitting()    #
+        self.command_ids   = []                     # Type list < int > : 
+        self.model_vec     = []                     # Type list < Model_Interface >
+        self.user_data_vec = []                     # Type list < User_Data >
+        self.parameters    = pd.DataFrame()                   # Type Dataframe
+        self.method = Individual_Model_Fitting()    
         self.debug = debug
         self.debug_var = 0
         
         
     ######################################
     def optimize( self ):
-        timestamp = TIME.strftime("%Y-%m-%d-%H-%M-%S", TIME.gmtime() )
-        #cp = cProfile.Profile()
-        #cp.enable()
-    
-        result_vec = []
+        self.is_valid()
+        timestamp    = TIME.strftime("%Y-%m-%d-%H-%M-%S", TIME.gmtime() )
+        result_vec   = []
+        user_id_vec  = [ user_data.id for user_data in self.user_data_vec ]
         for model in self.model_vec:
-            model_result = Model_Result.create( model.name, np.array( [ user_data.id for user_data in self.user_data_vec ] ), self.debug )
+            model_result = Model_Result.create( model.name, np.array( user_id_vec ), self.debug )
             model_result.n_parameters = model.params.n( Freedom.USER_FREE )   
             for i , user_data in enumerate( self.user_data_vec ):
                 #PROBABLY A BUG HERE TO UPDATE
                 model_result.n_observations[ i ] = len( user_data.cmd )
-                
+                model_result.technique[ i ]      = user_data.technique_name
                 start = TIME.time()
                 available_strategies = strategies_from_technique( user_data.technique_name )
                 
@@ -136,8 +123,8 @@ class Model_Fitting( object ):
                 self.method.user_output = user_data.output
 
                 params = model.get_params()
-                free_param_name_vec = []
-                free_param_bnds_vec = []
+                free_param_name_vec = []                    # name of the parameters to optimize
+                free_param_bnds_vec = []                    # Bounds for parameter values list( [min, max] )
                 for param in params.values(): 
                     if param.freedom == Freedom.USER_FREE :
                         free_param_name_vec.append( param.name )
@@ -152,23 +139,15 @@ class Model_Fitting( object ):
                 parameters = Parameters( model.name, model.default_parameters_path() )
                 for name, value in zip( free_param_name_vec, res.x ):
                     parameters[ name ].value = value
-                self.backup_parameters( parameters, user_data.id, timestamp )
+                
 
                 model_result.log_likelihood[ i ] = - res.fun
                 model_result.time[ i ]           = end - start
-                model_result.parameters[ i ]     = parameters 
+                model_result.parameters[ i ]     = parameters
+                self.backup_parameters( model_result, timestamp ) 
                 result_vec.append( model_result )
         
-        #cp.disable()
-        #cp.print_stats()
         return result_vec
-
-
-    ######################################
-    def backup_parameters( self, parameters, user_id, timestamp ):
-        path = "./backup/" + timestamp + "/"
-        filename = parameters.name + "_model_"+ str( user_id ) + ".csv"
-        Parameters_Export.write( parameters, path, filename )
 
 
     ######################################
@@ -183,9 +162,11 @@ class Model_Fitting( object ):
             print( self.debug_var )
         return - log_likelihood( goodness_of_fit.prob )
 
-
+    
+    
     ######################################
     def run( self ):
+        self.is_valid()
         result = []                                 # Type Model_Result
         for model in self.model_vec:
 
@@ -197,6 +178,10 @@ class Model_Fitting( object ):
             
             for i , user_data in enumerate( self.user_data_vec ):
                 model_result.n_observations[ i ] = len( user_data.cmd )
+                model_result.technique[ i ] = user_data.technique_name
+                if not self.parameters.empty :
+                    params = parameters_from_df( self.parameters, model.name, user_data.id )
+                    model.params = params
                 model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )
                 self.method.model = model
                 self.method.user_input  = user_data.cmd
@@ -204,7 +189,6 @@ class Model_Fitting( object ):
                 
                 goodness_of_fit = None
                 if self.debug :
-                    print( "------------ run debug ----------" )
                     goodness_of_fit = self.method.run_debug()
                     model_result.output[ i ] =  goodness_of_fit.output
                     model_result.prob[ i ]   =  goodness_of_fit.prob
@@ -219,52 +203,30 @@ class Model_Fitting( object ):
         
         return result 
 
+    ######################################
+    def backup_parameters( self, parameters, timestamp ):
+        path = "./backup/" + timestamp + "/"
+        #filename = parameters.name + "_model_"+ str( user_id ) + ".csv"
+        Parameters_Export.write( [parameters], path )
 
+    ######################################
+    def is_valid( self ):
+        res = True
+        if len( self.command_ids ) == 0 :
+            res = False
+            raise ValueError(" Model_Fit: command_ids is empty ")
 
+        if len( self.model_vec ) == 0 :
+            res = False
+            raise ValueError(" Model_Fit: model_vec is empty ")
 
+        if len( self.user_data_vec ) == 0 : 
+            res = False
+            raise ValueError(" Model_Fit: user_data_vec is empty ")
+        if not res:
+            exit(0)
+        return True  
 
-if __name__=="__main__":
-    # available_strategies = [ Strategy.MENU , Strategy.HOTKEY , Strategy.LEARNING ] 
-    # cmd_id = 1
-    # start = TIME.time()
-    # #res = [None] * len( available_strategies )
-    # #for i, s in enumerate( available_strategies ):
-    # #    res[i] = Action( cmd_id , s )
-    # res = [ Action(cmd_id, s) for s in available_strategies ]     
-    # stop = TIME.time()
-    # print( "time:", stop - start, "res : " , res )
-    # exit(0)
-    
-    print("run Individual Fitting")
-
-    path = './experiment/hotkeys_formatted_dirty.csv'
-    parser = argparse.ArgumentParser()
-    parser.add_argument( "-p", "--path", help="path of the empirical data" )
-    
-    args = parser.parse_args()
-    if args.path != None :
-        path = args.path
-    print("sequences path: ", path)
-    loader = HotkeyCoach_Loader()
-    users_data = loader.experiment( path )
-    print( len( users_data ), "users data loaded" )
-
-
-    my_filter = Filter()
-    filtered_users_data = my_filter.filter( users_data )
-    print( len( filtered_users_data ), "users data once filtered" )
-
-    env = Environment( './parameters/env_M2_H0.9_L1.8_P3.csv' )
-    #env.commands = user_0.command_info.id
-    
-    fit = Model_Fitting( debug = True)
-    fit.command_ids = [ i for i in range(0, 14) ]
-    fit.model_vec = [ Alpha_Beta_Model( env, 'RW' ), Alpha_Beta_Model( env, 'RW_CK' ) ]
-    fit.user_data_vec = filtered_users_data
-
-    goodness_of_fit_vec = fit.run()
-    for goodness_of_fit in goodness_of_fit_vec :
-        print( goodness_of_fit.name, goodness_of_fit.time,  goodness_of_fit.log_likelihood )
 
 
 

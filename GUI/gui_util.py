@@ -48,9 +48,9 @@ def deleteLayoutContent( cur_lay ):
 class Sub_Win( QMdiSubWindow ):
     
     ####################
-    def __init__( self, name ):
+    def __init__( self, name, w = 750, h = 250 ):
         super( QMdiSubWindow, self ).__init__()
-        self.resize( 750, 250 )
+        self.resize( w, h )
         self.container = Serie2DGallery()
         self.setWidget( self.container )
         self.setWindowTitle( name )
@@ -89,16 +89,16 @@ class Area( QScrollArea):
         super().resizeEvent( event )
 
     #########################
-    def window( self, name):
+    def window( self, name, w = 750, h = 250):
         if not name in self.wins:
-            win = Sub_Win( name )
+            win = Sub_Win( name, w, h )
             self.container.addSubWindow( win )
             self.wins[ name ] = win
         return self.wins[ name ] 
 
     #########################
-    def add_view( self, view, model_name, user_id, cmd ):
-        win = self.window( model_name )
+    def add_view( self, view, model_name, user_id, cmd, w = 750, h = 250 ):
+        win = self.window( model_name, w, h )
         win.add_view( view, user_id, cmd )
         win.container.horizontalScrollBar().valueChanged.connect( self.view_horizontal_moved )
         win.container.verticalScrollBar().valueChanged.connect( self.view_vertical_moved )
@@ -129,14 +129,6 @@ class Serie2DGallery(QScrollArea):
     ###############################
     def __init__( self ):
         super(QScrollArea,self).__init__()
-        #self.setBackgroundRole( QPalette.Dark )
-        #p = self.palette()
-        #p.setBrush( QPalette.Window, base_brush() )
-        #p.setBrush( QPalette.Base, base_brush() )
-        #p.setBrush( QPalette.Background, base_brush() )
-        
-        
-        #self.setPalette( p )
         self.setWidgetResizable( True )
         self.container = QWidget()
         self.l = QGridLayout()

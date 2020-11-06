@@ -1,31 +1,11 @@
 import numpy as np
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QSignalMapper, Qt, QObject, pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
+
 from gui_util import *
-from util import *
-
-
-#########################
-def foo( data, indices ):
-  d <- data[indices] # allows boot to select sample 
-  return( mean( d) )
-
-#########################
-def bootstrap_lower_ci( v ) :
-  results <- boot(data = v, statistic = foo, R = 1000 )
-  ci <- boot.ci(results, type="bca")
-  l <- unlist( ci[4] )
-  return l[4]
-
-#########################
-def bootstrap_upper_ci( v ):
-  results <- boot(data = v, statistic = foo, R = 1000 )
-  ci <- boot.ci(results, type="bca")
-  l <- unlist( ci[4] )
-  return l[5]
+import seaborn as sns
+from dataframe_util import *
 
 
 ######################################
@@ -45,6 +25,8 @@ class Fitting_Table( QWidget ) :
         self.model_row = dict()
         self.user_col  = dict()
         self.w         = dict()
+        self.setMaximumHeight(120)
+
 
     ##########################
     def update_data( self, model_fitting_result_vec ):
@@ -58,7 +40,7 @@ class Fitting_Table( QWidget ) :
             else: 
                 row = self.l.rowCount()
                 self.model_row[ model_result.name ] = row
-                self.l.addWidget( QLabel( "<b>" + name + "</b>" ), row, 0 )
+                self.l.addWidget( QLabel( "<b>" + name + " </b>" ), row, 0 )
             
             for user_id, likelihood in zip( model_result.user_id, model_result.log_likelihood) :
                 if not user_id in self.user_col :
@@ -83,11 +65,13 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
     def __init__( self ):
         super().__init__()
         self.setMinimumWidth( 250 )
+        self.resize( 750, 900 )
         self.l.setHorizontalSpacing( 1 )
-        self.l.setVerticalSpacing( 1 )
-        
+        self.l.setVerticalSpacing( 1 )        
         self.table = Fitting_Table()
-        self.l.addWidget( self.table, 0, 0 )
+        self.table.setSizePolicy( QSizePolicy( QSizePolicy.Minimum, QSizePolicy.Expanding  ) )
+        self.l.addWidget( QLabel( 'Log Likelihood' ) )
+        self.l.addWidget( self.table )
 
         self.figure = plt.figure( tight_layout=True )
         self.figure.patch.set_facecolor( [53./255, 53./255, 53./255] )
@@ -101,14 +85,16 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         plt.rcParams[ 'axes.facecolor'  ] = 'dimgray'
 #mpl.rcParams["savefig.facecolor"]
         
-        self.canvas = FigureCanvas(self.figure)
-        self.dialog = QDialog()
-        self.dialog.setWindowTitle("Model Fitting Results")
-        self.toolbar = NavigationToolbar(self.canvas, self.dialog)
-        dialog_layout = QVBoxLayout()
-        self.dialog.setLayout( dialog_layout )
-        dialog_layout.addWidget( self.toolbar )
-        dialog_layout.addWidget( self.canvas  )
+        self.canvas = FigureCanvas( self.figure )
+        self.canvas.setSizePolicy( QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding ) )
+
+        #self.dialog = QDialog()
+        #self.dialog.setWindowTitle("Model Fitting Results")
+        self.toolbar = NavigationToolbar( self.canvas, self )
+        #dialog_layout = QVBoxLayout()
+        #self.dialog.setLayout( dialog_layout )
+        self.l.addWidget( self.toolbar )
+        self.l.addWidget( self.canvas )
 
     ############################
     def update_table( self, model_result_vec ):
@@ -123,9 +109,15 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         self.figure.clear()
         #plt.subplots_adjust(wspace=0.001, hspace=0.001, left=0.01, right=0.99, bottom=0.01, top=0.99)
         
+        fit_df = model_res_vec_to_data_frame( model_result_vec )
+        df = fit_df.copy()
+        df['log_likelihood'] = - df['log_likelihood'] 
+
         model_color = dict()
         model_color[ 'RW' ] = [153/255, 204/255, 1, 1]
+        model_color[ 'RW2' ] = [255/255, 204/255, 1, 1]
         model_color[ 'CK' ] = [1, 153/255, 1, 1]
+        model_color[ 'CK2' ] = [1, 153/255, 1, 1]
         model_color[ 'RW_CK' ] = [153/255, 51/255, 1, 1]
         model_color[ 'Observations' ] = [1,1,1,1]
         model_color[ 'random' ] = [1,1,153/255,1]
@@ -135,94 +127,44 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         dependent_variable = [ '- Log Likelihood', 'BIC' ]
         for i, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot( 3, 2, i + 1 )
-            ax.set_title( v )
-            ax.set_xlabel( 'Individual' )
+            y_value = 'BIC' if v == 'BIC' else 'log_likelihood'
+            sns.barplot( x='user_id', y=y_value, hue="model", palette= model_color, data = df )
             ax.set_ylabel( v )
-            #plt.title( v + ' per individual and model' )
-            for i, model_result in enumerate( model_result_vec ):
-                x = model_result.user_id
-                y = None
-                if v == 'BIC':
-                    print("BIC ",  model_result.n_parameters, model_result.n_observations[ i ], model_result.log_likelihood) 
-                    y = model_result.n_parameters * model_result.n_observations[ i ]- 2 * model_result.log_likelihood
-                else:    
-                    y = - model_result.log_likelihood
-                ax.bar( x + i * bar_width - bar_width, y, bar_width, alpha=opacity, color= model_color[model_result.name] , label= model_result.name )
+            ax.set_xlabel( "Participant Id" )
             if v == 'BIC': 
-                ax.legend( framealpha = 0, fontsize='x-small' )
+                 ax.legend( framealpha = 0, fontsize='x-small' )
+            else:
+                ax.legend().remove()
 
-            ax.set_xticks( x )
-
-        
+        model_color_bis = dict()
+        for model in df['model'].unique() :
+            model_color_bis[ model ] = model_color[ model ]
 
         for i, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot(3, 2, 3 + i)
-            ax.set_xlabel( 'Model' )
+            y_value = 'BIC' if v == 'BIC' else 'log_likelihood'
+            sns.barplot( x='model', y=y_value, palette= model_color, data = df )
             ax.set_ylabel( v )
-            #plt.title( v + ' per model' )
-            x = np.array( [ mr.name for mr in model_result_vec ] )
-            color = [ model_color[ mr.name ]  for mr in model_result_vec]
-            y = None
-            ci = None 
-            if v == 'BIC' :
-                y  = model_result.n_parameters * 720 - 2 * np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
-                ci = np.array( [ bootstrap_ci( model_result.n_parameters * 720 - 2 * mr.log_likelihood) for mr in model_result_vec ] )
-            else: 
-                y  = - np.array( [ np.mean( mr.log_likelihood) for mr in model_result_vec ] )
-                ci =   np.array( [ bootstrap_ci( - mr.log_likelihood) for mr in model_result_vec ] )
-                
-            ci = np.transpose( ci )
-            ci[0,:] = y - ci[0,:]
-            ci[1,:] = ci[1,:] - y
+            ax.legend().remove()
             
-            ax.bar( x, y, bar_width, alpha=opacity, color = color )
-            ax.errorbar(x, y, yerr= ci , fmt='', color='w', ls='none', elinewidth=1  )
-           
-
 
         for k, v in enumerate( dependent_variable ) :
             ax = self.figure.add_subplot( 3, 2, 5+k )
-            ax.set_xlabel( 'Model' )
+            y_value = 'BIC' if v == 'BIC' else 'log_likelihood'
+            sns.barplot( x='model', y=y_value, hue="technique", data = df )
             ax.set_ylabel( v )
-            #plt.title( v + ' per model and Technique' )
-
-            x_name = np.array( [ mr.name for mr in model_result_vec ] )
-            x = np.arange(0, len( model_result_vec ), 1 )
-            y_mat  = np.zeros( ( len( model_result_vec ), 3 ) )
-            ci_mat_low = np.empty( ( len( model_result_vec ), 3 ) )
-            ci_mat_up  = np.empty( ( len( model_result_vec ), 3 ) )
-            for i, mr in enumerate( model_result_vec ):
-                for j in range(0,3):
-                    if v == 'BIC' :
-                        y_mat[ i , j ] = model_result.n_parameters * 720 - 2 * np.mean( mr.log_likelihood[ j::3 ] )
-                        ci_tmp = bootstrap_ci( model_result.n_parameters * 720 - 2 * mr.log_likelihood[ j::3 ] )
-                    else: 
-                        y_mat[ i , j ] = - np.mean( mr.log_likelihood[j::3] )
-                        ci_tmp = bootstrap_ci( - mr.log_likelihood[j::3] )
-
-                    ci_mat_low[ i , j ] = y_mat[ i, j ] - ci_tmp[ 0 ]
-                    ci_mat_up[ i , j ]  = ci_tmp[ 1 ] - y_mat[ i, j ]
-            #print("y_mat:", y_mat)
-            #print("ci_mat_low:", ci_mat_low )
-            
-            ax.bar( x-bar_width, y_mat[ :, 0 ], bar_width, alpha=opacity, label = "Traditional" )
-            ax.errorbar(x-bar_width, y_mat[ :, 0 ], yerr= [ ci_mat_low[:,0], ci_mat_up[:,0] ], fmt='', color='w', ls='none', elinewidth=1 ) 
-            
-            ax.bar( x, y_mat[ :, 1 ], bar_width, alpha=opacity, label = "Audio" )
-            ax.errorbar(x, y_mat[ :, 1 ], yerr= [ ci_mat_low[:,1] , ci_mat_up[:,1] ], fmt='', color='w', ls='none', elinewidth=1 ) 
-            
-            ax.bar( x+bar_width, y_mat[ :, 2 ], bar_width, alpha=opacity, label = "Disable" )
-            ax.errorbar(x+bar_width, y_mat[ :, 2 ], yerr= [ ci_mat_low[:,2], ci_mat_up[:,2] ], fmt='', color='w', ls='none', elinewidth=1 )
-
             if v == 'BIC': 
-                ax.legend( framealpha = 0,  fontsize='x-small' )
-            ax.set_xticks( x )
-            ax.set_xticklabels( x_name )
+                 ax.legend( framealpha = 0, fontsize='x-small' )
+            else:
+                ax.legend().remove()
 
-        #plt.tight_layout()
         self.canvas.draw()
-        self.dialog.show()
+        self.show()
 
+    #################################
+    def update_canvas( self, res ):
+        self.update_figure( res )
+        self.update_table( res )
 
 
 

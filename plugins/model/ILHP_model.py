@@ -1,6 +1,6 @@
-from alpha_beta_model_abstract import *
-import math
-
+#from alpha_beta_model_abstract import *
+#import math
+from model_interface import *
 
 
 ################################################
@@ -13,18 +13,13 @@ class ILHP_Model( Model ):
     class Memory():
         
         ###############################
-        def __init__( self, command_ids ):            
-            self.perseveration_value  = np.zeros(3 * len( command_ids ) )
-            self.hotkey_knowledge     = np.zeros( len( command_ids ) ) #TOOD ???
+        def __init__( self, n_commands, n_strategies ):            
+            self.perseveration_value  = np.zeros( (n_commands, n_strategies) )
+            self.hotkey_knowledge     = np.zeros( n_commands ) #TOOD ???
 
-        #############################
-        def set_initial_perseveration_value(self, command_ids , value_0):
-            for cmd in command_ids :
-                for s in value_0 :
-                    self.perseveration_value[ encode_cmd_s(cmd, s) ] = value_0[ s ]
 
     ###############################
-    def __init__( self, name ):
+    def __init__( self, name = 'ILHP' ):
         super().__init__( name )
         self.max_knowledge = 1.0
         self.command_ids = []
@@ -48,17 +43,12 @@ class ILHP_Model( Model ):
     def knowledge(self, cmd ) :
         return self.memory.hotkey_knowledge[ cmd ] 
   
-    # ########################## 
-    # def has_knowledge( self ) :
-    #     return True   
-  
+   
     ###########################
     def update_model(self, step, _memory = None):
         memory = self.memory if _memory == None else _memory
 
-        #action = Action(step.cmd, step.action.strategy)
-
-        # Decay
+        # Decay => optimize by using np
         for cmd in self.command_ids:
             memory.hotkey_knowledge[ cmd ] += self.decay * ( 0 - memory.hotkey_knowledge[ cmd ] )
 
@@ -73,7 +63,8 @@ class ILHP_Model( Model ):
             for s in self.available_strategies:
                 a_t_k = 1. if step.action.strategy == s else 0.
                 alpha_perseveration = 1.
-                memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] +=  alpha_perseveration * (a_t_k -  memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] )
+                memory.perseveration_value[ step.cmd ][ s ] +=  alpha_perseveration * (a_t_k -  memory.perseveration_value[ step.cmd ] [ s ] )
+                #memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] +=  alpha_perseveration * (a_t_k -  memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] )
                 
 
     ##########################
@@ -95,12 +86,13 @@ class ILHP_Model( Model ):
  
 
     ##########################
-    def action_probs(self, cmd, date=0 ):
+    def action_probs(self, cmd ):
         
         if self.horizon == 0 :
             p = np.zeros( len( self.available_strategies ) )
             ds = self.default_strategy()
-            index = self.available_strategies.index(ds)
+            #index = self.available_strategies.index(ds)
+            index = np.where( self.available_strategies == ds )[0][0]
             p[ index ] = 1.
             return p
 
@@ -114,9 +106,9 @@ class ILHP_Model( Model ):
         return soft_max( self.beta, Q_values)
 
     ##########################
-    def perseveration_vec(self, cmd ):
+    def perseveration_vec( self, cmd ):
         #value_vec = np.zeros( len( self.available_strategies ) )
-        return np.array ( [ self.memory.perseveration_value[ encode_cmd_s( cmd, s) ] for s in self.available_strategies ] )
+        return np.array ( [ self.memory.perseveration_value[ cmd ][ s ] for s in self.available_strategies ] )
 
         # for i, s in enumerate( self.available_strategies ):
         #     value_vec[ i ] = self.memory.perseveration[ encode_cmd_s( cmd, s ) ]
@@ -226,9 +218,7 @@ class ILHP_Model( Model ):
         self.custom_reset_params()
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
-        self.memory = ILHP_Model.Memory( command_ids )
-        initial_values = [ 0 ] * len( available_strategies )
-        self.memory.set_initial_perseveration_value( command_ids, initial_values )
+        self.memory = ILHP_Model.Memory( len(command_ids), 3 )
             
         
 
