@@ -3,6 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 import math
+import warnings
 
 ###########################
 #                         #
@@ -55,6 +56,23 @@ class User_Output( object ):
         return len( self.action )
 
 
+##########################################################################
+# Softmax function                                                       #
+# Input:                                                                 #
+#    - beta (float) : inverse temperature                                #
+#    - values (np.array): list containing the values for each strategy   #
+#                         len (values) == len( self.available strategies)#
+#                                                                        #
+# Output:                                                                #
+#    - probs (np.array) : the probability of each strategy to be chosen  #
+#                         len (probs) == len( self.available strategies) #
+########################################################################## 
+def soft_max( beta, values ):
+    return np.exp( beta * values) / np.sum( np.exp( beta * values ), axis = 0)
+
+def double_soft_max( beta_1, values_1, beta_2, values_2, ):
+    return np.exp( beta_1 * values_1 + beta_2 * values_2 ) / np.sum( np.exp( beta_1 * values_1 + beta_2 * values_2 ), axis = 0)
+
 ########################################################################
 # Estimate the log likelihood  given a vector of probabilities         #
 # Input:                                                               #
@@ -63,8 +81,13 @@ class User_Output( object ):
 #    -  a float: \sum_t ( log_2( P_t ) )                               #
 ########################################################################
 def log_likelihood( prob_vec ):
-    return 1 # TODO 3.2
-
+    res =0
+    try:
+        res = np.sum( np.log( prob_vec) )
+    except:
+        print("runtime warning exception:", prob_vec )
+        exit(0)
+    return res
 
 ########################################################################
 # Estimate the BIC Score                                               #
@@ -76,7 +99,7 @@ def log_likelihood( prob_vec ):
 #    -  n * k - 2 likelihood                                           #
 ########################################################################
 def bic_score( n_observations, k_parameters, likelihood ):
-    return 1 # TODO 3.2
+    return np.log( n_observations ) * k_parameters - 2 * likelihood
 
 
 
@@ -113,16 +136,6 @@ def strategies_from_technique( technique_name ):
     else:
         return np.array( [Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING], dtype=int )
 
-# ########################
-# def soft_max_vec(beta, vec):
-#     res = []
-#     denum = 0
-#     for v in vec:
-#         denum += np.exp(beta * v)
-#     for v in vec:
-#         res.append( float( np.exp(beta*v) ) / float(denum) )
-
-#     return res
 
 
 #######################
@@ -162,12 +175,13 @@ class Command(object):
 #                         #
 ###########################
 class Simulation_Result( object ):
-    def __init__( self, name = "" ):
+    def __init__( self, n, name = "" ):
         self.name           = name     # str
         self.user_data      = None     # User_Data
-        self.output         = None     # User_Output        
-        self.prob           = None     # Model_Output
+        self.output         = np.array( [ None ] * n )      # User_Output        
+        self.prob           = np.array( [ None ] * n )      # Model_Output
         self.whole_time     = 0        # float
+        self.n_simulations  = n
 
 
 ###########################
@@ -207,35 +221,6 @@ class Model_Result( object ):
 
         return model_result
 
-
-###########################
-#                         #
-#       MODEL OUTPUT      #
-#                         #
-###########################
-class Model_Output( object ):
-
-    ##################################
-    def __init__( self, n = 0 ):
-        self.menu      = np.zeros( n )
-        self.hotkey    = np.zeros( n )
-        self.learning  = np.zeros( n )
-
-    ##################################
-    def n( self ) :
-        return len( self.action )
-
-
-###########################
-#                         #
-#  MODEL OUTPUT DEBUG     #
-#                         #
-###########################
-class Model_Output_Debug( Model_Output ):
-    def __init__( self, n = 0 ):
-        super().__init__( n )
-        self.meta_info_1 = np.zeros( n )
-        self.meta_info_2 = np.zeros( n )
 
 
 
@@ -339,13 +324,6 @@ class Freedom(object):
     USER_FREE = 1
     TECHNIQUE_FREE = 2
     EXPERIMENT_FREE = 3
-
-
-
-class Strategy_Filter(Strategy):
-    NONE = -1
-    ALL = 10
-
 
 
 

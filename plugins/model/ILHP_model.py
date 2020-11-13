@@ -23,20 +23,22 @@ class ILHP_Model( Model ):
         super().__init__( name )
         self.max_knowledge = 1.0
         self.command_ids = []
+        self.default_strategy = Strategy.MENU
         
     ##########################
     def custom_reset_params(self) : 
         #print("custom reset params")
-        self.decay          = self.params[ 'DECAY' ].value
-        self.alpha_implicit = self.params[ 'ALPHA_IMPLICIT' ].value if 'ALPHA_IMPLICIT' in self.params else 0
-        self.alpha_explicit = self.params[ 'ALPHA_EXPLICIT' ].value if 'ALPHA_EXPLICIT' in self.params else 0.5 #TODO
-        self.perseveration  = self.params[ 'PERSEVERATION' ].value  if 'PERSEVERATION'  in self.params else -1
-        self.horizon        = int( self.params[ 'HORIZON' ].value ) if 'HORIZON'        in self.params else 1
+        self.decay          = self.params[ 'DECAY' ].value if self.params['DECAY'].freedom ==1 else 0.02
+        self.alpha_implicit = self.params[ 'ALPHA_IMPLICIT' ].value if self.params[ 'ALPHA_IMPLICIT'].freedom ==1 else 0
+        alpha_explicit_diff = self.params[ 'ALPHA_EXPLICIT_DIFF' ].value if self.params['ALPHA_EXPLICIT_DIFF'].freedom ==1 else 0.5 #TODO
+        self.alpha_explicit = self.alpha_implicit + alpha_explicit_diff
+        self.perseveration  = self.params[ 'PERSEVERATION' ].value  if  self.params['PERSEVERATION'].freedom ==1 else -1
+        self.horizon        = int( self.params[ 'HORIZON' ].value ) if  self.params['HORIZON'].freedom ==1 else 1
         self.beta           = self.params[ 'BETA' ].value
         self.discount       = self.params[ 'DISCOUNT' ].value
         self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
         self.error_cost     = self.params[ 'ERROR_COST' ].value
-        
+        self.time_penalty = self.s_time[ self.default_strategy ] + self.error_cost 
         
         
     ########################## 
@@ -49,8 +51,10 @@ class ILHP_Model( Model ):
         memory = self.memory if _memory == None else _memory
 
         # Decay => optimize by using np
-        for cmd in self.command_ids:
-            memory.hotkey_knowledge[ cmd ] += self.decay * ( 0 - memory.hotkey_knowledge[ cmd ] )
+        #for cmd in self.command_ids:
+        #    memory.hotkey_knowledge[ cmd ] += self.decay * ( 0 - memory.hotkey_knowledge[ cmd ] )
+
+        memory.hotkey_knowledge += self.decay * ( 0 - memory.hotkey_knowledge )
 
         # Implicit / Explicit Learning
         if step.action.strategy == Strategy.MENU : #or step.success == False :
@@ -69,8 +73,7 @@ class ILHP_Model( Model ):
 
     ##########################
     def quick_update_memory(self, knowledge, strategy, success):
-            new_knowledge = knowledge
-            new_knowledge += self.decay * ( 0 - new_knowledge )
+            new_knowledge = knowledge + self.decay * ( 0 - knowledge )
             if strategy == Strategy.MENU : #or success == False :
                 new_knowledge += self.alpha_implicit * ( self.max_knowledge - new_knowledge )
             else :
@@ -79,7 +82,7 @@ class ILHP_Model( Model ):
 
 
     ##########################
-    def default_strategy(self) :
+    def default_strategy_long(self) :
         if not Strategy.MENU in self.available_strategies :
             return Strategy.LEARNING
         return Strategy.MENU
@@ -90,9 +93,7 @@ class ILHP_Model( Model ):
         
         if self.horizon == 0 :
             p = np.zeros( len( self.available_strategies ) )
-            ds = self.default_strategy()
-            #index = self.available_strategies.index(ds)
-            index = np.where( self.available_strategies == ds )[0][0]
+            index = np.where( self.available_strategies == self.default_strategy )[0][0]
             p[ index ] = 1.
             return p
 
@@ -108,7 +109,8 @@ class ILHP_Model( Model ):
     ##########################
     def perseveration_vec( self, cmd ):
         #value_vec = np.zeros( len( self.available_strategies ) )
-        return np.array ( [ self.memory.perseveration_value[ cmd ][ s ] for s in self.available_strategies ] )
+        #return np.array ( [ self.memory.perseveration_value[ cmd ][ s ] for s in self.available_strategies ] )
+        return self.memory.perseveration_value[ cmd ]
 
         # for i, s in enumerate( self.available_strategies ):
         #     value_vec[ i ] = self.memory.perseveration[ encode_cmd_s( cmd, s ) ]
@@ -118,10 +120,11 @@ class ILHP_Model( Model ):
 
     ###########################
     def time(self, action, success):
-        t = self.s_time[ action.strategy ]
-        if success == False :
-            t += self.s_time[ self.default_strategy() ] + self.error_cost 
-        return t
+        return self.s_time[ action.strategy ] + (1-success) * self.time_penalty
+        # t = self.s_time[ action.strategy ]
+        # if success == False :
+        #     t += self.s_time[ self.default_strategy ] + self.error_cost 
+        # return t
 
     #########################
     def success(self,action):
@@ -144,7 +147,7 @@ class ILHP_Model( Model ):
             return [Strategy.HOTKEY]
         
         s_vec = self.available_strategies.copy()
-        if horizon <= 1 and not Strategy.LEARNING == self.default_strategy() :
+        if horizon <= 1 and not Strategy.LEARNING == self.default_strategy :
                 s_vec = np.setdiff1d( s_vec, Strategy.LEARNING )
         
         if history[-1] == Strategy.LEARNING and Strategy.MENU in self.available_strategies:
@@ -193,9 +196,9 @@ class ILHP_Model( Model ):
                 gv_error = self.goal_values_recursive(cmd, new_error_knowledge, horizon - 1, local_history)
                 #print("h=", horizon, "s: ", s_vec[i]," error gv: ", gv_error)
 
-                k = cur_knowledge if s_vec[i] == Strategy.HOTKEY else self.max_knowledge
-                t = time_correct * k + time_error * (1.-k)
-                gv = gv_correct * k + gv_error * (1. - k)
+                k  = cur_knowledge if s_vec[i] == Strategy.HOTKEY else self.max_knowledge
+                t  = time_correct * k + time_error * (1.-k)
+                gv = gv_correct   * k + gv_error * (1. - k)
                 #print("h=", horizon, "s: ", s_vec[i], "k:",k, time_correct, time_error, t, "gv:", gv )
                 gv_all[i] = t + self.discount * gv
             else:
@@ -215,9 +218,10 @@ class ILHP_Model( Model ):
 
     #########################
     def reset( self, command_ids, available_strategies ):
-        self.custom_reset_params()
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
+        self.default_strategy = self.default_strategy_long()
+        self.custom_reset_params()
         self.memory = ILHP_Model.Memory( len(command_ids), 3 )
             
         

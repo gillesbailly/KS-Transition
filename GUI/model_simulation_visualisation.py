@@ -73,7 +73,9 @@ class Model_Simulation_Visualisation( Serie2DGallery ):
         model_vec = list( model_df.model.unique() )
         model_vec.remove( 'Observations')
         n_cols = len( model_vec )
-        
+        #dependent variables: time, hotkey, success_plot, hotkey_success,
+        #independent variables: model, user_id, technique_name, block_id
+        #model_df = model_df.groupby([]) 
         
         for i, model_name in enumerate( model_vec ) :
             

@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea
 from PyQt5.QtCore import QCoreApplication
 
 from matplotlib_view import EpisodeView
+from matplotlib_view2 import LargeEpisodeView
+
 
 ######################################
 #                                    #
@@ -20,6 +22,32 @@ class User_Overview(QScrollArea) :
         self.resize( 800, 400 )
         self.setMinimumWidth(250)
         
+
+    ##################################
+    def set_cmd_users_df(self, _users_df) :
+        self.container = QWidget()
+        self.l = QVBoxLayout()
+        self.container.setLayout( self.l )
+        self.setWidget( self.container )
+        self.container.show()
+        users_df = _users_df.copy()
+        users_df[ 'bounded_time' ] = np.where( users_df['time'] > 10, 10, users_df['time'] )
+        user_vec = users_df.user_id.unique()
+        first_time = True
+        for i, user_id in enumerate( user_vec ) : 
+            
+            if first_time:
+                first_time = False
+                view = LargeEpisodeView()
+                view.canvas.hide()
+            view = LargeEpisodeView()
+            df = users_df[ users_df.user_id == user_id ]
+            technique_name = df.technique_name.unique()[0]
+            view.set_user_df( df, user_id, technique_name )
+            self.l.addWidget( view.canvas )
+            QCoreApplication.processEvents()
+        self.hide()
+        self.show()
 
     ##################################
     def set_users_df(self, _users_df) :

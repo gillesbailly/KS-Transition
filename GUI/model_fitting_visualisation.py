@@ -111,6 +111,7 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         
         fit_df = model_res_vec_to_data_frame( model_result_vec )
         df = fit_df.copy()
+
         df['log_likelihood'] = - df['log_likelihood'] 
 
         model_color = dict()
@@ -118,11 +119,11 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         model_color[ 'RW2' ] = [255/255, 204/255, 1, 1]
         model_color[ 'CK' ] = [1, 153/255, 1, 1]
         model_color[ 'CK2' ] = [1, 153/255, 1, 1]
-        model_color[ 'RW_CK' ] = [153/255, 51/255, 1, 1]
+        model_color[ 'RWCK' ] = [153/255, 51/255, 1, 1]
         model_color[ 'Observations' ] = [1,1,1,1]
         model_color[ 'random' ] = [1,1,153/255,1]
         model_color[ 'ILHP' ] = [153/255,0,0,1]
-
+        model_color[ 'ILHP2' ] = [153/255,0,0,1]
 
         dependent_variable = [ '- Log Likelihood', 'BIC' ]
         for i, v in enumerate( dependent_variable ) :
@@ -131,6 +132,7 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
             sns.barplot( x='user_id', y=y_value, hue="model", palette= model_color, data = df )
             ax.set_ylabel( v )
             ax.set_xlabel( "Participant Id" )
+            ax.set_title( v )
             if v == 'BIC': 
                  ax.legend( framealpha = 0, fontsize='x-small' )
             else:

@@ -2,34 +2,35 @@ import numpy as np
 import time as TIME
 import pandas as pd
 from scipy.optimize import *
+import cProfile
 
 from parameters_export import *
 from util import *
 
 
-##########################################
-#                                        #
-#               FIT OUTPUT               #
-#                                        #
-##########################################
-class Fit_Output( object ):
+# ##########################################
+# #                                        #
+# #               FIT OUTPUT               #
+# #                                        #
+# ##########################################
+# class Fit_Output( object ):
     
-    ######################################
-    def __init__( self, sequence_length) :
-        self.prob = np.zeros( sequence_length )
-        self.time = 0
+#     ######################################
+#     def __init__( self, sequence_length) :
+#         self.prob = np.zeros( sequence_length )
+#         self.time = 0
 
-##########################################
-#                                        #
-#           FIT OUTPUT DEBUG             #
-#                                        #
-##########################################
-class Fit_Output_Debug( Fit_Output ):
+# ##########################################
+# #                                        #
+# #           FIT OUTPUT DEBUG             #
+# #                                        #
+# ##########################################
+# class Fit_Output_Debug( Fit_Output ):
     
-    ######################################
-    def __init__( self, sequence_length) :
-        super().__init__( sequence_length )
-        self.output = Model_Output_Debug( sequence_length )
+#     ######################################
+#     def __init__( self, sequence_length) :
+#         super().__init__( sequence_length )
+#         self.output = Model_Output_Debug( sequence_length )
 
         
 ##########################################
@@ -46,41 +47,50 @@ class Individual_Model_Fitting( object ):
         self.model = None
 
 
+    # ######################################
+    # def run( self ):
+    #     res = Fit_Output( len( self.user_input ) )
+    #     for i, (cmd, action, time, success) in enumerate( zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) ) :                
+    #         res.prob[ i ] = self.model.action_prob( cmd, action )
+    #         user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
+    #         self.model.update_model( user_step )
+    #     return res
+
+
     ######################################
     def run( self ):
-        start = TIME.time()
-        res = Fit_Output( len( self.user_input ) )
-        i = 0
-        for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
-            res.prob[ i ] = self.model.action_prob( cmd, action )
+        action_prob = np.zeros( len( self.user_input ) )
+        for i, (cmd, action, time, success) in enumerate( zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) ) :                
+            action_prob[ i ] = self.model.action_prob( cmd, action )
             user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
             self.model.update_model( user_step )
-            i = i + 1
-        res.time = TIME.time() - start
-        return res
-
+        return action_prob
 
     ######################################
     def run_debug( self ):
-        start = TIME.time()
-        res = Fit_Output_Debug( len( self.user_input ) )
-        i = 0
-        for cmd, action, time, success in zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) :                
-            res.prob[ i ] = self.model.action_prob( cmd, action )
-            prob_vec      = self.model.action_probs( cmd )
-            a_vec = self.model.get_actions_from( cmd )
-            probs = values_long_format(a_vec, prob_vec)
-            # res.output.menu[ i ]     = probs[ Strategy.MENU ]
-            # res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
-            # res.output.learning[ i ] = probs[ Strategy.LEARNING ]
+        #start = TIME.time()
+        #res = Fit_Output_Debug( len( self.user_input ) )
+        n = len( self.user_input )
+        action_prob  = np.zeros( n )    #
+        actions_prob = np.zeros( ( n, 3 ) ) #n trials x 3 strategies
+        for i, (cmd, action, time, success) in enumerate( zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) ) :                
+
+            actions_prob[ i ] = self.model.action_probs( cmd )
+            action_prob[ i ]  = actions_prob[ i ][ action.strategy ]
+            #[ action.strategy ]  = self.model.action_prob( cmd, action )
+            #prob_vec  = self.model.action_probs( cmd )
+            #a_vec = self.model.get_actions_from( cmd )
+            #probs = values_long_format(a_vec, prob_vec)
+            #res.output.menu[ i ]     = probs[ Strategy.MENU ]
+            #res.output.hotkey[ i ]   = probs[ Strategy.HOTKEY ]
+            #res.output.learning[ i ] = probs[ Strategy.LEARNING ]
             # res.output.meta_info_1[ i ] = self.model.meta_info_1( cmd )
             # res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
 
             user_step = StepResult( cmd, Action( cmd, action.strategy ),  time, success )
             self.model.update_model( user_step )
-            i = i + 1
-        res.time = TIME.time() - start
-        return res
+        #res.time = TIME.time() - start
+        return action_prob, actions_prob
 
 
 
@@ -108,6 +118,8 @@ class Model_Fitting( object ):
         timestamp    = TIME.strftime("%Y-%m-%d-%H-%M-%S", TIME.gmtime() )
         result_vec   = []
         user_id_vec  = [ user_data.id for user_data in self.user_data_vec ]
+        p = cProfile.Profile()
+        p.enable()
         for model in self.model_vec:
             model_result = Model_Result.create( model.name, np.array( user_id_vec ), self.debug )
             model_result.n_parameters = model.params.n( Freedom.USER_FREE )   
@@ -133,7 +145,7 @@ class Model_Fitting( object ):
                 res = differential_evolution(self.to_minimize, bounds = free_param_bnds_vec, args = (free_param_name_vec, self.method, available_strategies ) )
             
                 end = TIME.time()
-                print("optmize the model: ", model.name, "on user: ", user_data.id, "in ",  end - start,"s")
+                print("optmize the model: ", model.name, "on user: ", user_data.id, "in ",  round(end - start, 2),"s")
                 print( res )
 
                 parameters = Parameters( model.name, model.default_parameters_path() )
@@ -145,8 +157,9 @@ class Model_Fitting( object ):
                 model_result.time[ i ]           = end - start
                 model_result.parameters[ i ]     = parameters
                 self.backup_parameters( model_result, timestamp ) 
-                result_vec.append( model_result )
-        
+            result_vec.append( model_result )
+        p.disable()
+        p.print_stats()
         return result_vec
 
 
@@ -156,11 +169,12 @@ class Model_Fitting( object ):
         for name, value in zip( param_name, param_value ):
              method.model.params[ name ].value = value
         method.model.reset( self.command_ids, available_strategies )
-        goodness_of_fit = method.run()
-        if self.debug_var > - log_likelihood( goodness_of_fit.prob ) :
-            self.debug_var = - log_likelihood( goodness_of_fit.prob )
+        action_prob_vec = method.run()
+        ll = log_likelihood( action_prob_vec )
+        if self.debug_var > - ll :
+            self.debug_var = - ll
             print( self.debug_var )
-        return - log_likelihood( goodness_of_fit.prob )
+        return - ll
 
     
     
@@ -187,16 +201,19 @@ class Model_Fitting( object ):
                 self.method.user_input  = user_data.cmd
                 self.method.user_output = user_data.output
                 
-                goodness_of_fit = None
+                action_prob_vec  = None
+                actions_prob_vec = None
                 if self.debug :
-                    goodness_of_fit = self.method.run_debug()
-                    model_result.output[ i ] =  goodness_of_fit.output
-                    model_result.prob[ i ]   =  goodness_of_fit.prob
+                    action_prob_vec, actions_prob_vec = self.method.run_debug()
+                    #model_result.output[ i ] =  goodness_of_fit.output
+                    #model_result.prob[ i ]   =  goodness_of_fit.prob
                 else :
-                    goodness_of_fit = self.method.run()
+                    action_prob_vec = self.method.run()
 
-                model_result.log_likelihood[ i ] = log_likelihood( goodness_of_fit.prob )
-                model_result.time[ i ] = goodness_of_fit.time
+                model_result.prob[ i ]   = action_prob_vec
+                model_result.output[ i ] = actions_prob_vec 
+                model_result.log_likelihood[ i ] = log_likelihood( action_prob_vec )
+                #model_result.time[ i ] = goodness_of_fit.time
             
             model_result.whole_time = TIME.time() - start
             result.append( model_result )
