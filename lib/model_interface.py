@@ -13,15 +13,19 @@ import copy
 class Model(object):
 
     ######################################
-    def __init__( self, name ):
-        self.name = name
-        self.description = 'Model description is empty'
-        #path = './parameters/'
-        #ext = '_model.csv'
-        self.params = Parameters( name, self.default_parameters_path() )
+    def __init__( self, name = 'model', variant_name = '' ):
+        self.name   = name               # name of the model 
+        self.variant_name = variant_name    # name of the variant 
+        self.description  = 'Model description is empty'
+        self.command_ids = []
+        self.params = Parameters( self.long_name()  , self.default_parameters_path() )
+        self.all_strategies = [Strategy.MENU, Strategy.HOTKEY, Strategy.LEARNING]
         self.available_strategies = [ Strategy.HOTKEY ]
+        self.present_strategies = np.array([0,1,0])   # for optimisation
         self.max_time = 7.0
 
+    def long_name( self ):
+        return self.name if self.variant_name == '' else self.name + '_' + self.variant_name 
 
     ##########################################################################
     # return the proabability of the given action to be chosen               #
@@ -33,15 +37,9 @@ class Model(object):
     #    - prob (float): the probability to choose this action               #
     ########################################################################## 
     def action_prob( self, cmd, action ):
-        action_vec = self.get_actions_from( cmd )
-        prob = self.action_probs( cmd )
-        for i in range(0, len(action_vec)):
-            action_res = action_vec[i]
-            if action_res.cmd == action.cmd and action_res.strategy == action.strategy:
-                return prob[i]
-        raise ValueError("The action has not been found....", action, action_vec)
-        return -1
-    
+        prob = self.action_probs( cmd ) #[0.3,0.3,0.3] or [0, 0.5, 0.5]
+        return prob[ action.strategy ]
+        
     
     ##########################################################################
     # Update the internal variables of the model/agent                       #
@@ -100,7 +98,7 @@ class Model(object):
     ########################################################################## 
     def select_strategy( self, cmd ):
         probs   = self.action_probs( cmd )
-        return self.choice( self.available_strategies, probs ), probs
+        return self.choice( self.all_strategies, probs ), probs
 
 
     ##########################################################################
@@ -117,9 +115,6 @@ class Model(object):
     def action_probs(self, cmd ):
         raise ValueError(" method to implement")
 
-
-
-    
 
   
     ###########################
@@ -145,31 +140,37 @@ class Model(object):
 
     ######################################
     def default_parameters_path( self ):
-        return './parameters/' + self.name + '_model.csv'
+        return './parameters/' + self.long_name() + '_model.csv'
 
-    ###########################
-    def get_params( self ):
-        return self.params
+    # ###########################
+    # def get_params( self ):
+    #     return self.params
 
     ###########################
     def get_param_value_str( self ):
         return self.params.values_str()
 
-    ###########################
-    def set_params( self, params ):
-        self.params = params
+    # ###########################
+    # def set_params( self, params ):
+    #     self.params = params
 
-    ###########################
-    def n_strategy( self ):
-        return len( self.available_strategies )
+    # ###########################
+    # def n_strategy( self ):
+    #     return len( self.available_strategies )
     
     ###########################
     def set_available_strategies( self, strategies ):
         self.available_strategies = strategies.copy()
+        self.present_strategies = np.zeros( 3, dtype=int )
+        for s in self.available_strategies:
+            #print(s, self.present_strategies )
+            self.present_strategies[ s ] = 1
+        self.default_strategy = self.default_strategy_long()
+        #print("available_s:", self.available_strategies, 'present:', self.present_strategies, 'default:', self.default_strategy)
 
-    ###########################
-    def get_actions_from( self, cmd_id ):
-        return [ Action( cmd_id , s) for s in self.available_strategies ]
+    # ###########################
+    # def get_actions_from( self, cmd_id ):
+    #     return [ Action( cmd_id , s) for s in self.available_strategies ]
 
     ##############################
     def choice( self, options, probs ):
@@ -183,7 +184,7 @@ class Model(object):
 
 
     ##########################
-    def default_strategy(self) :
+    def default_strategy_long(self) :
         if not Strategy.MENU in self.available_strategies :
             return Strategy.LEARNING
         return Strategy.MENU

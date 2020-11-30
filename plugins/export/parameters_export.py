@@ -14,6 +14,12 @@ class Parameters_Export() :
         parameters_df = model_res_vec_to_data_frame( model_result_vec )
         Parameters_Export.write_from_df( parameters_df, path )
 
+    def name_long( name, variant ):
+        if variant == '':
+            return name
+        else:
+            return name + '_' + variant
+
 
     ##############################################
     # df should contains at least the columns:   #
@@ -28,13 +34,16 @@ class Parameters_Export() :
         if not set( ['model','parameter', 'value'] ).issubset(df.columns):
             raise ValueError(" the dataframe does not contain the columns model, parameter and value: ", df.columns )
         model_name_vec = df.model.unique()
+        variant_vec    = df.variant.unique()
         user_id_vec    = df.user_id.unique()
         #print( "write all ", df )
         for name in model_name_vec:
-            for user_id in user_id_vec:
-                sub_df = df[ (df.model == name ) & (df.user_id == user_id ) ]
-                if not sub_df.empty : 
-                    sub_df.to_csv( path + name + '_model_' + str( user_id ) + '.csv', index=False, mode = 'w' )
+            for variant in variant_vec :
+                for user_id in user_id_vec:
+                    sub_df = df[ (df.model == name ) & (df.variant == variant ) & (df.user_id == user_id ) ]
+                    if not sub_df.empty :
+
+                        sub_df.to_csv( path + Parameters_Export.name_long( name, variant ) + '_model_' + str( user_id ) + '.csv', index=False, mode = 'w' )
 
     ###############################
     def write_all( paramaters_vec, path ) :

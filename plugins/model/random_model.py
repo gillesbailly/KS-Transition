@@ -10,9 +10,8 @@ class Random_Model( Model ):
 
 
     ###############################
-    def __init__( self, name = "random" ):
-        super().__init__( name )
-        self.command_ids = []
+    def __init__( self, variant_name = '' ):
+        super().__init__( 'randowm', variant_name )
         
     ##########################
     def custom_reset_params(self) :

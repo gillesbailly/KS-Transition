@@ -19,26 +19,28 @@ class ILHP_Model( Model ):
 
 
     ###############################
-    def __init__( self, name = 'ILHP' ):
-        super().__init__( name )
+    def __init__( self, variant_name = '' ):
+        super().__init__( 'ILHP', variant_name )
         self.max_knowledge = 1.0
-        self.command_ids = []
-        self.default_strategy = Strategy.MENU
+        #self.default_strategy = Strategy.MENU
+        #self.present_strategies = np.array( [1,1,1]) #[MENU, HOKEY, LEARNING]
         
     ##########################
     def custom_reset_params(self) : 
         #print("custom reset params")
-        self.decay          = self.params[ 'DECAY' ].value if self.params['DECAY'].freedom ==1 else 0.02
-        self.alpha_implicit = self.params[ 'ALPHA_IMPLICIT' ].value if self.params[ 'ALPHA_IMPLICIT'].freedom ==1 else 0
-        alpha_explicit_diff = self.params[ 'ALPHA_EXPLICIT_DIFF' ].value if self.params['ALPHA_EXPLICIT_DIFF'].freedom ==1 else 0.5 #TODO
+
+        self.decay          = self.params.target_value( 'DECAY' )
+        self.alpha_implicit = self.params.target_value( 'ALPHA_IMPLICIT' )
+        alpha_explicit_diff = self.params.target_value( 'ALPHA_EXPLICIT_DIFF' )
         self.alpha_explicit = self.alpha_implicit + alpha_explicit_diff
-        self.perseveration  = self.params[ 'PERSEVERATION' ].value  if  self.params['PERSEVERATION'].freedom ==1 else -1
-        self.horizon        = int( self.params[ 'HORIZON' ].value ) if  self.params['HORIZON'].freedom ==1 else 1
-        self.beta           = self.params[ 'BETA' ].value
-        self.discount       = self.params[ 'DISCOUNT' ].value
-        self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
-        self.error_cost     = self.params[ 'ERROR_COST' ].value
-        self.time_penalty = self.s_time[ self.default_strategy ] + self.error_cost 
+        self.perseveration  = self.params.target_value( 'PERSEVERATION' )
+        self.horizon        = int( self.params.target_value( 'HORIZON' ) )
+        self.beta           = self.params.target_value( 'BETA' )
+        self.discount       = self.params.target_value(  'DISCOUNT' )
+        self.s_time         = [ self.params.target_value( 'MENU_TIME' ), self.params.target_value( 'HOTKEY_TIME' ), self.params.target_value( 'MENU_TIME' ) + self.params.target_value( 'LEARNING_COST' ) ]
+        self.error_cost     = self.params.target_value( 'ERROR_COST' )
+        self.time_penalty = self.s_time[ self.default_strategy ] + self.error_cost
+        
         
         
     ########################## 
@@ -50,10 +52,7 @@ class ILHP_Model( Model ):
     def update_model(self, step, _memory = None):
         memory = self.memory if _memory == None else _memory
 
-        # Decay => optimize by using np
-        #for cmd in self.command_ids:
-        #    memory.hotkey_knowledge[ cmd ] += self.decay * ( 0 - memory.hotkey_knowledge[ cmd ] )
-
+        # Decay 
         memory.hotkey_knowledge += self.decay * ( 0 - memory.hotkey_knowledge )
 
         # Implicit / Explicit Learning
@@ -63,13 +62,11 @@ class ILHP_Model( Model ):
             memory.hotkey_knowledge[ step.cmd ] += self.alpha_explicit * ( self.max_knowledge - memory.hotkey_knowledge[ step.cmd ] )
         
         # Perseveration (similar to Choice Kernel CK )
-        if self.perseveration >= 0 : 
-            for s in self.available_strategies:
-                a_t_k = 1. if step.action.strategy == s else 0.
-                alpha_perseveration = 1.
-                memory.perseveration_value[ step.cmd ][ s ] +=  alpha_perseveration * (a_t_k -  memory.perseveration_value[ step.cmd ] [ s ] )
-                #memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] +=  alpha_perseveration * (a_t_k -  memory.perseveration_value[ encode_cmd_s(step.cmd, s) ] )
-                
+        if self.perseveration > 0 :
+            a_t_k = np.zeros(3)
+            a_t_k[ step.action.strategy ] = 1
+            memory.perseveration_value[ step.cmd ] += (a_t_k -  memory.perseveration_value[ step.cmd ] )
+        
 
     ##########################
     def quick_update_memory(self, knowledge, strategy, success):
@@ -82,29 +79,34 @@ class ILHP_Model( Model ):
 
 
     ##########################
-    def default_strategy_long(self) :
-        if not Strategy.MENU in self.available_strategies :
-            return Strategy.LEARNING
-        return Strategy.MENU
+    # def default_strategy_long(self) :
+    #     if not Strategy.MENU in self.available_strategies :
+    #         return Strategy.LEARNING
+    #     return Strategy.MENU
  
 
     ##########################
     def action_probs(self, cmd ):
         
         if self.horizon == 0 :
-            p = np.zeros( len( self.available_strategies ) )
-            index = np.where( self.available_strategies == self.default_strategy )[0][0]
-            p[ index ] = 1.
+            p = np.zeros( 3 )
+            p[ self.default_strategy ] = 1. #valid even if technique == disable
             return p
 
         cur_knowledge = self.memory.hotkey_knowledge[ cmd ]
         value_vec = self.goal_values_recursive(cmd, cur_knowledge, self.horizon,[])
         reward_vec = 20 - value_vec #TODO What is this 20 (but I guess it is useless)
-        Q_values = reward_vec 
-        if self.perseveration >= 0 :
-            Q_values = (1.- self.perseveration) * reward_vec + self.perseveration * self.perseveration_vec( cmd )
+        #Q_values = reward_vec
+        
+        #ensure the Q_value vector has a length  == 3
+        Q_values = np.zeros(3)
+        for s, r in zip( self.available_strategies, reward_vec ):
+            Q_values[ s ] = r
 
-        return soft_max( self.beta, Q_values)
+        if self.perseveration > 0 :
+            Q_values = (1.- self.perseveration) * Q_values + self.perseveration * self.perseveration_vec( cmd )
+
+        return soft_max3( self.beta, Q_values, self.present_strategies )
 
     ##########################
     def perseveration_vec( self, cmd ):
@@ -148,10 +150,10 @@ class ILHP_Model( Model ):
         
         s_vec = self.available_strategies.copy()
         if horizon <= 1 and not Strategy.LEARNING == self.default_strategy :
-                s_vec = np.setdiff1d( s_vec, Strategy.LEARNING )
+            s_vec = np.setdiff1d( s_vec, Strategy.LEARNING, assume_unique= True )
         
         if history[-1] == Strategy.LEARNING and Strategy.MENU in self.available_strategies:
-            s_vec = np.setdiff1d( s_vec, Strategy.MENU )
+            s_vec = np.setdiff1d( s_vec, Strategy.MENU, assume_unique= True )
 
         return s_vec
 
@@ -220,7 +222,7 @@ class ILHP_Model( Model ):
     def reset( self, command_ids, available_strategies ):
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
-        self.default_strategy = self.default_strategy_long()
+        #self.default_strategy = self.default_strategy_long()
         self.custom_reset_params()
         self.memory = ILHP_Model.Memory( len(command_ids), 3 )
             

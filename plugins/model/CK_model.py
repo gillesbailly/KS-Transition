@@ -12,9 +12,8 @@ class CK_Model( Model ):
 
 
     ###############################
-    def __init__( self, name = "CK" ):
-        super().__init__( name )
-        self.command_ids = []
+    def __init__( self, variant_name = '' ):
+        super().__init__( 'CK', variant_name )
         self.CK = np.zeros( (0,0 ) )
         
     ##########################
@@ -39,10 +38,13 @@ class CK_Model( Model ):
         cmd  = step.cmd
         
         #TODO
-        
-        for s in all_strategies: 
-            b = 1 if s == strategy else 0
-            self.CK[ cmd ][ s ] = self.CK[ cmd ][ s ] + self.ALPHA_CK * ( b - self.CK[ cmd ][ s ] ) 
+        b = np.zeros(3)
+        b[ strategy ] = 1.
+        self.CK[ cmd ] = self.CK[ cmd ] + self.ALPHA_CK * ( b - self.CK[ cmd ] )
+
+        # for s in all_strategies: 
+        #     b = 1 if s == strategy else 0
+        #     self.CK[ cmd ][ s ] = self.CK[ cmd ][ s ] + self.ALPHA_CK * ( b - self.CK[ cmd ][ s ] ) 
         
 
 
@@ -59,7 +61,7 @@ class CK_Model( Model ):
     #                           len( probs ) = len(self.available_strategies)#
     ########################################################################## 
     def action_probs(self, cmd ):
-        return soft_max(self.BETA_CK, self.CK[ cmd ] )
+        return soft_max3(self.BETA_CK, self.CK[ cmd ], self.present_strategies )
 
 
 
@@ -115,7 +117,7 @@ class CK_Model( Model ):
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
         
-        self.CK = np.zeros( ( len(command_ids), len(self.available_strategies) ) )
+        self.CK = np.zeros( ( len(command_ids), 3 ) )
         
             
         

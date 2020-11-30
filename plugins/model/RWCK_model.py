@@ -13,16 +13,15 @@ class RWCK_Model( Model ):
 
 
     ###############################
-    def __init__( self, name = "RWCK" ):
-        super().__init__( name )
-        self.command_ids = []
+    def __init__( self, variant_name = '' ):
+        super().__init__( 'RWCK', variant_name )
         self.Q  = np.zeros( (0,0 ) )
         self.CK = np.zeros( (0,0 ) )
         
     ##########################
     def custom_reset_params(self) :
-        self.ALPHA_CK       = self.params[ 'ALPHA_RW' ].value
-        self.BETA_CK        = self.params[ 'BETA_RW' ].value
+        self.ALPHA_CK       = self.params[ 'ALPHA_CK' ].value
+        self.BETA_CK        = self.params[ 'BETA_CK' ].value
         self.ALPHA_RW       = self.params[ 'ALPHA_RW' ].value
         self.BETA_RW        = self.params[ 'BETA_RW' ].value
         self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
@@ -67,7 +66,7 @@ class RWCK_Model( Model ):
     #                           len( probs ) = len(self.available_strategies)#
     ########################################################################## 
     def action_probs( self, cmd ):
-        return double_soft_max(self.BETA_CK, self.CK[ cmd ], self.BETA_RW, self.Q[ cmd ] )
+        return double_soft_max(self.BETA_CK, self.CK[ cmd ], self.BETA_RW, self.Q[ cmd ],  self.present_strategies )
 
 
 
@@ -123,8 +122,8 @@ class RWCK_Model( Model ):
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
         
-        self.Q = np.zeros( ( len(command_ids), len(self.available_strategies) ) )
-        self.CK = np.zeros( ( len(command_ids), len(self.available_strategies) ) )
+        self.Q  = np.zeros( ( len( command_ids ), 3 ) )
+        self.CK = np.zeros( ( len( command_ids ), 3 ) )
         
         
             

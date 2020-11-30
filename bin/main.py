@@ -1,7 +1,8 @@
 import sys
 import time as TIME
-import numpy as np
 import timeit
+import numpy as np
+
 import os.path
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QCoreApplication
@@ -13,7 +14,7 @@ sys.path.append("./plugins/loader/")
 sys.path.append("./plugins/export/")
 sys.path.append("./plugins/model/")
 
-
+import util
 from user_data_loader import *
 from user_overview import User_Overview
 #from matplotlib_view import *
@@ -31,7 +32,7 @@ from model_fit import Model_Fitting
 from model_simulation import Model_Simulation
 from model_fitting_visualisation import *
 from model_simulation_visualisation import *
-from parameter_overview import *
+from parameter_view import *
 from parameters_export import Parameters_Export
 from parameters_loader import Parameters_Loader
 
@@ -74,13 +75,33 @@ def show_simulation_details( simulation_explorer, simulation_res, user_id ):
 #                       MAIN                          #
 #######################################################
 if __name__=="__main__":
-    
+
+
+    # strategies = np.array([1,2,3])
+
+    # print( timeit.timeit( 'util.soft_max(2, np.array([2,3]) )', number =10000, setup='import numpy as np; import util'  ) )
+    # print( util.soft_max(2, np.array([2,3]) ) )
+
+    # #print( timeit.timeit( 'util.soft_max2(2, np.array([0,2,3]), 1 )', number =10000, setup='import numpy as np; import util'  ) )
+    # #print( util.soft_max2( 2, np.array([0,2,3]), 1 ), np.sum( util.soft_max2( 2, np.array([0,2,3]), 1 ) )  )
+
+    # #print( timeit.timeit( 'util.soft_max2(2, np.array([2,3]) )', number =10000, setup='import numpy as np; import util'  ) )
+    # #print( util.soft_max( 2, np.array([2,3]) ), np.sum( util.soft_max( 2, np.array([2,3]) ) )  )
+
+    # print( timeit.timeit( 'util.soft_max3(2, np.array([0,2,3]) )', number =10000, setup='import numpy as np; import util'  ) )
+    # print( util.soft_max3( 2, np.array([0,2,3]) ), np.sum( util.soft_max3( 2, np.array([0,2,3]) ) )  )
+
+    # print( timeit.timeit( 'util.soft_max3(2, np.array([0,2,3]), np.array([0,1,1]) )', number =10000, setup='import numpy as np; import util'  ) )
+    # print( util.soft_max3( 2, np.array([0,2,3]), np.array([0,1,1]) ), np.sum( util.soft_max3( 2, np.array([0,2,3]), np.array([0,1,1]) ) )  )
+
+
+    # exit(0)
     parser = argparse.ArgumentParser()
     #parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
     parser.add_argument("-m", "--models", help="parameters", choices=['RW', 'CK', 'RWCK', 'ILHP'], default = '')
     parser.add_argument("-u", "--users", help="list of user ids", nargs="+", type=int )
     parser.add_argument("-t", "--technique", help="techniques", choices=['audio', 'disable', 'traditional'] )
-    parser.add_argument("-a", "--analyse", help="type of analyse", choices=['overview', 'fitting', 'simulation', 'optimisation', 'parameter'] )
+    parser.add_argument("-a", "--analyse", help="type of analyse", choices=['overview', 'fitting', 'simulation', 'optimisation', 'parameter', 'user'] )
     #parser.add_argument("-h", "--help", help="help" )
     
     args = parser.parse_args()
@@ -103,22 +124,28 @@ if __name__=="__main__":
     users_data = loader.load( path )                        #users_data: array< User_Data > (see util.py )
     # keep only a subset of the data 
     #( 5 participants with traditional and 5 participants with audio )
-    my_filter = Filter( user_min = 1, user_max = 1, techniques=["traditional", "audio"] )         
+    #my_filter = Filter( user_min = 1, user_max = 1, techniques=["traditional", "audio"] )  
+    my_filter = Filter( user_min = 0, user_max = 2 )  
+           
     user_data_vec = my_filter.filter( users_data )
     users_df = user_data_vec_to_data_frame( user_data_vec ) # users_df : DataFrame (seaborn)
     
     ###### Load models ##########
     #model_vec = [ CK_Model(), RW_Model(), RWCK_Model(), ILHP_Model() ] 
-    model_vec = [ ILHP_Model() ]
+    model_vec = [ RW_Model(), CK_Model(), RWCK_Model(), ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
+    #model_vec = [ ILHP_Model('T_I_H2_P'), ILHP_Model('T_I_H3_P'), ILHP_Model('T_I_H4_P') ]
+    #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), RWCK_Model()  ]
+    model_vec = [ ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
+    #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), ILHP_Model('T_H_P'), ILHP_Model('T_I_H_P')  ]
     
     print( "----------------------------------------------------------" )
     print( "\nlist of users id: ", users_df['user_id'].unique() )
-    print( "list of models: ", [model.name for model in model_vec ] )
+    print( "list of models: ", [model.long_name() for model in model_vec ] )
     print( "\n--------------------------------------------------------" )
     
     if 'optimisation' in analyse_vec:
         ###############################################################
-        #######  Optimize parameters (TODO 4.b) ##########
+        #######           PARAMETER ESTIMATION               ##########
         ###############################################################
         model_fitting       = Model_Fitting()
         model_fitting.debug = True
@@ -163,7 +190,7 @@ if __name__=="__main__":
 
     if 'fitting' in analyse_vec:
         #############################################################
-        #####           Model fitting  (TODO 3.c)          ##########
+        #####                 Model fitting                ##########
         #############################################################
         model_fitting  = Model_Fitting()
         model_fitting.parameters    = Parameters_Loader.load('./optimal_parameters/')
@@ -176,33 +203,51 @@ if __name__=="__main__":
         fitting_visu = Model_Fitting_Visualisation()
         fitting_visu.update_canvas( fitting_res )
         explorer = Empirical_Panel()
-        show_fitting_details( explorer, fitting_res, users_df, 1 )
+        show_fitting_details( explorer, fitting_res, users_df, 2 )
     
         
 
 
     if 'simulation' in analyse_vec:
         ###############################################################
-        #######  Random Model: Model Simulation (TODO 5.b)   ##########
+        #######            MODEL SIMULTION                   ##########
         ###############################################################
-        parameters = Parameters_Loader.load('./optimal_parameters/')
         model_simulation = Model_Simulation()
         model_simulation.command_ids   = range(0,14)
         model_simulation.user_data_vec = user_data_vec
         model_simulation.model_vec     = model_vec
+        model_simulation.n_simulations = 10
         model_simulation.parameters    = Parameters_Loader.load('./optimal_parameters/')
         simulation_res = model_simulation.run()
         # # display the results
         simulation_visu = Model_Simulation_Visualisation()
         simulation_visu.update_canvas( simulation_res, users_df )
         explorer = Empirical_Panel()
-        show_simulation_details( explorer, simulation_res, 1)
+        show_simulation_details( explorer, simulation_res, 4)
+
+
 
     if 'parameter' in analyse_vec:
         parameters = Parameters_Loader.load('./optimal_parameters/')
-        parameter_view = Parameter_Overview()
-        parameter_view.set_df( parameters )
+        parameter_view = Parameter_View()
+        parameter_view.analyze_by_model_param2( parameters )
         parameter_view.show()
+
+    if 'user' in analyse_vec:
+        users_data = loader.load( path )
+        columns = np.array( ['user', 'technique', 'n_hotkeys'] )
+        df = pd.DataFrame( columns = columns )    
+        row = dict()
+
+        for user in users_data:
+            strategy_list = [ action.strategy for action in user.output.action ] 
+            row[ 'user' ] = user.id
+            row[ 'technique' ] = user.technique_name
+            row[ 'n_hotkeys' ] = strategy_list.count(1)
+            #print( "user:",user.id, 'technique:', user.technique_name, 'n hotkeys:', strategy_list.count(1) )
+            df = df.append( row, ignore_index = True )
+        df.to_csv( './data/n_hotkeys.csv', index=False, mode = 'w' )
+        exit(0)
 
 
     sys.exit(app.exec_())

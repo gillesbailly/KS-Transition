@@ -13,9 +13,8 @@ class RW_Model( Model ):
 
 
     ###############################
-    def __init__( self, name = "RW" ):
-        super().__init__( name )
-        self.command_ids = []
+    def __init__( self, variant_name = '' ):
+        super().__init__( 'RW', variant_name )
         self.Q = np.zeros( (0,0 ) )
         
     ##########################
@@ -61,7 +60,8 @@ class RW_Model( Model ):
     #                           len( probs ) = len(self.available_strategies)#
     ########################################################################## 
     def action_probs( self, cmd ):
-        return soft_max(self.BETA_RW, self.Q[ cmd ] ) #see util.py
+        #print( self.BETA_RW, self.Q[ cmd ], self.present_strategies)
+        return soft_max3( self.BETA_RW, self.Q[ cmd ], self.present_strategies ) #see util.py
 
 
 
@@ -117,7 +117,7 @@ class RW_Model( Model ):
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
         
-        self.Q = np.zeros( ( len(command_ids), len(self.available_strategies) ) )
+        self.Q = np.zeros( ( len(command_ids), 3 ) )
         
             
         

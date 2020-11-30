@@ -6,13 +6,14 @@ from parameters import Parameter, Parameters
 
 ###########################
 def model_res_vec_to_data_frame( model_result_vec ):
-    columns = np.array( ['model', 'user_id', 'technique', 'parameter', 'value', 'freedom', 'log_likelihood', 'n_observations', 'n_parameters', 'BIC'] )
+    columns = np.array( ['model', 'variant', 'user_id', 'technique', 'parameter', 'value', 'min', 'max', 'default_value', 'freedom', 'comment', 'log_likelihood', 'n_observations', 'n_parameters', 'BIC'] )
     
     df = pd.DataFrame( columns = columns )    
     row = dict()
     for model_result in model_result_vec :
         for i, user_id in enumerate( model_result.user_id ) :
             row[ 'model' ]          = model_result.name
+            row[ 'variant' ]        = model_result.variant
             row[ 'n_parameters']    = model_result.n_parameters
             row[ 'user_id' ]        = user_id
             row[ 'technique']       = model_result.technique[i]
@@ -22,13 +23,21 @@ def model_res_vec_to_data_frame( model_result_vec ):
             if model_result.parameters[i]  :
                 for parameter in model_result.parameters[ i ].values() :
                     row[ 'parameter' ] = parameter.name
-                    row[ 'value'     ] = round( parameter.value, 5)
+                    row[ 'value' ] = round( parameter.value, 5)
+                    row[ 'min'   ] = parameter.min
+                    row[ 'max'   ] = parameter.max
+                    row[ 'default_value' ] = parameter.default_value                    
                     row[ 'freedom'   ] = parameter.freedom
+                    row[ 'comment' ] = parameter.comment
                     df = df.append( row, ignore_index = True )
             else:
                 row[ 'parameter' ] = 'none'
                 row[ 'value'     ] = 0
-                row[ 'freedom'   ] = -1
+                row[ 'min' ] = 0
+                row[ 'max' ] = 0
+                row[ 'default_value' ] = 0                    
+                row[ 'freedom'   ] = 0
+                row[ 'comment' ] = ''
                 df = df.append( row, ignore_index = True )
 
     return df
@@ -37,18 +46,22 @@ def model_res_vec_to_data_frame( model_result_vec ):
 
 ############################
 def parameters_from_df( df, model, user_id ):
-    df = df[ ( df.model == model ) & ( df.user_id == user_id ) ]
-    parameters = Parameters( name = model )
+    print("parameters_from_df for ", model.name, model.variant_name)
+    #print(df[df.model == 'RWCK'])
+
+    df = df[ ( df.model == model.name ) & ( df.variant == model.variant_name ) & ( df.user_id == user_id ) ]
+    #print( df )
+    parameters = Parameters( name = model.long_name() )
     n_row = df.shape[0]
     for i in range( 0, n_row ):
         parameter = Parameter()
         parameter.name    = df.at[i, 'parameter']
         parameter.value   = df.at[i, 'value'] #float( df.at[i, 'value'] ) if '.' in df.at[i, 'value'] else int( df.at[i, 'value'] )
-        # parameter.min     = float( df[i, 'value'] ) if '.' in row[2] else int( row[2] )
-        # parameter.max     = float( row[3] ) if '.' in row[3] else int( row[3] )
-        # parameter.step    = float( row[4] ) if '.' in row[4] else int( row[4] )
-        parameter.freedom = int(  df.at[i, 'freedom'] )
-        # parameter.comment = row[ 6 ]
+        parameter.min     = df.at[i, 'min']
+        parameter.max     = df.at[i, 'max']
+        parameter.default_value = df.at[i, 'default_value']
+        parameter.freedom = df.at[i, 'freedom']
+        parameter.comment = df.at[i, 'comment']
         parameters[ parameter.name ] = parameter
                 
     return parameters
@@ -111,6 +124,7 @@ def simulation_to_data_frame( model_simulation ):
         prob   = model_simulation.prob[k]
         output = model_simulation.output[k]
         df = pd.DataFrame({'model'          : model_simulation.name,
+                           'variant'        : model_simulation.variant,
                            'user_id'        : model_simulation.user_data.id,
                            'simulation'     : k,
                            'technique_name' : model_simulation.user_data.technique_name,

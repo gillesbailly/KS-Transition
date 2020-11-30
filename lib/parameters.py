@@ -40,12 +40,18 @@ class Parameters(dict):
                     parameter.value   = float( row[1] ) if '.' in row[1] else int( row[1] )
                     parameter.min     = float( row[2] ) if '.' in row[2] else int( row[2] )
                     parameter.max     = float( row[3] ) if '.' in row[3] else int( row[3] )
-                    parameter.step    = float( row[4] ) if '.' in row[4] else int( row[4] )
+                    parameter.default_value    = float( row[4] ) if '.' in row[4] else int( row[4] )
                     parameter.freedom = int( row[5] )
                     parameter.comment = row[ 6 ]
                     self[ parameter.name ] = parameter
                 else:
                     header = False
+
+
+    #########################
+    def target_value( self, name ):
+        return self[ name ].value if self[ name ].freedom == 1 else self[ name ].default_value 
+
     #########################
     def n( self, freedom_type = Freedom.USER_FREE ):
         res = 0

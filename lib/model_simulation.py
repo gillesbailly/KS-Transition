@@ -17,7 +17,8 @@ class Model_Simulation( object ):
         self.command_ids   = []                     # Type int
         self.model_vec     = []                     # Type Model_Interface
         self.user_data_vec = []                     # Type User_Data
-        self.parameters    = pd.DataFrame()         # DataFrame
+        self.n_simulations = 10                     # Type int
+        self.parameters    = pd.DataFrame()         # Type DataFrame
         self.debug  = debug
         self.debug_var = 0
     
@@ -62,19 +63,18 @@ class Model_Simulation( object ):
     #
     ######################################
     def run( self, parameters = None ):
-        n_simulations = 2
         result = []                               # Type Model_Result
         for model in self.model_vec:
             print("simulation of the model:", model)
             start = TIME.time()
             for i , user_data in enumerate( self.user_data_vec ):
-                simulation_result                = Simulation_Result( n_simulations, model.name )
-                simulation_result.user_data      = user_data
+                simulation_result           = Simulation_Result( self.n_simulations, model )
+                simulation_result.user_data = user_data
                 if not self.parameters.empty :
-                    params = parameters_from_df( self.parameters, model.name, user_data.id )
+                    params = parameters_from_df( self.parameters, model, user_data.id )
                     #print( "simulation run", model, user_data.id,  params.values_str() )
                     model.params = params
-                for k in range(0, n_simulations ):
+                for k in range(0, self.n_simulations ):
                     model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )
                     agent_output, actions_prob = self.simulate( model, user_data.cmd )
                     simulation_result.output[ k ] = agent_output

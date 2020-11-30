@@ -338,7 +338,10 @@ class Empirical_Panel ( QTabWidget ) :
 
         #print( "trace 1", users_df )
         for goodness_of_fit in goodness_of_fit_vec:
-            model_name = goodness_of_fit.name + " fitting"
+            model_name = goodness_of_fit.name
+            if goodness_of_fit.variant != '' :
+                model_name += '(' + goodness_of_fit.variant + ')'
+            model_name += "\t fitting"
             cmd_vec = users_df.cmd_input.unique()
             users_df[ 'bounded_time' ] = np.where( users_df['time'] > 10, 10, users_df['time'] )
             
@@ -352,17 +355,17 @@ class Empirical_Panel ( QTabWidget ) :
                     user_df = user_df.copy()
                     #print("goodness_of_fit.output", goodness_of_fit.output[ i ] )
                     output = goodness_of_fit.output[ i ]
+                    meta_info = goodness_of_fit.meta_info[ i ]
                     #print("goodness_of_fit.output", output.shape )
                     #print( output[:,0] )
                     user_df[ 'menu_prob' ]     = output[ :, 0 ] * 10
                     user_df[ 'hotkey_prob' ]   = output[ :, 1 ] * 10
                     user_df[ 'learning_prob' ] = output[ :, 2 ] * 10
                     user_df[ 'model_prob' ]    = goodness_of_fit.prob[ i ] * 10
+                    user_df[ 'meta_info' ]     = goodness_of_fit.meta_info[ i ] * 10
                     #user_df[ 'meta_info']      = goodness_of_fit.output[ i ].meta_info_1 
 
                     for cmd in cmd_vec :
-                        print("command")
-
                         df = user_df[ user_df.cmd_input == cmd ]
                         technique_name = list( df.technique_name.unique() )[ 0 ]
                         c = self.category_bis( user_id, cmd, technique_name )

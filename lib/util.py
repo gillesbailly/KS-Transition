@@ -70,8 +70,14 @@ class User_Output( object ):
 def soft_max( beta, values ):
     return np.exp( beta * values) / np.sum( np.exp( beta * values ), axis = 0)
 
-def double_soft_max( beta_1, values_1, beta_2, values_2, ):
-    return np.exp( beta_1 * values_1 + beta_2 * values_2 ) / np.sum( np.exp( beta_1 * values_1 + beta_2 * values_2 ), axis = 0)
+# def soft_max2( beta, values, index=0 ):
+#     return np.exp( beta * values) / np.sum( np.exp( beta * values )[index:], axis = 0)
+
+def soft_max3( beta, values, actions = np.array( [1,1,1] ) ):
+    return np.exp( beta * values) * actions / np.sum( np.exp( beta * values ) * actions, axis = 0)
+
+def double_soft_max( beta_1, values_1, beta_2, values_2, actions = np.array( [1,1,1]) ):
+    return np.exp( beta_1 * values_1 + beta_2 * values_2 ) * actions / np.sum( (np.exp( beta_1 * values_1 + beta_2 * values_2) * actions ), axis = 0)
 
 ########################################################################
 # Estimate the log likelihood  given a vector of probabilities         #
@@ -102,6 +108,17 @@ def bic_score( n_observations, k_parameters, likelihood ):
     return np.log( n_observations ) * k_parameters - 2 * likelihood
 
 
+# ########################################################################
+# # MSE                                                                  #
+# # Input:                                                               #
+# #    - predicted values: number of observations to predict             #
+# #    - k_parameters  : number of parameters of the model               #
+# #    - likelihood    : likelihood                                      #
+# # Ouptput:                                                             #
+# #    -  n * k - 2 likelihood                                           #
+# ########################################################################
+# def MSE( y_predicted, y_real ):
+#     return 0
 
 
 ########################
@@ -145,11 +162,11 @@ def compound_soft_max(beta_1, vec_1, beta_2, vec_2):
     return np.exp( vec_1 + vec_2 ) / np.sum( np.exp( vec_1 + vec_2 ), axis=0)
 
 
-def extended_soft_max(beta_vec, value_vec):
-    vec = np.zeros( len(value_vec[0]) )
-    for i in range(0, len(value_vec)):
-        vec += beta_vec[i] * value_vec[i]
-    return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
+# def extended_soft_max(beta_vec, value_vec):
+#     vec = np.zeros( len(value_vec[0]) )
+#     for i in range(0, len(value_vec)):
+#         vec += beta_vec[i] * value_vec[i]
+#     return np.exp( vec ) / np.sum( np.exp( vec ), axis = 0)
 
 
 
@@ -175,8 +192,9 @@ class Command(object):
 #                         #
 ###########################
 class Simulation_Result( object ):
-    def __init__( self, n, name = "" ):
-        self.name           = name     # str
+    def __init__( self, n, model ): #n: int, model: Model_Interface
+        self.name           = model.name          # str
+        self.variant        = model.variant_name  #str
         self.user_data      = None     # User_Data
         self.output         = np.array( [ None ] * n )      # User_Output        
         self.prob           = np.array( [ None ] * n )      # Model_Output
@@ -194,11 +212,13 @@ class Model_Result( object ):
     ############################
     def __init__( self, name = "" ):
         self.name           = name
+        self.variant        = ''
         self.user_id        = np.array( [], dtype=int)
         self.technique      = np.array( [] )
         self.log_likelihood = np.array( [] )
         self.prob           = []    # proability to peform the user action
         self.output         = []    # output: {menu, hotkey, learning } vector<float>, probability to perform the conrresponding strategy
+        self.meta_info      = []
         self.time           = []    #time of the simulation
         self.parameters     = []
         self.whole_time     = 0
@@ -206,10 +226,12 @@ class Model_Result( object ):
         self.n_parameters   = 0 
 
     ###################################
-    def create( model_name, user_id_vec, debug = False) :
-        model_result                = Model_Result( model_name )
+    def create( model, user_id_vec, debug = False) :
+        model_result                = Model_Result( model.name )
+        model_result.variant        = model.variant_name
         model_result.user_id        = user_id_vec
         model_result.technique      = np.array( [ None ] * len( user_id_vec) ) if debug else []
+        model_result.meta_info      = np.array( [ None ] * len( user_id_vec) ) if debug else []
         model_result.time           = np.zeros( len(user_id_vec ) ) 
         model_result.output         = np.array( [ None ] * len( user_id_vec) ) if debug else []
         model_result.prob           = np.array( [ None ] * len( user_id_vec) ) if debug else []

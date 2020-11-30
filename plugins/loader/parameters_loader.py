@@ -1,6 +1,7 @@
 from os import listdir
 from os.path import isfile, join
 import pandas as pd
+import numpy as np
 
 
 ##########################################
@@ -16,7 +17,7 @@ class Parameters_Loader():
         for file in file_vec:
             df_model_user = pd.read_csv( path+file )
             df = pd.concat( [df, df_model_user] )
-        
+        df = df.replace(np.nan, '', regex=True)
         return df
 
 

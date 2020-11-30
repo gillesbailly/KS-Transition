@@ -130,11 +130,11 @@ class EpisodeView( QObject ):
         self.ax.set_ylim( 0, 10 )
         self.ax.set_xlim( 0, 750 )
         if 'model_prob' in user_df.columns:
-            self.ax.plot( user_df['trial_id'], user_df['model_prob'], linewidth=3 , color = [1,1,1,1] )
+            self.ax.plot( user_df['trial_id'], user_df['model_prob'], linewidth=1 , color = [0.9,0.9,0.9,1] )
         self.ax.plot( user_df['trial_id'], user_df['menu_prob'], color = self.strategy_color[0] )
         self.ax.plot( user_df['trial_id'], user_df['hotkey_prob'], color = self.strategy_color[1] )
         self.ax.plot( user_df['trial_id'], user_df['learning_prob'], color = self.strategy_color[2] )
-         
+        self.ax.plot( user_df['trial_id'], user_df['meta_info'], color = [1,1,1,1] ) 
         self.ax.get_legend().remove()
         self.canvas.draw()
         self.canvas.show()
