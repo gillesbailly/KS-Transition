@@ -19,10 +19,10 @@ class RW_Model( Model ):
         
     ##########################
     def custom_reset_params(self) :
-        self.ALPHA_RW       = self.params[ 'ALPHA_RW' ].value
-        self.BETA_RW        = self.params[ 'BETA_RW' ].value
-        self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
-        self.error_cost     = self.params[ 'ERROR_COST' ].value
+        self.ALPHA_RW   = self.params[ 'ALPHA_RW' ].value
+        self.BETA_RW    = self.params[ 'BETA_RW' ].value
+        self.s_time     = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
+        self.error_cost = self.params[ 'ERROR_COST' ].value
         
   
     ##########################################################################
@@ -33,17 +33,14 @@ class RW_Model( Model ):
     #                                                                        #
     ########################################################################## 
     def update_model(self, step, _memory = None):
-        all_strategies = self.available_strategies
         strategy = step.action.strategy
+        cmd      = step.cmd
         time     = step.time
-        self.min_time = 0.4
-        cleaned_time = step.time if step.time < self.max_time else self.max_time
-        reward = 1. - math.log(1+ cleaned_time - self.min_time) / math.log(1+ self.max_time - self.min_time)
-        cmd    = step.cmd
-        
-        # TODO 6
-        #self.Q[ cmd ][ strategy ] = 
-        self.Q[ cmd ] [ strategy] = self.Q[ cmd ][ strategy ] + self.ALPHA_RW * ( reward - self.Q[ cmd ][ strategy ] )
+        cleaned_time = time if time < self.max_time else self.max_time
+        reward = self.max_time - cleaned_time 
+        self.Q[ cmd ] [ strategy ] = self.Q[ cmd ][ strategy ] + self.ALPHA_RW * ( reward - self.Q[ cmd ][ strategy ] )
+        # if cmd==0 :
+        #     print( 'time', time, 'reward', reward, 'Q', self.Q[ 0 ] )
 
     
 
@@ -60,7 +57,8 @@ class RW_Model( Model ):
     #                           len( probs ) = len(self.available_strategies)#
     ########################################################################## 
     def action_probs( self, cmd ):
-        #print( self.BETA_RW, self.Q[ cmd ], self.present_strategies)
+        # if cmd == 0 :
+        #     print( self.BETA_RW, self.Q[ cmd ], self.present_strategies)
         return soft_max3( self.BETA_RW, self.Q[ cmd ], self.present_strategies ) #see util.py
 
 
@@ -116,7 +114,6 @@ class RW_Model( Model ):
         self.custom_reset_params()
         self.command_ids = command_ids
         self.set_available_strategies( available_strategies )
-        
         self.Q = np.zeros( ( len(command_ids), 3 ) )
         
             

@@ -41,6 +41,8 @@ class Individual_Model_Fitting( object ):
         for i, (cmd, action, time, success) in enumerate( zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) ) :                
 
             actions_prob[ i ] = self.model.action_probs( cmd )
+            # if cmd == 0 :
+            #     print( 'prob:', actions_prob[i])
             action_prob[ i ]  = actions_prob[ i ][ action.strategy ]
             meta_info[ i ] = self.model.meta_info_1( cmd )
             # res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )

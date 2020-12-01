@@ -15,8 +15,8 @@ class RWCK_Model( Model ):
     ###############################
     def __init__( self, variant_name = '' ):
         super().__init__( 'RWCK', variant_name )
-        self.Q  = np.zeros( (0,0 ) )
-        self.CK = np.zeros( (0,0 ) )
+        self.Q  = np.zeros( ( 0,0 ) )
+        self.CK = np.zeros( ( 0,0 ) )
         
     ##########################
     def custom_reset_params(self) :
@@ -36,20 +36,21 @@ class RWCK_Model( Model ):
     #                                                                        #
     ########################################################################## 
     def update_model(self, step, _memory = None):
-        all_strategies = self.available_strategies
         strategy = step.action.strategy
-        time     = step.time
-        self.min_time = 0.4
-        cleaned_time = step.time if step.time < self.max_time else self.max_time
-        reward = 1. - math.log(1+ cleaned_time - self.min_time) / math.log(1+ self.max_time - self.min_time)
         cmd      = step.cmd
+        time     = step.time
+        cleaned_time = time if time < self.max_time else self.max_time
+        rw_reward   = self.max_time - cleaned_time  # in [0, self.max_time]
+        ck_reward = np.zeros(3)
+        #########################################################
+        # CK-values in [0; max_time]; 
+        # we use max_time as Q-values are also in [0; max_time] (Rescolar_Wagner)
+        # so we can more easily compare Alpha and Beta for these models
+        # in practice, it changes nothing as we use a softmax
+        ck_reward[ strategy ]  = self.max_time 
         
-        # TODO 7
-        self.Q[ cmd ] [ strategy] = self.Q[ cmd ][ strategy ] + self.ALPHA_RW * ( reward - self.Q[ cmd ][ strategy ] )
-        for s in all_strategies: 
-            b = 1 if s == strategy else 0
-            self.CK[ cmd ][ s ] = self.CK[ cmd ][ s ] + self.ALPHA_CK * ( b - self.CK[ cmd ][ s ] ) 
-
+        self.CK[ cmd ] = self.CK[ cmd ] + self.ALPHA_CK * ( ck_reward - self.CK[ cmd ] )
+        self.Q[ cmd ] [ strategy ] = self.Q[ cmd ][ strategy ] + self.ALPHA_RW * ( rw_reward - self.Q[ cmd ][ strategy ] )
 
 
 

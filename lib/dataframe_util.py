@@ -46,9 +46,7 @@ def model_res_vec_to_data_frame( model_result_vec ):
 
 ############################
 def parameters_from_df( df, model, user_id ):
-    print("parameters_from_df for ", model.name, model.variant_name)
-    #print(df[df.model == 'RWCK'])
-
+    
     df = df[ ( df.model == model.name ) & ( df.variant == model.variant_name ) & ( df.user_id == user_id ) ]
     #print( df )
     parameters = Parameters( name = model.long_name() )

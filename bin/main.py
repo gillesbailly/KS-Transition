@@ -75,7 +75,10 @@ def show_simulation_details( simulation_explorer, simulation_res, user_id ):
 #                       MAIN                          #
 #######################################################
 if __name__=="__main__":
-
+    
+    
+    #print( res )
+    #exit(0)    
 
     # strategies = np.array([1,2,3])
 
@@ -125,17 +128,18 @@ if __name__=="__main__":
     # keep only a subset of the data 
     #( 5 participants with traditional and 5 participants with audio )
     #my_filter = Filter( user_min = 1, user_max = 1, techniques=["traditional", "audio"] )  
-    my_filter = Filter( user_min = 0, user_max = 2 )  
+    my_filter = Filter( user_min = 0, user_max =12 )  
            
     user_data_vec = my_filter.filter( users_data )
     users_df = user_data_vec_to_data_frame( user_data_vec ) # users_df : DataFrame (seaborn)
     
     ###### Load models ##########
-    #model_vec = [ CK_Model(), RW_Model(), RWCK_Model(), ILHP_Model() ] 
-    model_vec = [ RW_Model(), CK_Model(), RWCK_Model(), ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
+    model_vec = [ CK_Model(), RW_Model(), RWCK_Model() ] 
+    #model_vec = [  RW_Model()  ] 
+    #model_vec = [ RW_Model(), CK_Model(), RWCK_Model(), ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
     #model_vec = [ ILHP_Model('T_I_H2_P'), ILHP_Model('T_I_H3_P'), ILHP_Model('T_I_H4_P') ]
     #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), RWCK_Model()  ]
-    model_vec = [ ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
+    #model_vec = [ ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
     #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), ILHP_Model('T_H_P'), ILHP_Model('T_I_H_P')  ]
     
     print( "----------------------------------------------------------" )
@@ -203,7 +207,7 @@ if __name__=="__main__":
         fitting_visu = Model_Fitting_Visualisation()
         fitting_visu.update_canvas( fitting_res )
         explorer = Empirical_Panel()
-        show_fitting_details( explorer, fitting_res, users_df, 2 )
+        #show_fitting_details( explorer, fitting_res, users_df, 0 )
     
         
 

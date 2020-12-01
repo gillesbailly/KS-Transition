@@ -19,10 +19,10 @@ class CK_Model( Model ):
     ##########################
     def custom_reset_params(self) :
 
-        self.ALPHA_CK       = self.params[ 'ALPHA_CK' ].value
-        self.BETA_CK        = self.params[ 'BETA_CK' ].value
-        self.s_time         = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
-        self.error_cost     = self.params[ 'ERROR_COST' ].value
+        self.ALPHA_CK   = self.params[ 'ALPHA_CK' ].value
+        self.BETA_CK    = self.params[ 'BETA_CK' ].value
+        self.s_time     = [ self.params[ 'MENU_TIME' ].value, self.params[ 'HOTKEY_TIME' ].value, self.params[ 'MENU_TIME' ].value + self.params[ 'LEARNING_COST' ].value]
+        self.error_cost = self.params[ 'ERROR_COST' ].value
         
   
     ##########################################################################
@@ -30,22 +30,20 @@ class CK_Model( Model ):
     # Input:                                                                 #
     #    - stepResult (StepResult):                                          #
     #    - memory : ignore (used for code efficiency)                        #
-    #                                                                        #
+    # Formula                                                                #
     ########################################################################## 
     def update_model(self, step, _memory = None):
-        all_strategies = self.available_strategies
-        strategy       = step.action.strategy
-        cmd  = step.cmd
-        
-        #TODO
+        strategy = step.action.strategy
+        cmd      = step.cmd
         b = np.zeros(3)
-        b[ strategy ] = 1.
+
+        #########################################################
+        # CK-values in [0; max_time]; 
+        # we use max_time as Q-values are also in [0; max_time] (Rescolar_Wagner)
+        # so we can more easily compare Alpha and Beta for these models 
+        b[ strategy ] = self.max_time 
         self.CK[ cmd ] = self.CK[ cmd ] + self.ALPHA_CK * ( b - self.CK[ cmd ] )
 
-        # for s in all_strategies: 
-        #     b = 1 if s == strategy else 0
-        #     self.CK[ cmd ][ s ] = self.CK[ cmd ][ s ] + self.ALPHA_CK * ( b - self.CK[ cmd ][ s ] ) 
-        
 
 
     ##########################################################################
