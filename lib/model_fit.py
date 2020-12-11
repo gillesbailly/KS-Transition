@@ -41,8 +41,6 @@ class Individual_Model_Fitting( object ):
         for i, (cmd, action, time, success) in enumerate( zip( self.user_input, self.user_output.action, self.user_output.time, self.user_output.success ) ) :                
 
             actions_prob[ i ] = self.model.action_probs( cmd )
-            # if cmd == 0 :
-            #     print( 'prob:', actions_prob[i])
             action_prob[ i ]  = actions_prob[ i ][ action.strategy ]
             meta_info[ i ] = self.model.meta_info_1( cmd )
             # res.output.meta_info_2[ i ] = self.model.meta_info_2( cmd )
@@ -104,8 +102,9 @@ class Model_Fitting( object ):
         for model in self.model_vec:
             model.params = Parameters( model.long_name(), model.default_parameters_path() ) #needed to get the min and the max
             model_result = Model_Result.create( model, np.array( user_id_vec ), self.debug )
-            model_result.n_parameters = model.params.n( Freedom.USER_FREE )   
+ 
             for i , user_data in enumerate( self.user_data_vec ):
+                model.params = Parameters( model.long_name(), model.default_parameters_path() ) #needed to get the min and the max
                 model_result.n_observations[ i ] = len( user_data.cmd )
                 model_result.technique[ i ]      = user_data.technique_name
                 start = TIME.time()
@@ -120,37 +119,42 @@ class Model_Fitting( object ):
                 free_param_bnds_vec = []                    # Bounds for parameter values list( [min, max] )
                 for param in model.params.values(): 
                     if param.freedom == Freedom.USER_FREE :
-                        free_param_name_vec.append( param.name )
-                        free_param_bnds_vec.append( [ param.min, param.max ] )
+                        # The implicit parameter is useless as the users cannot perform MENU action
+                
+                        if not ( (user_data.technique_name == 'disable') and ( param.name == 'ALPHA_IMPLICIT' ) ) : 
+                            free_param_name_vec.append( param.name )
+                            free_param_bnds_vec.append( [ param.min, param.max ] )
                 self.debug_var = 1000000000
 
                 res = None
                 if self.is_ILHP_model_with_implicit_learning( model.name, free_param_name_vec ):
                     #nlc = NonlinearConstraint(self.ILPH_constr_f, 0.0, 1.0) #implicit + explicit = 1                  
                     linear_mat = np.zeros( len( free_param_name_vec ) )
-                    linear_mat[ self.alpha_implicit_index ] = 1
+                    linear_mat[ self.alpha_implicit_index ]      = -2
                     linear_mat[ self.alpha_explicit_diff_index ] = 1
                     print( free_param_name_vec, linear_mat )
-                    linear_constraint = LinearConstraint( linear_mat, 0, 1 )
+                    linear_constraint = LinearConstraint( linear_mat, 0, np.inf )
                     print("use constrained optimisation")
-                    res = differential_evolution(self.to_minimize,
-                                                constraints=(linear_constraint), 
-                                                bounds = free_param_bnds_vec, 
-                                                args = (free_param_name_vec, self.method, available_strategies ) )
+                    res = differential_evolution( self.to_minimize,
+                                                constraints = (linear_constraint), 
+                                                bounds      = free_param_bnds_vec, 
+                                                args        = (free_param_name_vec, self.method, available_strategies ) )
             
                 else:
                     res = differential_evolution(self.to_minimize, 
                                                 bounds = free_param_bnds_vec, 
-                                                args = (free_param_name_vec, self.method, available_strategies ) )
+                                                args   = (free_param_name_vec, self.method, available_strategies ) )
             
                 end = TIME.time()
-                print("optmize the model: ", model.long_name(), "on user: ", user_data.id, "in ",  round(end - start, 2),"s")
+                print("Parameter Estimation: ", model.long_name(), "on user: ", user_data.id, "in ",  round(end - start, 2),"s")
                 print( res )
 
                 parameters = Parameters( model.name, model.default_parameters_path() )
                 for name, value in zip( free_param_name_vec, res.x ):
-                    parameters[ name ].value = value
-                
+                    if name == 'HORIZON' :
+                        parameters[ name ].value = int( value )
+                    else:
+                        parameters[ name ].value = value
 
                 model_result.log_likelihood[ i ] = - res.fun
                 model_result.time[ i ]           = end - start
@@ -174,6 +178,7 @@ class Model_Fitting( object ):
         #print(ll)
         if self.debug_var > - ll :
             self.debug_var = - ll
+            print( method.model.params.values_str() )
             print( self.debug_var )
         return - ll
 
@@ -188,7 +193,6 @@ class Model_Fitting( object ):
             self.method.model = model
             user_id_vec  = [ user_data.id for user_data in self.user_data_vec ]
             model_result = Model_Result.create( model, np.array( user_id_vec ), self.debug )
-            model_result.n_parameters = model.params.n( Freedom.USER_FREE )
             start = TIME.time()
             
             for i , user_data in enumerate( self.user_data_vec ):
@@ -197,6 +201,7 @@ class Model_Fitting( object ):
                 if not self.parameters.empty :
                     params = parameters_from_df( self.parameters, model, user_data.id )
                     model.params = params
+                    print( "RUN METHOD", params.values_str() )
                 model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )
                 self.method.model = model
                 self.method.user_input  = user_data.cmd
@@ -207,16 +212,13 @@ class Model_Fitting( object ):
                 meta_info_vec = None
                 if self.debug :
                     action_prob_vec, actions_prob_vec, meta_info_vec = self.method.run_debug()
-                    #model_result.output[ i ] =  goodness_of_fit.output
-                    #model_result.prob[ i ]   =  goodness_of_fit.prob
+                    model_result.output[ i ] = actions_prob_vec
+                    model_result.meta_info[ i ] = meta_info_vec
                 else :
                     action_prob_vec = self.method.run()
-
                 model_result.prob[ i ]   = action_prob_vec
-                model_result.output[ i ] = actions_prob_vec 
                 model_result.log_likelihood[ i ] = log_likelihood( action_prob_vec )
-                model_result.meta_info[ i ] = meta_info_vec
-                #model_result.time[ i ] = goodness_of_fit.time
+                
             
             model_result.whole_time = TIME.time() - start
             result.append( model_result )

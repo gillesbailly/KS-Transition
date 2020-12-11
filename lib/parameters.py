@@ -70,7 +70,7 @@ class Parameters(dict):
                 first = False
             else:
                 res += ','
-            res += key + ':' + str( param.value )
+            res += key + ':' + str( round( param.value, 2 ) )
         return res
 
 

@@ -230,15 +230,15 @@ class Model_Result( object ):
         model_result                = Model_Result( model.name )
         model_result.variant        = model.variant_name
         model_result.user_id        = user_id_vec
-        model_result.technique      = np.array( [ None ] * len( user_id_vec) ) if debug else []
+        model_result.technique      = np.array( [ None ] * len( user_id_vec) ) #if debug else []
         model_result.meta_info      = np.array( [ None ] * len( user_id_vec) ) if debug else []
         model_result.time           = np.zeros( len(user_id_vec ) ) 
         model_result.output         = np.array( [ None ] * len( user_id_vec) ) if debug else []
-        model_result.prob           = np.array( [ None ] * len( user_id_vec) ) if debug else []
+        model_result.prob           = np.array( [ None ] * len( user_id_vec) ) #if debug else []
         model_result.parameters     = np.array( [ None ] * len( user_id_vec) ) 
         model_result.log_likelihood = np.zeros( len(user_id_vec ) )
         model_result.n_observations = np.zeros( len(user_id_vec ), dtype=int )
-        model_result.n_parameters   = 0
+        model_result.n_parameters   = model.params.n( Freedom.USER_FREE ) 
 
 
         return model_result

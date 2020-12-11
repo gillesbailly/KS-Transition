@@ -65,14 +65,13 @@ class Model_Simulation( object ):
     def run( self, parameters = None ):
         result = []                               # Type Model_Result
         for model in self.model_vec:
-            print("simulation of the model:", model)
+            print("simulation of the model:", model.long_name())
             start = TIME.time()
             for i , user_data in enumerate( self.user_data_vec ):
                 simulation_result           = Simulation_Result( self.n_simulations, model )
                 simulation_result.user_data = user_data
                 if not self.parameters.empty :
                     params = parameters_from_df( self.parameters, model, user_data.id )
-                    #print( "simulation run", model, user_data.id,  params.values_str() )
                     model.params = params
                 for k in range(0, self.n_simulations ):
                     model.reset( self.command_ids, strategies_from_technique( user_data.technique_name ) )

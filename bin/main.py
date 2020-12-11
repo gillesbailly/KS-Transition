@@ -33,10 +33,13 @@ from model_simulation import Model_Simulation
 from model_fitting_visualisation import *
 from model_simulation_visualisation import *
 from parameter_view import *
+from parameter_matrix_view import Parameter_Matrix_View
+from paper_figure import *
 from parameters_export import Parameters_Export
 from parameters_loader import Parameters_Loader
 
 #import seaborn as sns
+from scipy.optimize import *
 
 ##########################################################################
 # function used to see more details how well the model fits              #
@@ -71,14 +74,24 @@ def show_simulation_details( simulation_explorer, simulation_res, user_id ):
     simulation_explorer.show()
 
 
+def my_func( v ):
+    return (30-v[0])**2 +  (40-v[1])**2 + (70-v[2])**2
+
 #######################################################
 #                       MAIN                          #
 #######################################################
 if __name__=="__main__":
     
-    
-    #print( res )
-    #exit(0)    
+    # linear_mat = np.zeros( 3 )
+    # linear_mat[ 0 ] = 4
+    # linear_mat[ 1 ] = 1
+    # linear_constraint = LinearConstraint( linear_mat, 0, 40 )
+    # res = differential_evolution( my_func,
+    #                             constraints = (linear_constraint), 
+    #                             bounds      = [[0,100], [0,100], [0,100] ])
+                             
+    # print( res )
+    # exit(0)    
 
     # strategies = np.array([1,2,3])
 
@@ -104,7 +117,11 @@ if __name__=="__main__":
     parser.add_argument("-m", "--models", help="parameters", choices=['RW', 'CK', 'RWCK', 'ILHP'], default = '')
     parser.add_argument("-u", "--users", help="list of user ids", nargs="+", type=int )
     parser.add_argument("-t", "--technique", help="techniques", choices=['audio', 'disable', 'traditional'] )
-    parser.add_argument("-a", "--analyse", help="type of analyse", choices=['overview', 'fitting', 'simulation', 'optimisation', 'parameter', 'user'] )
+    parser.add_argument("-a", "--analyse", help="type of analyse", choices=['overview', 'fitting', 'simulation', 'optimisation', 'figure', 'parameter', 'user'] )
+    parser.add_argument("-n", "--min", help="min user id", type=int )
+    parser.add_argument("-x", "--max", help="max user id", type=int )
+    
+    
     #parser.add_argument("-h", "--help", help="help" )
     
     args = parser.parse_args()
@@ -119,6 +136,12 @@ if __name__=="__main__":
     analyse_vec = ['fitting', 'simulation']
     if args.analyse :
         analyse_vec = [ args.analyse ]
+    min_user_id = 0
+    max_user_id = 1
+    if args.min:
+        min_user_id = args.min
+    if args.max:
+        max_user_id = args.max
 
     
     #######  Load Empirical data ##########
@@ -128,8 +151,8 @@ if __name__=="__main__":
     # keep only a subset of the data 
     #( 5 participants with traditional and 5 participants with audio )
     #my_filter = Filter( user_min = 1, user_max = 1, techniques=["traditional", "audio"] )  
-    my_filter = Filter( user_min = 0, user_max =12 )  
-           
+    my_filter = Filter( user_min = min_user_id, user_max = max_user_id )  
+    #my_filter.users = [4,7]
     user_data_vec = my_filter.filter( users_data )
     users_df = user_data_vec_to_data_frame( user_data_vec ) # users_df : DataFrame (seaborn)
     
@@ -141,7 +164,10 @@ if __name__=="__main__":
     #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), RWCK_Model()  ]
     #model_vec = [ ILHP_Model('T_I'), ILHP_Model('T_I_P') ]
     #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), ILHP_Model('T_H_P'), ILHP_Model('T_I_H_P')  ]
-    
+    model_vec = [ ILHP_Model('T_I_H_P') ]
+    #model_vec = [ ILHP_Model('T'), ILHP_Model('T_I'), ILHP_Model('T_H'), ILHP_Model('T_P'), ILHP_Model('T_I_P'), ILHP_Model('T_I_H'), ILHP_Model('T_H_P'), ILHP_Model('T_I_H_P')  ]
+    #model_vec = [ ILHP_Model('H1-D_H1'), ILHP_Model('H1-D_H2'), ILHP_Model('H1-D_H3'), ILHP_Model('H1-D_H4'), ]
+
     print( "----------------------------------------------------------" )
     print( "\nlist of users id: ", users_df['user_id'].unique() )
     print( "list of models: ", [model.long_name() for model in model_vec ] )
@@ -160,6 +186,26 @@ if __name__=="__main__":
         # save parameters
         Parameters_Export.write(fitting_res, './optimal_parameters/')
         print("the optimisation is done")
+        exit(0)
+
+
+
+    if 'figure' in analyse_vec :
+        fitting_df = Parameters_Loader.load( './optimal_parameters_rwck/' )
+        path = './figures/'
+        ilhp_fitting_figures( fitting_df, path )
+
+        model_simulation = Model_Simulation()
+        model_simulation.command_ids   = range(0,14)
+        model_simulation.user_data_vec = user_data_vec
+        model_simulation.model_vec     = [ CK_Model(), RW_Model(), RWCK_Model() ] 
+        model_simulation.n_simulations = 10
+        model_simulation.parameters    = Parameters_Loader.load('./optimal_parameters_rwck/')
+        print( 'Run', model_simulation.n_simulations, 'simulations for each model and participant'  ) 
+        simulation_res = model_simulation.run()
+        simulation_df = simulation_vec_to_data_frame( simulation_res )
+        ilhp_simulation_figures( simulation_df, users_df, path )
+        
         exit(0)
 
 
@@ -197,7 +243,7 @@ if __name__=="__main__":
         #####                 Model fitting                ##########
         #############################################################
         model_fitting  = Model_Fitting()
-        model_fitting.parameters    = Parameters_Loader.load('./optimal_parameters/')
+        model_fitting.parameters    = Parameters_Loader.load( './optimal_parameters/' )
         model_fitting.debug = True
         model_fitting.command_ids   = range(0,14)    # 14 commands
         model_fitting.user_data_vec = user_data_vec
@@ -206,8 +252,8 @@ if __name__=="__main__":
         # display the results
         fitting_visu = Model_Fitting_Visualisation()
         fitting_visu.update_canvas( fitting_res )
-        explorer = Empirical_Panel()
-        #show_fitting_details( explorer, fitting_res, users_df, 0 )
+        #explorer = Empirical_Panel()
+        #show_fitting_details( explorer, fitting_res, users_df, 5 )
     
         
 
@@ -232,10 +278,12 @@ if __name__=="__main__":
 
 
     if 'parameter' in analyse_vec:
-        parameters = Parameters_Loader.load('./optimal_parameters/')
-        parameter_view = Parameter_View()
-        parameter_view.analyze_by_model_param2( parameters )
-        parameter_view.show()
+        parameters = Parameters_Loader.load('./optimal_parameters_D/')
+        view = Parameter_Matrix_View()
+        view.set_data( parameters, model_vec[ 0 ].variant_name )
+        #parameter_view.analyze_by_model_param2( parameters, [model.variant_name for model in model_vec ] )
+        view.show()
+
 
     if 'user' in analyse_vec:
         users_data = loader.load( path )

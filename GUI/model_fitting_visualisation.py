@@ -8,53 +8,53 @@ import seaborn as sns
 from dataframe_util import *
 
 
-######################################
-#                                    #
-#           FITTING TABLE            #
-#                                    #
-######################################
-class Fitting_Table( QWidget ) :
+# ######################################
+# #                                    #
+# #           FITTING TABLE            #
+# #                                    #
+# ######################################
+# class Fitting_Table( QWidget ) :
 
-    ##########################
-    def __init__( self ):
-        super().__init__()
-        self.l = QGridLayout()
-        self.l.setHorizontalSpacing( 1 )
-        self.l.setVerticalSpacing( 1 )
-        self.setLayout( self.l )
-        self.model_row = dict()
-        self.user_col  = dict()
-        self.w         = dict()
-        self.setMaximumHeight(120)
+#     ##########################
+#     def __init__( self ):
+#         super().__init__()
+#         self.l = QGridLayout()
+#         self.l.setHorizontalSpacing( 1 )
+#         self.l.setVerticalSpacing( 1 )
+#         self.setLayout( self.l )
+#         self.model_row = dict()
+#         self.user_col  = dict()
+#         self.w         = dict()
+#         self.setMaximumHeight(120)
 
     
-    ##########################
-    def update_data( self, model_fitting_result_vec ):
-        self.l.addWidget(QLabel(""),0,0)
-        for model_result in model_fitting_result_vec :
-            name = model_result.name  if model_result.variant == '' else  model_result.name + ' - ' + model_result.variant
-            k = model_result.n_parameters
+#     ##########################
+#     def update_data( self, model_fitting_result_vec ):
+#         self.l.addWidget(QLabel(""),0,0)
+#         for model_result in model_fitting_result_vec :
+#             name = model_result.name  if model_result.variant == '' else  model_result.name + ' - ' + model_result.variant
+#             k = model_result.n_parameters
 
-            row = 0
+#             row = 0
 
-            if name in self.model_row:
-               row = self.model_row[ name ]
-            else: 
-                row = self.l.rowCount()
-                self.model_row[ name ] = row
-                self.l.addWidget( QLabel( "<b>" + name + " </b>" ), row, 0 )
+#             if name in self.model_row:
+#                row = self.model_row[ name ]
+#             else: 
+#                 row = self.l.rowCount()
+#                 self.model_row[ name ] = row
+#                 self.l.addWidget( QLabel( "<b>" + name + " </b>" ), row, 0 )
             
-            for user_id, likelihood, n  in zip( model_result.user_id, model_result.log_likelihood, model_result.n_observations) :
-                bic = bic_score(  n, k, likelihood )
-                if not user_id in self.user_col :
-                    self.l.addWidget(QLabel( str(user_id) ), 0, user_id + 1 )
-                key = row * 100 + user_id
-                if not key in self.w:
-                    bic_label = QLabel( str( round( bic, 2 ) ) )
-                    self.w[ key ] = bic_label
-                    self.l.addWidget( bic_label, row, user_id+1 )
-                else:
-                    self.w[ key ].setText( str( round( bic, 2 ) ) )
+#             for user_id, likelihood, n  in zip( model_result.user_id, model_result.log_likelihood, model_result.n_observations) :
+#                 bic = bic_score(  n, k, likelihood )
+#                 if not user_id in self.user_col :
+#                     self.l.addWidget(QLabel( str(user_id) ), 0, user_id + 1 )
+#                 key = row * 100 + user_id
+#                 if not key in self.w:
+#                     bic_label = QLabel( str( round( bic, 2 ) ) )
+#                     self.w[ key ] = bic_label
+#                     self.l.addWidget( bic_label, row, user_id+1 )
+#                 else:
+#                     self.w[ key ].setText( str( round( bic, 2 ) ) )
 
 
 ######################################
@@ -115,14 +115,23 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
     def participant_table( self, df ):
         participant_vec = df['user_id'].unique()
         model_vec = df['name'].unique()
+        traditional_color = QColor(150,150,255)
+        audio_color       = QColor(255,200,100)
+        disable_color     = QColor(150,255,150)
+
         self.participant_table = self.create_table([ str(p) for p in participant_vec ], model_vec )
 
         for i, model in enumerate( model_vec ) :
             for j, participant in enumerate( participant_vec ):
-                value = df.loc[ ( df.name == model ) & ( df.user_id == participant )  , 'BIC' ]
+                value = df.loc[ ( df.name == model ) & ( df.user_id == participant )  , 'log_likelihood' ]
                 item = QTableWidgetItem( str( round( value.iloc[0], 1)  ) )
-                if j % 3 == 0:
-                    item.setBackground(Qt.blue); 
+                if j % 3 == 0 :
+                    item.setBackground( traditional_color )
+                elif j % 3 == 1 :
+                    item.setBackground( audio_color )
+                elif j % 3 == 2 :
+                    item.setBackground( disable_color )                
+                 
                 self.participant_table.setItem( i, j, item )
 
         header = self.participant_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents);
@@ -153,8 +162,9 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
                     v =  round( value.iloc[0], 1) if measure == 'BIC' else - round( value.iloc[0], 1) 
                     table.setItem( i, j, QTableWidgetItem( str( v ) ) )
                 else :
-                    value = technique_mean_df.loc[ ( technique_mean_df.name == model ) & ( technique_mean_df.technique == technique )  , 'BIC_mean' ] 
-                    table.setItem( i, j, QTableWidgetItem( str( round( value.iloc[0], 1)  ) ) )
+                    value = technique_mean_df.loc[ ( technique_mean_df.name == model ) & ( technique_mean_df.technique == technique )  , measure + '_mean' ] 
+                    v =  round( value.iloc[0], 1) if measure == 'BIC' else - round( value.iloc[0], 1) 
+                    table.setItem( i, j, QTableWidgetItem( str( v  ) ) )
        
         return table
 
@@ -174,23 +184,7 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         #df['name'] = df['variant']
         #df.loc[ df.variant == '', 'name'] = df[ 'model' ]
 
-        model_color = dict()
-        model_color[ 'RW' ] = [153/255, 204/255, 1, 1]
-        model_color[ 'RW2' ] = [255/255, 204/255, 1, 1]
-        model_color[ 'CK' ] = [1, 153/255, 1, 1]
-        model_color[ 'CK2' ] = [1, 153/255, 1, 1]
-        model_color[ 'RWCK' ] = [153/255, 51/255, 1, 1]
-        model_color[ 'Observations' ] = [1,1,1,1]
-        model_color[ 'random' ] = [1,1,153/255,1]
-        model_color[ 'ILHP' ] = [153/255,0,0,1]
-        model_color[ 'T' ] = [0.5,0.5,0.5,1]
-        model_color[ 'T_I' ] = [102/255,255/255,102/255,1]
-        model_color[ 'T_H' ] = [0,204/255,0,1]
-        model_color[ 'T_P' ] = [0,153/255,0,1]
-        model_color[ 'T_I_P' ] = [255/255,51/255,51/255,1]
-        model_color[ 'T_I_H' ] = [255/255,0,0,1]
-        model_color[ 'T_H_P' ] = [153/255,0,0,1]
-        model_color[ 'T_I_H_P' ] = [102/255,51/255,0,1]
+        
 
         dependent_variable = [ '- Log Likelihood', 'BIC' ]
 
@@ -251,6 +245,7 @@ class Model_Fitting_Visualisation( Serie2DGallery ):
         df = model_res_vec_to_data_frame( res )
         df['name'] = df['variant']
         df.loc[ df.variant == '', 'name'] = df[ 'model' ]
+        print( df.loc[ df.user_id == 5 ] )
 
         self.ll_model_table    = self.technique_model_table( df )
         self.bic_model_table   = self.technique_model_table( df, 'BIC')

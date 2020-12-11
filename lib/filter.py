@@ -25,15 +25,15 @@ class Filter(object):
             return False
         return True    
 
-    #####################
-    def fast_accepted( self, user_data ) :
-        if user_data.id < self.user_min :
-            return False
-        if user_data.id > self.user_max :
-            return False
-        if not user_data.technique_name in self.techniques :
-            return False
-        return True
+    # #####################
+    # def fast_accepted( self, user_data ) :
+    #     if user_data.id < self.user_min :
+    #         return False
+    #     if user_data.id > self.user_max :
+    #         return False
+    #     if not user_data.technique_name in self.techniques :
+    #         return False
+    #     return True
         
     #####################
     def filter( self, user_data_vec ) :

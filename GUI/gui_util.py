@@ -4,6 +4,38 @@ from PyQt5.QtGui import QPalette, QPageLayout, QColor, QLinearGradient
 from PyQt5.QtCore import Qt, pyqtSignal
 
 
+
+technique_hue   = dict()
+technique_hue[ 'traditional' ] = (0,0,1,0.5)
+technique_hue[ 'audio' ]       = (1,0.5,0,0.5)
+technique_hue[ 'disable' ]     = (0,1,0,0.5)
+
+technique_marker = dict()
+technique_marker[ 'traditional' ] = 'o'
+technique_marker[ 'audio' ]       = '^'
+technique_marker[ 'disable' ]     = 'D'
+
+model_color = dict()
+model_color[ 'RW' ] = [153/255, 204/255, 1, 1]
+model_color[ 'RW2' ] = [255/255, 204/255, 1, 1]
+model_color[ 'CK' ] = [1, 153/255, 1, 1]
+model_color[ 'CK2' ] = [1, 153/255, 1, 1]
+model_color[ 'RWCK' ] = [153/255, 51/255, 1, 1]
+model_color[ 'Observations' ] = [1,1,1,1]
+model_color[ 'random' ] = [1,1,153/255,1]
+model_color[ 'ILHP' ] = [153/255,0,0,1]
+model_color[ 'T' ] = [0.5,0.5,0.5,1]
+model_color[ 'T_I' ] = [102/255,255/255,102/255,1]
+model_color[ 'T_H' ] = [0,204/255,0,1]
+model_color[ 'T_P' ] = [0,153/255,0,1]
+model_color[ 'T_I_P' ] = [255/255,51/255,51/255,1]
+model_color[ 'T_I_H' ] = [255/255,0,0,1]
+model_color[ 'T_H_P' ] = [153/255,0,0,1]
+model_color[ 'T_I_H_P' ] = [102/255,51/255,0,1]
+model_color[ 'H0-DF' ] = [1,0,0,1]
+model_color[ 'H1-DF' ] = [0,1,0,1]
+model_color[ 'H1-D' ] = [0,0,1,1]
+
 ##################################
 def base_brush():
 	bottom = QColor( 20, 20 , 40)
